@@ -1,6 +1,6 @@
 # elodesk
 
-Chatwoot-compatible messaging hub. Receives conversations from providers (e.g. [wzap](https://github.com/felipyfgs/wzap) for WhatsApp) over the Channel::Api contract and surfaces them to human agents through a Nuxt frontend.
+Chatwoot-compatible messaging hub. Supports multiple conversation channels — including **Channel::Email** (IMAP/SMTP + OAuth Gmail/Microsoft 365), **Channel::WhatsApp**, **Channel::Instagram** (DMs via Meta Graph API), **Channel::FacebookPage** (Messenger), **Channel::Sms** (Twilio, Bandwidth, Zenvia), **Channel::Telegram**, **Channel::WebWidget** (embeddable site chat), and the generic **Channel::Api** — and surfaces them to human agents through a Nuxt frontend.
 
 ## Stack
 
@@ -18,6 +18,7 @@ Chatwoot-compatible messaging hub. Receives conversations from providers (e.g. [
 elodesk/
 ├── backend/        Go service (cmd/backend, internal/**, migrations/*.sql)
 ├── frontend/       Nuxt 4 app (app/, server/, i18n/)
+├── widget/         Vue 3 embeddable chat widget (Vite library mode)
 ├── openspec/       Active and archived change proposals
 ├── docker-compose.yml   Postgres + Redis + MinIO for local dev
 └── .github/workflows/   CI (go test -race, golangci-lint, pnpm lint/typecheck/test)

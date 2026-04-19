@@ -132,6 +132,127 @@
     "members": {
       "title": "Membros",
       "empty": "Sem membros listados."
+    },
+    "labels": "Labels",
+    "teams": "Equipes",
+    "canned": "Respostas rápidas",
+    "attributes": "Atributos customizados",
+    "accessDenied": "Acesso restrito a administradores."
+  },
+  "labels": {
+    "title": "Labels",
+    "create": "Nova label",
+    "edit": "Editar label",
+    "delete": "Excluir label",
+    "deleteConfirm": "Excluir esta label? Todas as associações serão removidas.",
+    "name": "Título",
+    "color": "Cor",
+    "description": "Descrição",
+    "showOnSidebar": "Mostrar na sidebar",
+    "empty": "Nenhuma label criada."
+  },
+  "teams": {
+    "title": "Equipes",
+    "create": "Nova equipe",
+    "edit": "Editar equipe",
+    "delete": "Excluir equipe",
+    "deleteConfirm": "Excluir esta equipe? Conversas atribuídas serão desatribuídas.",
+    "name": "Nome",
+    "description": "Descrição",
+    "allowAutoAssign": "Auto-atribuição",
+    "members": "Membros",
+    "addMembers": "Adicionar membros",
+    "removeMembers": "Remover membros",
+    "empty": "Nenhuma equipe criada."
+  },
+  "cannedResponses": {
+    "title": "Respostas rápidas",
+    "create": "Nova resposta",
+    "edit": "Editar resposta",
+    "delete": "Excluir resposta",
+    "deleteConfirm": "Excluir esta resposta rápida?",
+    "shortCode": "Código",
+    "content": "Conteúdo",
+    "empty": "Nenhuma resposta rápida criada.",
+    "insertInComposer": "Usar resposta"
+  },
+  "notes": {
+    "title": "Notas",
+    "create": "Adicionar nota",
+    "edit": "Editar nota",
+    "delete": "Excluir nota",
+    "placeholder": "Escreva uma nota interna…",
+    "empty": "Nenhuma nota."
+  },
+  "customAttributes": {
+    "title": "Atributos customizados",
+    "create": "Novo atributo",
+    "edit": "Editar atributo",
+    "delete": "Excluir atributo",
+    "deleteConfirm": "Excluir este atributo? Valores existentes não serão removidos.",
+    "key": "Chave",
+    "displayName": "Nome de exibição",
+    "displayType": "Tipo",
+    "model": "Modelo",
+    "values": "Valores",
+    "valuesPlaceholder": "um\ndois\ntrês",
+    "description": "Descrição",
+    "regexPattern": "Padrão regex",
+    "defaultValue": "Valor padrão",
+    "empty": "Nenhum atributo customizado.",
+    "types": {
+      "text": "Texto",
+      "number": "Número",
+      "currency": "Moeda",
+      "percent": "Percentual",
+      "link": "Link",
+      "date": "Data",
+      "list": "Lista",
+      "checkbox": "Checkbox"
     }
+  },
+  "savedFilters": {
+    "title": "Filtros salvos",
+    "create": "Novo filtro",
+    "edit": "Editar filtro",
+    "delete": "Excluir filtro",
+    "name": "Nome",
+    "save": "Salvar filtro atual",
+    "apply": "Aplicar",
+    "empty": "Nenhum filtro salvo."
+  },
+  "contactDetail": {
+    "title": "Detalhes do contato",
+    "name": "Nome",
+    "email": "E-mail",
+    "phone": "Telefone",
+    "identifier": "Identificador",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "labels": "Labels",
+    "notes": "Notas",
+    "attributes": "Atributos",
+    "conversations": "Conversas",
+    "viewContact": "Ver contato"
+  },
+  "assignment": {
+    "assignee": "Agente",
+    "team": "Equipe",
+    "unassigned": "Não atribuído",
+    "change": "Alterar atribuição"
+  },
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "create": "Criar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "close": "Fechar",
+    "search": "Buscar…",
+    "noResults": "Nenhum resultado.",
+    "loading": "Carregando…",
+    "error": "Erro",
+    "success": "Sucesso",
+    "confirm": "Confirmar"
   }
 }

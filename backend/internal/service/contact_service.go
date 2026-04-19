@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"backend/internal/model"
@@ -116,12 +115,4 @@ func (s *ContactService) EnsureContactInbox(ctx context.Context, contactID, inbo
 		SourceID:  sourceID,
 	}
 	return s.contactInboxRepo.Create(ctx, ci)
-}
-
-func jsonRawToString(raw json.RawMessage) *string {
-	if len(raw) == 0 {
-		return nil
-	}
-	s := string(raw)
-	return &s
 }

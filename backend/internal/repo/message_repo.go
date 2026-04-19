@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -101,6 +102,21 @@ func (r *MessageRepo) FindBySourceID(ctx context.Context, sourceID string, accou
 	return &m, nil
 }
 
+// FindBySourceIDInbox looks up a message by source_id scoped to a specific inbox.
+// This prevents cross-inbox thread hijacking via spoofed In-Reply-To headers.
+func (r *MessageRepo) FindBySourceIDInbox(ctx context.Context, sourceID string, inboxID int64) (*model.Message, error) {
+	query := `SELECT ` + messageSelectColumns + ` FROM messages WHERE source_id = $1 AND inbox_id = $2 AND deleted_at IS NULL`
+	row := r.pool.QueryRow(ctx, query, sourceID, inboxID)
+	var m model.Message
+	if err := scanMessage(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrMessageNotFound, err)
+		}
+		return nil, fmt.Errorf("find message by source_id+inbox: %w", err)
+	}
+	return &m, nil
+}
+
 type MessageListFilter struct {
 	ConversationID int64
 	AccountID      int64
@@ -127,7 +143,6 @@ func (r *MessageRepo) ListByConversation(ctx context.Context, f MessageListFilte
 	if f.Before != nil {
 		dataQuery += fmt.Sprintf(" AND created_at < $%d", argN)
 		args = append(args, *f.Before)
-		argN++
 	}
 
 	offset := (f.Page - 1) * f.PerPage
@@ -148,4 +163,82 @@ func (r *MessageRepo) ListByConversation(ctx context.Context, f MessageListFilte
 		messages = append(messages, m)
 	}
 	return messages, total, rows.Err()
+}
+
+func (r *MessageRepo) UpdateStatus(ctx context.Context, id, accountID int64, status string, externalErr *string) (*model.Message, error) {
+	msgStatus := mapStatus(status)
+	query := `UPDATE messages SET status = $1, content_attributes = COALESCE(content_attributes::jsonb || $2::jsonb, $2::jsonb), updated_at = NOW()
+		WHERE id = $3 AND account_id = $4 AND deleted_at IS NULL
+		RETURNING ` + messageSelectColumns
+	var attrs json.RawMessage
+	if externalErr != nil {
+		attrs = json.RawMessage(fmt.Sprintf(`{"external_error":%s}`, mustMarshalString(*externalErr)))
+	}
+	row := r.pool.QueryRow(ctx, query, msgStatus, attrs, id, accountID)
+	var m model.Message
+	if err := scanMessage(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrMessageNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to update message status: %w", err)
+	}
+	return &m, nil
+}
+
+func mapStatus(s string) model.MessageStatus {
+	switch s {
+	case "sent":
+		return model.MessageSent
+	case "delivered":
+		return model.MessageDelivered
+	case "read":
+		return model.MessageRead
+	case "failed":
+		return model.MessageFailed
+	default:
+		return model.MessageSent
+	}
+}
+
+func mustMarshalString(s string) json.RawMessage {
+	b, _ := json.Marshal(s)
+	return b
+}
+
+func (r *MessageRepo) UpdateConversationID(ctx context.Context, id, accountID, conversationID int64) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE messages SET conversation_id = $1, updated_at = NOW() WHERE id = $2 AND account_id = $3`,
+		conversationID, id, accountID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update message conversation_id: %w", err)
+	}
+	return nil
+}
+
+// MarkDeliveredBefore updates outgoing messages in a conversation to the given
+// status when their created_at is at or before the watermark timestamp.
+// Returns the number of rows updated.
+func (r *MessageRepo) MarkDeliveredBefore(ctx context.Context, conversationID, accountID int64, before time.Time, status model.MessageStatus) (int, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE messages SET status = $1, updated_at = NOW()
+		 WHERE conversation_id = $2 AND account_id = $3
+		   AND message_type = $4 AND created_at <= $5 AND deleted_at IS NULL`,
+		status, conversationID, accountID, model.MessageOutgoing, before,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("mark delivered before: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+func (r *MessageRepo) UpdateSourceID(ctx context.Context, id, accountID int64, sourceID *string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE messages SET source_id = $1, updated_at = NOW() WHERE id = $2 AND account_id = $3`,
+		sourceID, id, accountID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update message source_id: %w", err)
+	}
+	return nil
 }

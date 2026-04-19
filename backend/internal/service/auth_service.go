@@ -266,11 +266,11 @@ func (s *AuthService) ValidateAccessToken(tokenStr string) (*repo.AuthUser, erro
 
 func (s *AuthService) generateAccessToken(user *model.User) (string, error) {
 	claims := jwt.MapClaims{
-		"sub":  user.ID,
+		"sub":   user.ID,
 		"email": user.Email,
-		"name": user.Name,
-		"exp":  time.Now().Add(s.accessTTL).Unix(),
-		"iat":  time.Now().Unix(),
+		"name":  user.Name,
+		"exp":   time.Now().Add(s.accessTTL).Unix(),
+		"iat":   time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

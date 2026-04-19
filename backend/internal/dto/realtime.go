@@ -29,7 +29,7 @@ type ConversationStatusChangedPayload struct {
 }
 
 type ConversationAssigneeChangedPayload struct {
-	ID        int64  `json:"id"`
+	ID         int64  `json:"id"`
 	AssigneeID *int64 `json:"assigneeId,omitempty"`
 }
 
@@ -41,6 +41,6 @@ type ContactCreatedPayload struct {
 }
 
 type ConversationContactAttributesChangedPayload struct {
-	ID        int64  `json:"id"`
-	ContactID int64  `json:"contactId"`
+	ID        int64 `json:"id"`
+	ContactID int64 `json:"contactId"`
 }

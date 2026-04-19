@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrInvalidKEK       = errors.New("invalid KEK")
+	ErrInvalidKEK        = errors.New("invalid KEK")
 	ErrInvalidCiphertext = errors.New("invalid ciphertext")
 )
 

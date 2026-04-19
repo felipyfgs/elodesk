@@ -132,6 +132,127 @@
     "members": {
       "title": "Members",
       "empty": "No members listed."
+    },
+    "labels": "Labels",
+    "teams": "Teams",
+    "canned": "Canned Responses",
+    "attributes": "Custom Attributes",
+    "accessDenied": "Access restricted to administrators."
+  },
+  "labels": {
+    "title": "Labels",
+    "create": "New label",
+    "edit": "Edit label",
+    "delete": "Delete label",
+    "deleteConfirm": "Delete this label? All associations will be removed.",
+    "name": "Title",
+    "color": "Color",
+    "description": "Description",
+    "showOnSidebar": "Show on sidebar",
+    "empty": "No labels created."
+  },
+  "teams": {
+    "title": "Teams",
+    "create": "New team",
+    "edit": "Edit team",
+    "delete": "Delete team",
+    "deleteConfirm": "Delete this team? Assigned conversations will be unassigned.",
+    "name": "Name",
+    "description": "Description",
+    "allowAutoAssign": "Auto-assign",
+    "members": "Members",
+    "addMembers": "Add members",
+    "removeMembers": "Remove members",
+    "empty": "No teams created."
+  },
+  "cannedResponses": {
+    "title": "Canned Responses",
+    "create": "New response",
+    "edit": "Edit response",
+    "delete": "Delete response",
+    "deleteConfirm": "Delete this canned response?",
+    "shortCode": "Short code",
+    "content": "Content",
+    "empty": "No canned responses created.",
+    "insertInComposer": "Use response"
+  },
+  "notes": {
+    "title": "Notes",
+    "create": "Add note",
+    "edit": "Edit note",
+    "delete": "Delete note",
+    "placeholder": "Write an internal note…",
+    "empty": "No notes."
+  },
+  "customAttributes": {
+    "title": "Custom Attributes",
+    "create": "New attribute",
+    "edit": "Edit attribute",
+    "delete": "Delete attribute",
+    "deleteConfirm": "Delete this attribute? Existing values will not be removed.",
+    "key": "Key",
+    "displayName": "Display name",
+    "displayType": "Type",
+    "model": "Model",
+    "values": "Values",
+    "valuesPlaceholder": "one\ntwo\nthree",
+    "description": "Description",
+    "regexPattern": "Regex pattern",
+    "defaultValue": "Default value",
+    "empty": "No custom attributes.",
+    "types": {
+      "text": "Text",
+      "number": "Number",
+      "currency": "Currency",
+      "percent": "Percent",
+      "link": "Link",
+      "date": "Date",
+      "list": "List",
+      "checkbox": "Checkbox"
     }
+  },
+  "savedFilters": {
+    "title": "Saved Filters",
+    "create": "New filter",
+    "edit": "Edit filter",
+    "delete": "Delete filter",
+    "name": "Name",
+    "save": "Save current filter",
+    "apply": "Apply",
+    "empty": "No saved filters."
+  },
+  "contactDetail": {
+    "title": "Contact Details",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "identifier": "Identifier",
+    "save": "Save",
+    "cancel": "Cancel",
+    "labels": "Labels",
+    "notes": "Notes",
+    "attributes": "Attributes",
+    "conversations": "Conversations",
+    "viewContact": "View contact"
+  },
+  "assignment": {
+    "assignee": "Agent",
+    "team": "Team",
+    "unassigned": "Unassigned",
+    "change": "Change assignment"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "search": "Search…",
+    "noResults": "No results.",
+    "loading": "Loading…",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm"
   }
 }

@@ -17,5 +17,18 @@ func IsErrNotFound(err error) bool {
 		errors.Is(err, ErrConversationNotFound) ||
 		errors.Is(err, ErrMessageNotFound) ||
 		errors.Is(err, ErrAttachmentNotFound) ||
-		errors.Is(err, ErrContactInboxNotFound)
+		errors.Is(err, ErrContactInboxNotFound) ||
+		errors.Is(err, ErrLabelNotFound) ||
+		errors.Is(err, ErrTeamNotFound) ||
+		errors.Is(err, ErrCannedResponseNotFound) ||
+		errors.Is(err, ErrNoteNotFound) ||
+		errors.Is(err, ErrCustomAttributeDefinitionNotFound) ||
+		errors.Is(err, ErrCustomFilterNotFound) ||
+		errors.Is(err, ErrChannelTelegramNotFound) ||
+		errors.Is(err, ErrChannelWhatsappNotFound) ||
+		errors.Is(err, ErrChannelEmailNotFound) ||
+		errors.Is(err, ErrChannelInstagramNotFound) ||
+		errors.Is(err, ErrChannelFacebookNotFound) ||
+		errors.Is(err, ErrChannelSMSNotFound) ||
+		errors.Is(err, ErrChannelWebWidgetNotFound)
 }

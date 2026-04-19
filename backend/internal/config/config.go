@@ -20,9 +20,9 @@ type Config struct {
 	DatabaseURL string
 	RedisURL    string
 
-	JWTSecret      string
-	JWTAccessTTL   time.Duration
-	JWTRefreshTTL  time.Duration
+	JWTSecret     string
+	JWTAccessTTL  time.Duration
+	JWTRefreshTTL time.Duration
 
 	BackendKEK string
 
@@ -35,6 +35,17 @@ type Config struct {
 
 	APIURL      string
 	CORSOrigins string
+
+	MetaAppID            string
+	MetaAppSecret        string
+	MetaGraphVersion     string
+	InstagramVerifyToken string
+	FacebookVerifyToken  string
+	MetaAllowUnsigned    bool
+
+	WidgetPublicBaseURL string
+	WidgetJWTSecret     string
+	WidgetSessionTTL    int
 }
 
 func Load() *Config {
@@ -64,6 +75,17 @@ func Load() *Config {
 
 		APIURL:      getEnv("API_URL", "http://localhost:3001"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "*"),
+
+		MetaAppID:            getEnv("META_APP_ID", ""),
+		MetaAppSecret:        getEnv("META_APP_SECRET", ""),
+		MetaGraphVersion:     getEnv("META_GRAPH_VERSION", "v22.0"),
+		InstagramVerifyToken: getEnv("INSTAGRAM_VERIFY_TOKEN", ""),
+		FacebookVerifyToken:  getEnv("FB_VERIFY_TOKEN", ""),
+		MetaAllowUnsigned:    getEnvAsBool("META_ALLOW_UNSIGNED", false),
+
+		WidgetPublicBaseURL: getEnv("WIDGET_PUBLIC_BASE_URL", "http://localhost:3001"),
+		WidgetJWTSecret:     getEnv("WIDGET_JWT_SECRET", ""),
+		WidgetSessionTTL:    getEnvAsInt("WIDGET_SESSION_TTL_DAYS", 30),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -150,6 +172,15 @@ func getEnvAsBool(key string, fallback bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if boolValue, err := strconv.ParseBool(value); err == nil {
 			return boolValue
+		}
+	}
+	return fallback
+}
+
+func getEnvAsInt(key string, fallback int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
 		}
 	}
 	return fallback

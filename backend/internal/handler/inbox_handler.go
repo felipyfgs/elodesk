@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/logger"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -13,6 +14,7 @@ func handleNotFound(c *fiber.Ctx, err error) error {
 	if repo.IsErrNotFound(err) {
 		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "resource not found"))
 	}
+	logger.Error().Str("component", "handler").Err(err).Msg("inbox handler error")
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 }
 

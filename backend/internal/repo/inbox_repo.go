@@ -104,3 +104,17 @@ func (r *InboxRepo) FindByChannelID(ctx context.Context, channelID int64) (*mode
 	}
 	return &m, nil
 }
+
+func (r *InboxRepo) FindByIdentifier(ctx context.Context, identifier string) (*model.Inbox, error) {
+	query := `SELECT i.` + inboxSelectColumns + ` FROM inboxes i
+		JOIN channels_api ca ON ca.id = i.channel_id WHERE ca.identifier = $1`
+	row := r.pool.QueryRow(ctx, query, identifier)
+	var m model.Inbox
+	if err := scanInbox(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrInboxNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find inbox by identifier: %w", err)
+	}
+	return &m, nil
+}

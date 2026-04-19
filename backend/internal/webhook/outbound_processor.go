@@ -151,7 +151,7 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 			Err(err).Msg("delivery failed")
 		return fmt.Errorf("delivery failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(resp.Body)
 

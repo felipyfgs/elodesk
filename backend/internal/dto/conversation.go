@@ -16,6 +16,7 @@ type ConversationResp struct {
 	InboxID         int64                    `json:"inboxId"`
 	Status          model.ConversationStatus `json:"status"`
 	AssigneeID      *int64                   `json:"assigneeId,omitempty"`
+	TeamID          *int64                   `json:"teamId,omitempty"`
 	ContactID       int64                    `json:"contactId"`
 	ContactInboxID  *int64                   `json:"contactInboxId,omitempty"`
 	DisplayID       int64                    `json:"displayId"`
@@ -38,6 +39,7 @@ func ConversationToResp(c *model.Conversation) ConversationResp {
 		InboxID:         c.InboxID,
 		Status:          c.Status,
 		AssigneeID:      c.AssigneeID,
+		TeamID:          c.TeamID,
 		ContactID:       c.ContactID,
 		ContactInboxID:  c.ContactInboxID,
 		DisplayID:       c.DisplayID,

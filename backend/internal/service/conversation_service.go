@@ -90,3 +90,7 @@ func (s *ConversationService) GetByID(ctx context.Context, id, accountID int64) 
 func (s *ConversationService) UpdateLastSeen(ctx context.Context, id int64) error {
 	return s.conversationRepo.UpdateLastSeen(ctx, id)
 }
+
+func (s *ConversationService) Assign(ctx context.Context, id, accountID int64, assigneeID, teamID *int64) (*model.Conversation, error) {
+	return s.conversationRepo.UpdateAssignment(ctx, id, accountID, assigneeID, teamID)
+}

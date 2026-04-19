@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/logger"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -51,6 +52,7 @@ func handleServiceError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, repo.ErrUserNotFound):
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "invalid credentials"))
 	default:
+		logger.Error().Str("component", "auth").Err(err).Msg("auth service error")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 	}
 }
@@ -165,6 +167,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	}
 
 	if err := h.svc.Logout(c.Context(), authUser.ID, req.RefreshToken, req.AllDevices); err != nil {
+		logger.Error().Str("component", "auth").Err(err).Msg("failed to logout")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to logout"))
 	}
 

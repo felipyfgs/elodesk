@@ -5,7 +5,11 @@ const { t } = useI18n()
 
 const links = computed<NavigationMenuItem[][]>(() => [[
   { label: t('nav.settingsGeneral'), icon: 'i-lucide-user', to: '/settings', exact: true },
-  { label: t('nav.settingsMembers'), icon: 'i-lucide-users', to: '/settings/members' }
+  { label: t('nav.settingsMembers'), icon: 'i-lucide-users', to: '/settings/members' },
+  { label: t('settings.labels'), icon: 'i-lucide-tag', to: '/settings/labels' },
+  { label: t('settings.teams'), icon: 'i-lucide-users-round', to: '/settings/teams' },
+  { label: t('settings.canned'), icon: 'i-lucide-message-square', to: '/settings/canned' },
+  { label: t('settings.attributes'), icon: 'i-lucide-sliders-horizontal', to: '/settings/attributes' }
 ]])
 </script>
 

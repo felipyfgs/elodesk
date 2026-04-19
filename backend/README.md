@@ -1,103 +1,204 @@
-# elodesk backend
+## SMS Channel
 
-Go service behind the elodesk hub. Speaks the Chatwoot `Channel::Api`
-contract so providers (wzap, Evolution API, Meta Cloud, …) plug in without
-changes, and exposes a JWT + WebSocket API for the agent frontend.
+### Overview
 
-## Layout
+The SMS channel supports three providers: **Twilio**, **Bandwidth**, and **Zenvia**. All providers share a common `Channel::Sms` type with provider-specific credentials and webhook handling.
 
+### Provisioning
+
+#### Twilio
+
+1. Create a Twilio account and get a phone number from the [Twilio Console](https://console.twilio.com/).
+2. Note your `Account SID` and `Auth Token`.
+3. Provision via API:
+   ```bash
+   POST /api/v1/accounts/:aid/inboxes/sms
+   {
+     "name": "My Twilio SMS",
+     "provider": "twilio",
+     "phoneNumber": "+14155551234",
+     "providerConfig": {
+       "twilio": {
+         "accountSid": "AC...",
+         "authToken": "...",
+         "messagingServiceSid": "MG... (optional)"
+       }
+     }
+   }
+   ```
+4. Configure webhooks in Twilio Console → Phone Number → Messaging:
+   - **A message comes in**: `https://your-domain/webhooks/sms/twilio/:identifier`
+   - **Status callback**: `https://your-domain/webhooks/sms/twilio/:identifier/status`
+
+#### Bandwidth
+
+1. Create a Bandwidth account and get credentials from the [Dashboard](https://dashboard.bandwidth.com/).
+2. Create an Application and note `Account ID`, `Application ID`, `Basic Auth User`, `Basic Auth Pass`.
+3. Provision via API with `provider: "bandwidth"` and `providerConfig.bandwidth`.
+4. Configure callbacks in Bandwidth Dashboard → Application → Callbacks.
+
+#### Zenvia
+
+1. Create a Zenvia account and get an API token from the [Portal](https://app.zenvia.com/).
+2. Provision via API with `provider: "zenvia"` and `providerConfig.zenvia`.
+3. Configure webhooks in Zenvia Portal.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `DEFAULT_PHONE_REGION` | Default region for phone normalization | `BR` |
+
+### Webhook URLs
+
+After provisioning, the API returns:
+```json
+{
+  "webhookUrls": {
+    "primary": "https://your-domain/webhooks/sms/twilio/abc123",
+    "status": "https://your-domain/webhooks/sms/twilio/abc123/status"
+  }
+}
 ```
-backend/
-├── cmd/backend/main.go           entrypoint
-├── internal/
-│   ├── config/                   env loading + validation (fatal on bad TTL/KEK)
-│   ├── crypto/                   AES-256-GCM (KEK) + SHA-256 HashLookup
-│   ├── database/                 pgx v5 pool + embedded migrations
-│   ├── dto/                      request/response shapes (validator tags)
-│   ├── handler/                  Fiber handlers (parseAndValidate → service)
-│   ├── logger/                   zerolog singleton (WithComponent + redact)
-│   ├── media/                    MinIO client + upload helpers
-│   ├── middleware/               jwt, api_token, hmac, org_scope, roles
-│   ├── model/                    domain structs (json:"-" on secrets)
-│   ├── realtime/                 WS hub + MembershipChecker
-│   ├── repo/                     pgx scanners, tenant-scoped queries
-│   ├── server/                   router wiring + NotFoundHandler
-│   ├── service/                  business logic (auth, inbox, conversation, …)
-│   └── webhook/                  outbound asynq processor
-├── migrations/*.sql              // embedded via //go:embed
-├── Dockerfile                    // multi-stage, CGO_ENABLED=0
-└── Makefile                      // dev build test lint docs tidy
-```
 
-## Dev
+### Signature Verification
+
+- **Twilio**: `X-Twilio-Signature` header (HMAC-SHA1)
+- **Bandwidth**: HTTP Basic Auth
+- **Zenvia**: `X-Zenvia-Signature` header (HMAC-SHA256)
+
+---
+
+## Telegram Channel (`Channel::Telegram`)
+
+### Overview
+
+Receives messages from a Telegram Bot via the Telegram Bot API. No global ENV vars required — bot tokens are per-channel and encrypted at rest.
+
+### Creating a bot
+
+1. Open Telegram and search for `@BotFather`
+2. Send `/newbot` and follow the prompts
+3. Copy the bot token (format: `123456:ABC-DEF...`)
+
+### Provisioning
 
 ```bash
-cp .env.example .env              # fill JWT_SECRET and BACKEND_KEK
-# Infra (Postgres + Redis + MinIO) — from the elodesk root:
-docker compose -f ../docker-compose.yml up -d
-
-make dev                           # go run ./cmd/backend
-make build                         # bin/backend
-make test                          # go test -race ./...
-make lint                          # golangci-lint run ./...
-make docs                          # swag init → docs/swagger.yaml
+POST /api/v1/accounts/:aid/inboxes/telegram
+{
+  "name": "My Telegram Bot",
+  "botToken": "<bot-token-from-botfather>"
+}
 ```
 
-## Env
+The endpoint automatically:
+1. Calls `getMe` to validate the token and fetch `bot_name`
+2. Generates a `webhook_identifier` (opaque token) and `secret_token` (32 bytes)
+3. Registers the webhook with Telegram via `setWebhook`
+4. Creates the inbox with `channel_type = "Channel::Telegram"`
 
-Validated at boot (`internal/config`):
+### Webhook
 
-- `DATABASE_URL`, `REDIS_URL` — required
-- `JWT_SECRET` — required, ≥32 chars
-- `JWT_ACCESS_TTL` (default `15m`), `JWT_REFRESH_TTL` (default `720h`)
-- `BACKEND_KEK` — required, base64 decoding to ≥32 bytes
-- `MINIO_ENDPOINT`/`MINIO_PORT`/`MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY`/`MINIO_BUCKET`/`MINIO_USE_SSL`
-- `PORT` (default `3001`), `SERVER_HOST` (default `0.0.0.0`)
-- `API_URL`, `CORS_ORIGINS`, `LOG_LEVEL`, `GO_ENV`
+Telegram delivers updates to `https://your-host/webhooks/telegram/<webhook_identifier>`, validated via the `X-Telegram-Bot-Api-Secret-Token` header.
 
-## HTTP surface
+### Supported inbound types
 
-- `GET /health` — overall + db + redis (503 on degraded)
-- `GET /docs/` — Swagger UI
-- `GET /realtime` — WS upgrade, JWT via `?token=` or `Sec-WebSocket-Protocol`
-- `POST /api/v1/auth/{register,login,refresh,logout}`
-- `*  /api/v1/accounts/:aid/…` — JWT + OrgScope + Roles
-- `*  /public/api/v1/inboxes/:identifier/…` — `api_access_token` + optional HMAC
+Text, photo, video, audio, voice, document, sticker, animation, location, contact, video_note. Edited messages are logged but ignored (MVP). Callback queries from inline keyboards are processed as messages.
 
-## Security
+**Groups/supergroups are silently ignored** (MVP is 1:1 only).
 
-| Field              | At rest                       | Used for                       |
-|--------------------|-------------------------------|--------------------------------|
-| `users.password_hash` | Argon2id                   | login                          |
-| `refresh_tokens`   | SHA-256 hex                   | refresh rotation + family revoke |
-| `channels_api.api_token_hash` | SHA-256 hex        | provider auth lookup           |
-| `channels_api.hmac_token`     | AES-256-GCM ciphertext | inbound verify + outbound sign |
-| outbound webhook payload in Redis | hmac key = ciphertext | plaintext never in Redis       |
+### Outbound
 
-Plaintext `api_token` / `hmac_token` are returned **once** in the inbox
-creation response (`POST /api/v1/accounts/:aid/inboxes`) and never again.
+Markdown is converted to Telegram HTML subset (`<b>`, `<i>`, `<u>`, `<s>`, `<code>`, `<pre>`, `<a>`). Reply threading (`reply_to_message_id`) and inline keyboards (`reply_markup`) are supported via `content_attributes`.
 
-## Migrations
+### Media download
 
-`migrations/*.sql` are embedded via `//go:embed` and applied in filename
-order at startup. `schema_migrations` tracks applied versions. An advisory
-lock serialises concurrent startups. Rerunning is idempotent.
+Media is downloaded lazily from Telegram CDN on first view, then cached in MinIO.
 
-## Known gaps
+### Deleting a channel
 
-The archived change `rewrite-backend-in-go` ran before an automated-test
-suite existed. The following items were marked done but not actually exercised
-by tests and remain worthwhile follow-ups:
+```
+DELETE /api/v1/accounts/:aid/inboxes/:id/telegram
+```
 
-- `go test -race ./...` has no tests today. CI runs it but no suite exists.
-- Integration tests against ephemeral Postgres/Redis/MinIO for: auth register/login/refresh-rotation/replay, org scope (cross-tenant), Channel::Api idempotency, outbound webhook signing + delivery id stability, realtime membership (cross-tenant joins denied), upload path ownership.
-- Golden smoke path: register → create inbox → wzap posts contact/message via Channel::Api → agent responds → outbound webhook HMAC matches → event reaches provider.
+Calls `deleteWebhook` on Telegram before removing the local record.
 
-Open them as a new OpenSpec change when ready (`/opsx:propose`).
+---
 
-## Observability
+## Web Widget Channel (`Channel::WebWidget`)
 
-- Structured logs (`zerolog`) with `component=` on every line; sensitive
-  headers are redacted via `logger.redactHeaders`.
-- Outbound webhooks log delivery id + retry count + status.
-- `/health` drives liveness/readiness probes.
+### Overview
+
+Embeddable chat widget for customer websites. Visitors start as anonymous contacts and can be identified via HMAC verification. Real-time messaging via SSE with polling fallback.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `WIDGET_PUBLIC_BASE_URL` | Public URL for the widget bundle | `http://localhost:3001` |
+| `WIDGET_JWT_SECRET` | Secret key for signing visitor JWTs | (required) |
+| `WIDGET_SESSION_TTL_DAYS` | Visitor session TTL in days | `30` |
+
+### Provisioning
+
+```bash
+POST /api/v1/accounts/:aid/inboxes/web_widget
+{
+  "name": "My Website Chat",
+  "websiteUrl": "https://mysite.com",
+  "widgetColor": "#0084FF",
+  "welcomeTitle": "Hello!",
+  "welcomeTagline": "How can we help?",
+  "replyTime": "in_a_few_minutes"
+}
+```
+
+Response includes `websiteToken`, `embedScript` (ready to paste), and `hmacToken` (shown once).
+
+### Embed Script
+
+Copy the `embedScript` from the provisioning response and paste it before `</body>` on your site:
+
+```html
+<script src="https://widget.elodesk.io/widget/<websiteToken>" data-website-token="<websiteToken>" defer></script>
+```
+
+### Identify with HMAC
+
+To verify visitor identity, your backend computes an HMAC and passes it to the widget:
+
+**Node.js:**
+```js
+const crypto = require('crypto');
+const hash = crypto.createHmac('sha256', hmacToken).update('user@acme.com').digest('hex');
+```
+
+**Ruby:**
+```ruby
+require 'openssl'
+hash = OpenSSL::HMAC.hexdigest('SHA256', hmac_token, 'user@acme.com')
+```
+
+**PHP:**
+```php
+$hash = hash_hmac('sha256', 'user@acme.com', $hmacToken);
+```
+
+Then call `POST /api/v1/widget/identify` with `{identifier, identifierHash}`.
+
+### HMAC Token Rotation
+
+```bash
+POST /api/v1/accounts/:aid/inboxes/:id/rotate_hmac
+```
+
+Returns the new `hmacToken` once. Update your backend integration immediately.
+
+### CDN Setup
+
+Build the widget bundle:
+```bash
+cd widget && npm install && npm run build
+```
+
+Upload `dist/widget.js` to your CDN (S3/CloudFront, Cloudflare R2). Set `WIDGET_PUBLIC_BASE_URL` to the CDN URL.

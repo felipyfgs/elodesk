@@ -36,6 +36,7 @@ func (m *MinioClient) EnsureBucket(ctx context.Context) error {
 	exists, err := m.client.BucketExists(ctx, m.bucket)
 	if err != nil {
 		logger.Warn().
+			Str("component", "media").
 			Err(err).
 			Str("bucket", m.bucket).
 			Msg("failed to check bucket existence")
@@ -48,6 +49,7 @@ func (m *MinioClient) EnsureBucket(ctx context.Context) error {
 
 	if err := m.client.MakeBucket(ctx, m.bucket, minio.MakeBucketOptions{}); err != nil {
 		logger.Warn().
+			Str("component", "media").
 			Err(err).
 			Str("bucket", m.bucket).
 			Msg("failed to create bucket")
@@ -55,6 +57,7 @@ func (m *MinioClient) EnsureBucket(ctx context.Context) error {
 	}
 
 	logger.Info().
+		Str("component", "media").
 		Str("bucket", m.bucket).
 		Msg("created minio bucket")
 	return nil

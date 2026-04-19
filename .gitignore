@@ -24,3 +24,6 @@ backend/bin/
 
 # openspec archived changes
 openspec/changes/archive/
+
+# reference projects (study only)
+_refs/

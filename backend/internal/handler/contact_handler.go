@@ -178,3 +178,51 @@ func (h *ContactHandler) Get(c *fiber.Ctx) error {
 
 	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
 }
+
+func (h *ContactHandler) UpdateContactByID(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+
+	var req struct {
+		Name        *string `json:"name,omitempty"`
+		Email       *string `json:"email,omitempty"`
+		PhoneNumber *string `json:"phone_number,omitempty"`
+		Identifier  *string `json:"identifier,omitempty"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
+	updated, err := h.svc.Update(c.Context(), int64(id), accountID, req.Name, req.Email, req.PhoneNumber)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ContactToResp(updated)))
+}
+
+func (h *ContactHandler) ListContactConversations(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+
+	convos, err := h.svc.FindConversations(c.Context(), int64(id), accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationsToResp(convos)))
+}

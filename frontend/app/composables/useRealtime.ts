@@ -1,5 +1,6 @@
 import { useWebSocket } from '@vueuse/core'
 import { useAuthStore } from '~/stores/auth'
+import { useLabelsStore } from '~/stores/labels'
 
 interface JoinState {
   accounts: Set<string>
@@ -15,6 +16,7 @@ const joined: JoinState = {
 
 type MessageHandler = (payload: any) => void
 const handlers = new Map<string, Set<MessageHandler>>()
+let storeHandlersInitialized = false
 
 function buildUrl(token: string): string {
   const runtime = useRuntimeConfig()
@@ -144,6 +146,15 @@ export const useRealtime = () => {
     joined.accounts.clear()
     joined.inboxes.clear()
     joined.conversations.clear()
+    storeHandlersInitialized = false
+  }
+
+  if (!storeHandlersInitialized) {
+    storeHandlersInitialized = true
+    const labelsStore = useLabelsStore()
+    on('label.deleted', (payload: any) => {
+      labelsStore.remove(String(payload.label_id))
+    })
   }
 
   return { connect: ensureConnected, disconnect, rejoinAll, joinAccount, joinInbox, joinConversation, leaveConversation, on }

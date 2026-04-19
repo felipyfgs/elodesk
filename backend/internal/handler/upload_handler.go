@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -10,19 +11,27 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/logger"
 	"backend/internal/media"
 	"backend/internal/repo"
 )
 
 const presignedTTL = 15 * time.Minute
 
+type MediaResolveFunc func(ctx context.Context, attachmentID int64, accountID int64) (string, error)
+
 type UploadHandler struct {
 	minio          *media.MinioClient
 	attachmentRepo *repo.AttachmentRepo
+	mediaResolver  MediaResolveFunc
 }
 
 func NewUploadHandler(minio *media.MinioClient, attachmentRepo *repo.AttachmentRepo) *UploadHandler {
 	return &UploadHandler{minio: minio, attachmentRepo: attachmentRepo}
+}
+
+func (h *UploadHandler) SetMediaResolver(fn MediaResolveFunc) {
+	h.mediaResolver = fn
 }
 
 // SignedUploadURL generates a presigned PUT URL. The object path MUST begin
@@ -46,6 +55,7 @@ func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
 
 	presignedURL, err := h.minio.Client().PresignedPutObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL)
 	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate presigned put URL")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate presigned URL"))
 	}
 
@@ -74,12 +84,20 @@ func (h *UploadHandler) SignedDownloadURL(c *fiber.Ctx) error {
 	var objectPath string
 	if attachment.FileKey != nil && *attachment.FileKey != "" {
 		objectPath = *attachment.FileKey
+	} else if h.mediaResolver != nil {
+		resolved, err := h.mediaResolver(c.Context(), attachmentID, accountID)
+		if err == nil && resolved != "" {
+			objectPath = resolved
+		} else {
+			objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
+		}
 	} else {
 		objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
 	}
 
 	presignedURL, err := h.minio.Client().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
 	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate download URL")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate download URL"))
 	}
 

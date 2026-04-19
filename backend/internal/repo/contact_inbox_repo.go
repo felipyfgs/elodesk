@@ -68,3 +68,14 @@ func (r *ContactInboxRepo) FindByContactAndInbox(ctx context.Context, contactID,
 	}
 	return &m, nil
 }
+
+func (r *ContactInboxRepo) UpdateHmacVerified(ctx context.Context, id int64, verified bool) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE contact_inboxes SET hmac_verified = $1, updated_at = NOW() WHERE id = $2`,
+		verified, id,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update hmac_verified: %w", err)
+	}
+	return nil
+}

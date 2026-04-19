@@ -12,8 +12,8 @@ import (
 )
 
 type MessageHandler struct {
-	svc             *service.MessageService
-	inboxRepo       *repo.InboxRepo
+	svc              *service.MessageService
+	inboxRepo        *repo.InboxRepo
 	contactInboxRepo *repo.ContactInboxRepo
 }
 
@@ -23,8 +23,8 @@ func NewMessageHandler(
 	contactInboxRepo *repo.ContactInboxRepo,
 ) *MessageHandler {
 	return &MessageHandler{
-		svc:             svc,
-		inboxRepo:       inboxRepo,
+		svc:              svc,
+		inboxRepo:        inboxRepo,
 		contactInboxRepo: contactInboxRepo,
 	}
 }

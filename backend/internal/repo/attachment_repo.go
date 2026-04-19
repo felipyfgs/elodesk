@@ -74,3 +74,14 @@ func (r *AttachmentRepo) FindByMessageID(ctx context.Context, messageID int64) (
 	}
 	return attachments, rows.Err()
 }
+
+func (r *AttachmentRepo) UpdateFileKey(ctx context.Context, id int64, fileKey string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE attachments SET file_key = $1, updated_at = NOW() WHERE id = $2`,
+		fileKey, id,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update attachment file_key: %w", err)
+	}
+	return nil
+}

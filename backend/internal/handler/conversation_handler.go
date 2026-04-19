@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/logger"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -91,6 +92,7 @@ func (h *ConversationHandler) UpdateLastSeen(c *fiber.Ctx) error {
 	}
 
 	if err := h.svc.UpdateLastSeen(c.Context(), cid); err != nil {
+		logger.Error().Str("component", "conversations").Err(err).Msg("failed to update last seen")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to update last seen"))
 	}
 
@@ -150,6 +152,33 @@ func (h *ConversationHandler) Get(c *fiber.Ctx) error {
 	}
 
 	convo, err := h.svc.GetByID(c.Context(), int64(id), accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+}
+
+func (h *ConversationHandler) Assign(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	var req struct {
+		AssigneeID *int64 `json:"assignee_id"`
+		TeamID     *int64 `json:"team_id"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
+	convo, err := h.svc.Assign(c.Context(), int64(id), accountID, req.AssigneeID, req.TeamID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

@@ -155,3 +155,14 @@ func (r *AccountRepo) AddUser(ctx context.Context, accountID, userID int64, role
 	}
 	return au, tx.Commit(ctx)
 }
+
+func (r *AccountRepo) ExistsByUserAndAccount(ctx context.Context, userID, accountID int64) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM account_users WHERE user_id = $1 AND account_id = $2)`,
+		userID, accountID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check account user: %w", err)
+	}
+	return exists, nil
+}

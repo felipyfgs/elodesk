@@ -40,16 +40,16 @@ func With() zerolog.Context  { return log.With() }
 func Logger() zerolog.Logger { return log }
 
 var redactKeys = map[string]bool{
-	"authorization":       true,
-	"cookie":              true,
+	"authorization":          true,
+	"cookie":                 true,
 	"x-chatwoot-hmac-sha256": true,
-	"password":            true,
-	"passwordhash":        true,
-	"token":               true,
-	"hmactoken":           true,
-	"apitoken":            true,
-	"refreshtoken":        true,
-	"accesstoken":         true,
+	"password":               true,
+	"passwordhash":           true,
+	"token":                  true,
+	"hmactoken":              true,
+	"apitoken":               true,
+	"refreshtoken":           true,
+	"accesstoken":            true,
 }
 
 func RedactHeaders(headers map[string]string) map[string]string {

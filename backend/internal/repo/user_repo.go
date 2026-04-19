@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"backend/internal/model"
 
@@ -96,11 +95,4 @@ func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*model.User, 
 func isUniqueViolation(err error) bool {
 	var pgErr interface{ Code() string }
 	return errors.As(err, &pgErr) && pgErr.Code() == "23505"
-}
-
-func nullTime(t time.Time) *time.Time {
-	if t.IsZero() {
-		return nil
-	}
-	return &t
 }
