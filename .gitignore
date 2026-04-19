@@ -21,3 +21,6 @@ backend/bin/
 
 # personal claude settings
 .claude/settings.local.json
+
+# openspec archived changes
+openspec/changes/archive/

@@ -1,118 +1,131 @@
-# backend-go-channels-api Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change rewrite-backend-in-go. Update Purpose after archive.
-## Requirements
-### Requirement: Provisionamento de Channel::Api
+### Requirement: Assignment de conversation via endpoint unificado
 
-O backend SHALL expor `POST /api/v1/accounts/:aid/inboxes` (autenticado JWT + role OWNER/ADMIN) aceitando `{name, channel_type?, channel: {webhook_url?, hmac_mandatory?}}` que cria:
+O backend SHALL expor `POST /api/v1/accounts/{aid}/conversations/{id}/assignments` aceitando body `{assignee_id?: number|null, team_id?: number|null}`:
 
-- `Inbox` (accountId, name, channelType default "api")
-- `ChannelApi` com `identifier` (token random de 32 bytes base64url), `api_token` (random 48 bytes, encriptado no DB com KEK), `hmac_token` (random 32 bytes, encriptado), `webhook_url` (opcional), `hmac_mandatory` (default false)
+- Passar `assignee_id=null` desatribui o agente; omitir a key não altera.
+- Passar `team_id=null` desatribui o team; omitir não altera.
+- `assignee_id` informado MUST existir em `account_users` ativo da account.
+- `team_id` informado MUST existir em `teams` da account.
+- Após update bem-sucedido, emitir evento realtime `{type:"conversation.assignment_changed", payload:{conversation_id, assignee_id, team_id, account_id}}` na room `conversation.{id}` e `account.{aid}`.
+- Role: `Agent+` pode atribuir/desatribuir conversations; `Admin+` pode reassinar de outro agente sem estar nele.
 
-A resposta 201 MUST retornar `api_token` e `hmac_token` em claro UMA ÚNICA VEZ (cliente precisa copiar). Requests subsequentes não retornam segredos em claro.
+#### Scenario: atribuir agente e team simultaneamente
 
-#### Scenario: criação retorna credenciais
+- **WHEN** agent envia `POST /conversations/42/assignments` com `{"assignee_id":10,"team_id":5}`
+- **THEN** conversation 42 passa a ter `assignee_id=10` e `team_id=5`; broadcast `conversation.assignment_changed` dispara com payload completo
 
-- **WHEN** OWNER faz `POST /api/v1/accounts/:aid/inboxes {name:"Suporte"}`
-- **THEN** retorna 201 com `{inbox, channel:{identifier, api_token, hmac_token, webhook_url, hmac_mandatory}}`
-- **AND** `GET /api/v1/accounts/:aid/inboxes/:id` posteriormente NÃO retorna `api_token` nem `hmac_token` em claro
+#### Scenario: desatribuir agente mantendo team
 
-### Requirement: Auth por api_access_token
+- **WHEN** body é `{"assignee_id":null}` (team_id omitido)
+- **THEN** `assignee_id` vira NULL, `team_id` permanece, broadcast dispara
 
-O backend SHALL fornecer middleware `ApiTokenAuth` que lê header `api_access_token: <token>` e:
+#### Scenario: rejeitar assignee fora da account
 
-1. Descriptografa e compara (constant-time) contra cada `ChannelApi.api_token` da account (via lookup por hash ou por tentativa).
-2. Popula `c.Locals("inbox", inbox)` e `c.Locals("account", account)` e permite o request.
-3. Ausente ou inválido → 401 sem detalhar.
+- **WHEN** body contém `assignee_id` de user que não pertence à account
+- **THEN** retorna 400 com erro `assignee_not_in_account`, nada é alterado
 
-Rotas `/api/v1/accounts/:aid/contacts`, `.../conversations`, `.../conversations/:cid/messages`, `.../actions/contact_merge` aceitam tanto JWT (agente) quanto `api_access_token` (provider); `OrgScope` roda depois e usa o account já populado.
+### Requirement: Listagem de conversations com filtros expandidos
 
-#### Scenario: provider com token válido
+O endpoint `GET /api/v1/accounts/{aid}/conversations` SHALL aceitar os query params adicionais:
 
-- **WHEN** wzap faz `POST /api/v1/accounts/:aid/contacts` com `api_access_token: <válido>`
-- **THEN** request passa e `c.Locals("inbox")` é populado
+- `?team_id=<id>` — filtra por team específico.
+- `?team_id=null` — retorna apenas conversations sem team.
+- `?assignee_id=<id>` ou `?assignee_id=null` (existia implicitamente; documentar).
+- `?label=<title>` ou `?labels=urgente,vip` — filtra por label(s) (match por `label_taggings` com `taggable_type='conversation'`).
 
-#### Scenario: token inválido
+Filtros são combinados com AND. Paginação e ordenação existentes mantêm-se.
 
-- **WHEN** header `api_access_token` não bate com nenhuma inbox
-- **THEN** retorna 401 sem distinguir causa
+#### Scenario: filtrar por team e label juntos
 
-### Requirement: Contacts endpoints (Chatwoot-compatível)
+- **WHEN** agent envia `GET /conversations?team_id=5&labels=urgente`
+- **THEN** retorna apenas conversations com `team_id=5` E com label "urgente" aplicada
 
-O backend SHALL expor:
+### Requirement: PATCH de contact
 
-- `POST /api/v1/accounts/:aid/contacts/search?q=<query>` — busca por nome ou phone_number
-- `POST /api/v1/accounts/:aid/contacts/filter` com body `{payload:[{attribute_key, filter_operator, values}]}` — filtro multi-attribute
-- `POST /api/v1/accounts/:aid/contacts` aceitando `{inbox_id, name, identifier, phone_number, avatar_url, email, additional_attributes, custom_attributes}` — cria Contact + ContactInbox (source_id = `identifier`)
-- `PATCH /api/v1/accounts/:aid/contacts/:id` — atualiza campos parciais
-- `GET /api/v1/accounts/:aid/contacts/:id/conversations` — lista conversas do contato (reverso)
-- `POST /api/v1/accounts/:aid/actions/contact_merge` aceitando `{base_contact_id, mergee_contact_id}` — merge idempotente
+O backend SHALL expor `PATCH /api/v1/accounts/{aid}/contacts/{id}` body parcial com qualquer subset de `{name, email, phone_number, identifier}`:
 
-Shape de request/response = idêntico ao Chatwoot (ver `wzap/internal/integrations/chatwoot/client.go`).
+- `email` MUST ser unique por account quando informado; null permitido.
+- `phone_number` valida formato E.164 quando informado.
+- `identifier` MUST ser unique quando informado.
+- Role: `Agent+`.
 
-#### Scenario: upsert por identifier
+#### Scenario: atualizar nome do contact
 
-- **WHEN** `POST /contacts` com `inbox_id=1, identifier="5511988776655"` e já existe ContactInbox com esse `source_id` na mesma inbox
-- **THEN** retorna o contact existente (idempotente) em vez de criar duplicata
+- **WHEN** agent envia `PATCH /contacts/7` com `{"name":"João Silva"}`
+- **THEN** retorna 200 com contact atualizado, demais campos inalterados
 
-#### Scenario: filter por phone
+#### Scenario: rejeitar email duplicado
 
-- **WHEN** `POST /contacts/filter` com `{payload:[{attribute_key:"phone_number", filter_operator:"equal_to", values:["+5511988776655"]}]}`
-- **THEN** retorna array `{payload:[...]}` com contatos que batem
+- **WHEN** agent tenta setar email já usado por outro contact na mesma account
+- **THEN** retorna 409 com erro `email_taken`
 
-### Requirement: Conversations endpoints
+### Requirement: Histórico de conversations de um contact
 
-O backend SHALL expor:
+O backend SHALL expor `GET /api/v1/accounts/{aid}/contacts/{id}/conversations` que retorna todas as conversations desse contact, ordenadas por `last_activity_at DESC`, com paginação (default 25/page).
 
-- `POST /api/v1/accounts/:aid/conversations` com `{inbox_id, contact_id, source_id, status?}` — cria Conversation (e ContactInbox se não existir)
-- `POST /api/v1/accounts/:aid/conversations/:cid/toggle_status` com `{status}` — muda status (`open|resolved|pending|snoozed`)
-- `GET /api/v1/accounts/:aid/conversations` — lista paginada por `account_id`, filtros `status`, `assignee_id`
+Resposta inclui os mesmos fields do listing de conversations (status, assignee, team, labels resumidas, last_message preview).
 
-#### Scenario: toggle fecha conversa
+Role: `Agent+`.
 
-- **WHEN** `POST /conversations/:cid/toggle_status {"status":"resolved"}`
-- **THEN** Conversation.status = RESOLVED e evento `conversation_status_changed` é enfileirado pro webhook outbound
+#### Scenario: listar histórico do contact
 
-### Requirement: Messages endpoints (JSON + multipart)
+- **WHEN** agent envia `GET /contacts/7/conversations`
+- **THEN** retorna conversations do contact 7 da account do path, ordenadas da mais recente pra mais antiga, paginadas
 
-O backend SHALL expor `POST /api/v1/accounts/:aid/conversations/:cid/messages` aceitando dois formatos:
+### Requirement: Endpoints de labels em conversation e contact
 
-**JSON** (`Content-Type: application/json`):
-```json
-{
-  "content": "...",
-  "message_type": "incoming" | "outgoing" | "template",
-  "source_id": "WAID:abc",
-  "content_attributes": {...},
-  "echo_id": "optional"
-}
-```
+O backend SHALL expor em `backend-go-channels-api`:
 
-**Multipart** (`multipart/form-data`):
-- fields `content`, `message_type`, `source_id`, `content_attributes` (JSON string)
-- files `attachments[]` (múltiplos); cada arquivo é streamado pro MinIO em `{accountId}/{inboxId}/{messageId}.{ext}`; `Attachment` row criada com `file_key`
+- `GET|POST|DELETE /api/v1/accounts/{aid}/conversations/{id}/labels` — ver spec `backend-go-labels`.
+- `GET|POST|DELETE /api/v1/accounts/{aid}/contacts/{id}/labels` — ver spec `backend-go-labels`.
 
-Idempotência: `(inbox_id, source_id) WHERE source_id IS NOT NULL` é UNIQUE parcial; retry com mesmo `source_id` retorna a mensagem existente.
+(Esta requirement documenta a presença dos endpoints no router de channels-api, com detalhes comportamentais na capability `backend-go-labels`.)
 
-`DELETE /api/v1/accounts/:aid/conversations/:cid/messages/:mid` — soft delete marcando `content_attributes.deleted=true`.
+#### Scenario: label endpoints roteados dentro de conversations/contacts
 
-#### Scenario: inbound message idempotente
+- **WHEN** frontend faz POST/DELETE em `/conversations/{id}/labels` ou `/contacts/{id}/labels`
+- **THEN** o router de channels-api roteia pra handler de labels, que retorna shape consistente com os outros endpoints da API
 
-- **WHEN** `POST messages` com `source_id="WAID:abc"` é feito duas vezes
-- **THEN** apenas uma linha existe em `messages` com esse source_id na inbox
+### Requirement: Endpoints de notes em contact
 
-#### Scenario: multipart upload
+O backend SHALL expor em `backend-go-channels-api`:
 
-- **WHEN** `POST messages` multipart com um arquivo `image/jpeg`
-- **THEN** `messages` row criada + `attachments` row apontando pro MinIO + evento `message_created` emitido
+- `GET|POST /api/v1/accounts/{aid}/contacts/{cid}/notes`
+- `PATCH|DELETE /api/v1/accounts/{aid}/contacts/{cid}/notes/{nid}`
 
-### Requirement: Read receipts via public API
+Detalhes comportamentais em `backend-go-notes`.
 
-O backend SHALL expor `POST /public/api/v1/inboxes/:identifier/contact_inboxes/conversations/:cid/update_last_seen` aceitando `{source_id, last_seen}` e atualizando `Conversation.last_seen_at`. Auth por `identifier` + `identifier_hash` (HMAC opcional se `hmac_mandatory=true`).
+#### Scenario: notes endpoint retorna shape padronizado
 
-#### Scenario: update last seen
+- **WHEN** frontend envia GET em `/contacts/7/notes`
+- **THEN** response segue o envelope padrão da API (objeto com `data` array ou array direto, consistente com outros listings)
 
-- **WHEN** provider faz POST com `identifier` e hash válidos
-- **THEN** `last_seen_at` é atualizado e retorna 200
+### Requirement: Endpoints de custom_attributes em conversation e contact
 
+O backend SHALL expor em `backend-go-channels-api`:
+
+- `POST|DELETE /api/v1/accounts/{aid}/conversations/{id}/custom_attributes`
+- `POST|DELETE /api/v1/accounts/{aid}/contacts/{id}/custom_attributes`
+
+Detalhes em `backend-go-custom-attributes`.
+
+#### Scenario: setar custom attrs retorna objeto atualizado
+
+- **WHEN** frontend envia POST com `{churn_risk: 0.8}`
+- **THEN** retorna o contact/conversation com `additional_attributes` atualizado
+
+### Requirement: Endpoints de filter apply
+
+O backend SHALL expor em `backend-go-channels-api`:
+
+- `POST /api/v1/accounts/{aid}/conversations/filter` body `{query, page?, per_page?}`
+- `POST /api/v1/accounts/{aid}/contacts/filter` body `{query, page?, per_page?}`
+
+Detalhes em `backend-go-saved-filters`.
+
+#### Scenario: filter apply retorna paginado
+
+- **WHEN** frontend envia POST com query válida e per_page=50
+- **THEN** retorna `{data: [...], meta: {page, per_page, total}}` com até 50 resultados
