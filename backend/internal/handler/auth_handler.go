@@ -106,15 +106,16 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return nil
 	}
 
-	user, accessToken, refreshToken, err := h.svc.Login(c.Context(), req.Email, req.Password)
+	res, err := h.svc.Login(c.Context(), req.Email, req.Password)
 	if err != nil {
 		return handleServiceError(c, err)
 	}
 
 	return c.JSON(dto.SuccessResp(dto.LoginResp{
-		User:         userToResp(user),
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		User:         userToResp(res.User),
+		Account:      accountToResp(res.Account),
+		AccessToken:  res.AccessToken,
+		RefreshToken: res.RefreshToken,
 	}))
 }
 

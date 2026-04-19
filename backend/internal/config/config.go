@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -19,9 +20,9 @@ type Config struct {
 	DatabaseURL string
 	RedisURL    string
 
-	JWTSecret    string
-	JWTAccessTTL string
-	JWTRefreshTTL string
+	JWTSecret      string
+	JWTAccessTTL   time.Duration
+	JWTRefreshTTL  time.Duration
 
 	BackendKEK string
 
@@ -49,8 +50,8 @@ func Load() *Config {
 		RedisURL:    getEnv("REDIS_URL", ""),
 
 		JWTSecret:     getEnv("JWT_SECRET", ""),
-		JWTAccessTTL:  getEnv("JWT_ACCESS_TTL", "15m"),
-		JWTRefreshTTL: getEnv("JWT_REFRESH_TTL", "720h"),
+		JWTAccessTTL:  mustDuration("JWT_ACCESS_TTL", "15m"),
+		JWTRefreshTTL: mustDuration("JWT_REFRESH_TTL", "720h"),
 
 		BackendKEK: getEnv("BACKEND_KEK", ""),
 
@@ -126,6 +127,23 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// mustDuration parses env[key] as time.Duration or exits with a clear error.
+// Never silently falls back on parse failure (a malformed TTL would issue
+// zero-TTL JWTs without this guard).
+func mustDuration(key, fallback string) time.Duration {
+	raw := getEnv(key, fallback)
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "config: %s must be a valid Go duration (e.g. 15m, 720h); got %q: %s\n", key, raw, err)
+		os.Exit(1)
+	}
+	if d <= 0 {
+		fmt.Fprintf(os.Stderr, "config: %s must be > 0; got %s\n", key, d)
+		os.Exit(1)
+	}
+	return d
 }
 
 func getEnvAsBool(key string, fallback bool) bool {

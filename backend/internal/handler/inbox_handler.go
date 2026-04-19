@@ -35,23 +35,23 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 		return nil
 	}
 
-	inbox, channelApi, err := h.svc.Provision(accountID, req.Name)
+	creds, err := h.svc.Provision(c.Context(), accountID, req.Name)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
 
 	resp := dto.CreateInboxResp{
 		InboxResp: dto.InboxResp{
-			ID:          inbox.ID,
-			AccountID:   inbox.AccountID,
-			ChannelID:   inbox.ChannelID,
-			Name:        inbox.Name,
-			ChannelType: inbox.ChannelType,
-			CreatedAt:   inbox.CreatedAt,
+			ID:          creds.Inbox.ID,
+			AccountID:   creds.Inbox.AccountID,
+			ChannelID:   creds.Inbox.ChannelID,
+			Name:        creds.Inbox.Name,
+			ChannelType: creds.Inbox.ChannelType,
+			CreatedAt:   creds.Inbox.CreatedAt,
 		},
-		Identifier: channelApi.Identifier,
-		ApiToken:   channelApi.ApiToken,
-		HmacToken:  channelApi.HmacToken,
+		Identifier: creds.ChannelApi.Identifier,
+		ApiToken:   creds.ApiToken,
+		HmacToken:  creds.HmacToken,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(resp))
@@ -63,7 +63,7 @@ func (h *InboxHandler) List(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
 	}
 
-	inboxes, err := h.svc.ListByAccount(accountID)
+	inboxes, err := h.svc.ListByAccount(c.Context(), accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -87,7 +87,7 @@ func (h *InboxHandler) GetByID(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
 	}
 
-	inbox, err := h.svc.GetByID(int64(id), accountID)
+	inbox, err := h.svc.GetByID(c.Context(), int64(id), accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

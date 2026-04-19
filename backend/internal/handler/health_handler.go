@@ -47,9 +47,9 @@ func (h *HealthHandler) Check(c *fiber.Ctx) error {
 
 	if resp.DB == "ok" && resp.Redis == "ok" {
 		resp.Status = "ok"
-	} else {
-		resp.Status = "degraded"
+		return c.JSON(resp)
 	}
-
-	return c.JSON(resp)
+	// Degraded: return 503 so liveness/readiness probes mark the pod unhealthy.
+	resp.Status = "degraded"
+	return c.Status(fiber.StatusServiceUnavailable).JSON(resp)
 }

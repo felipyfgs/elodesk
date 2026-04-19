@@ -57,7 +57,15 @@ func main() {
 	logger.Info().Str("component", "redis").Msg("Successfully connected to Redis")
 
 	srv := server.New(cfg)
-	srv.SetupRoutes(cfg, db, redisClient)
+	asynqClient, err := srv.SetupRoutes(cfg, db, redisClient)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to setup routes")
+	}
+	defer func() {
+		if err := asynqClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("asynq client close error")
+		}
+	}()
 
 	go func() {
 		if err := srv.Start(); err != nil {

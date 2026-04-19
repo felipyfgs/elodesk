@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 
 	"backend/internal/logger"
@@ -13,10 +14,10 @@ import (
 )
 
 const (
-	EventTypeMessageCreated           = "message_created"
-	EventTypeMessageUpdated           = "message_updated"
+	EventTypeMessageCreated            = "message_created"
+	EventTypeMessageUpdated            = "message_updated"
 	EventTypeConversationStatusChanged = "conversation_status_changed"
-	EventTypeConversationUpdated      = "conversation_updated"
+	EventTypeConversationUpdated       = "conversation_updated"
 )
 
 type OutboundWebhookService struct {
@@ -44,56 +45,56 @@ func (s *OutboundWebhookService) DispatchConversationUpdated(ctx context.Context
 }
 
 func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.ChannelApi, inboxID int64, eventType string, conv *model.Conversation, msg *model.Message, convAttrs json.RawMessage) error {
+	// DeliveryID is generated HERE (once per delivery) and stored in the task
+	// payload so it survives retries. The processor never regenerates it.
 	payload := &webhook.OutboundPayload{
 		EventType:              eventType,
 		AccountID:              ch.AccountID,
 		InboxID:                inboxID,
 		WebhookURL:             ch.WebhookURL,
-		HmacToken:              ch.HmacToken,
+		HmacCiphertext:         ch.HmacToken,
+		DeliveryID:             uuid.NewString(),
 		ConversationAttributes: convAttrs,
 	}
 
 	if conv != nil {
-		convData, err := json.Marshal(conv)
+		data, err := json.Marshal(conv)
 		if err != nil {
-			return fmt.Errorf("failed to marshal conversation: %w", err)
+			return fmt.Errorf("marshal conversation: %w", err)
 		}
-		payload.Conversation = convData
+		payload.Conversation = data
 	}
-
 	if msg != nil {
-		msgData, err := json.Marshal(msg)
+		data, err := json.Marshal(msg)
 		if err != nil {
-			return fmt.Errorf("failed to marshal message: %w", err)
+			return fmt.Errorf("marshal message: %w", err)
 		}
-		payload.Message = msgData
+		payload.Message = data
 	}
 
 	task, err := webhook.NewOutboundTask(payload)
 	if err != nil {
-		return fmt.Errorf("failed to create outbound webhook task: %w", err)
+		return fmt.Errorf("create outbound task: %w", err)
 	}
 
 	info, err := s.asynqClient.EnqueueContext(ctx, task)
 	if err != nil {
-		logger.Error().
-			Str("component", "outbound-webhook").
-			Err(err).
+		logger.Error().Str("component", "outbound-webhook").Err(err).
 			Str("eventType", eventType).
 			Int64("accountId", ch.AccountID).
 			Str("webhookUrl", ch.WebhookURL).
-			Msg("Failed to enqueue outbound webhook")
-		return fmt.Errorf("failed to enqueue outbound webhook: %w", err)
+			Msg("enqueue failed")
+		return fmt.Errorf("enqueue outbound webhook: %w", err)
 	}
 
-	logger.Info().
-		Str("component", "outbound-webhook").
+	logger.Info().Str("component", "outbound-webhook").
 		Str("eventType", eventType).
 		Int64("accountId", ch.AccountID).
 		Str("webhookUrl", ch.WebhookURL).
+		Str("deliveryId", payload.DeliveryID).
 		Str("taskId", info.ID).
 		Str("queue", info.Queue).
-		Msg("Outbound webhook enqueued")
+		Msg("enqueued")
 
 	return nil
 }

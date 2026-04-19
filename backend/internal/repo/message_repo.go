@@ -32,12 +32,29 @@ func NewMessageRepo(pool *pgxpool.Pool) *MessageRepo {
 	return &MessageRepo{pool: pool}
 }
 
+// Create inserts a message. When source_id is non-nil the operation is
+// idempotent via the partial unique index idx_messages_inbox_source: a
+// subsequent call from the same provider with the same (inbox_id, source_id)
+// returns the existing row with content refreshed (providers may re-deliver
+// edited content). When source_id is nil each call inserts a new row.
 func (r *MessageRepo) Create(ctx context.Context, m *model.Message) (*model.Message, error) {
+	if m.SourceID != nil {
+		query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT (inbox_id, source_id) WHERE source_id IS NOT NULL DO UPDATE SET
+				content = COALESCE(EXCLUDED.content, messages.content),
+				updated_at = NOW()
+			RETURNING ` + messageSelectColumns
+		row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID)
+		var result model.Message
+		if err := scanMessage(row, &result); err != nil {
+			return nil, fmt.Errorf("failed to upsert message: %w", err)
+		}
+		return &result, nil
+	}
+
 	query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-		ON CONFLICT ON CONSTRAINT messages_pkey DO UPDATE SET
-			content = COALESCE(EXCLUDED.content, messages.content),
-			updated_at = NOW()
 		RETURNING ` + messageSelectColumns
 	row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID)
 	var result model.Message

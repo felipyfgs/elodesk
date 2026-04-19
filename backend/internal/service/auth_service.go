@@ -120,35 +120,52 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, accou
 	}, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (*model.User, string, string, error) {
+type LoginResult struct {
+	User         *model.User
+	Account      *model.Account
+	AccessToken  string
+	RefreshToken string
+}
+
+func (s *AuthService) Login(ctx context.Context, email, password string) (*LoginResult, error) {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repo.ErrUserNotFound) {
-			return nil, "", "", ErrInvalidCredentials
+			return nil, ErrInvalidCredentials
 		}
-		return nil, "", "", fmt.Errorf("failed to find user: %w", err)
+		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
 	match, err := argon2id.ComparePasswordAndHash(password, user.PasswordHash)
 	if err != nil {
 		logger.Error().Str("component", "auth").Err(err).Msg("failed to compare password hash")
-		return nil, "", "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 	if !match {
-		return nil, "", "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
+	}
+
+	account, err := s.accountRepo.FindPrimaryByUserID(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve primary account: %w", err)
 	}
 
 	accessToken, err := s.generateAccessToken(user)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to generate access token: %w", err)
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
 	refreshToken, err := s.generateRefreshToken(ctx, user.ID)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("failed to generate refresh token: %w", err)
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	return user, accessToken, refreshToken, nil
+	return &LoginResult{
+		User:         user,
+		Account:      account,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *AuthService) Refresh(ctx context.Context, rawToken string) (string, string, error) {
@@ -175,8 +192,11 @@ func (s *AuthService) Refresh(ctx context.Context, rawToken string) (string, str
 		return "", "", ErrInvalidCredentials
 	}
 
+	// Abort rotation if the old token can't be revoked — otherwise both old
+	// and new tokens would be valid simultaneously, defeating replay detection.
 	if err := s.refreshTokenRepo.Revoke(ctx, stored.ID); err != nil {
-		logger.Error().Str("component", "auth").Err(err).Msg("failed to revoke old refresh token")
+		logger.Error().Str("component", "auth").Err(err).Msg("refresh: abort rotation, revoke of previous token failed")
+		return "", "", fmt.Errorf("refresh rotation aborted: %w", err)
 	}
 
 	user, err := s.userRepo.FindByID(ctx, stored.UserID)

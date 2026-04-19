@@ -107,6 +107,27 @@ func (r *AccountRepo) FindAccountUser(ctx context.Context, accountID, userID int
 	return &au, nil
 }
 
+// FindPrimaryByUserID returns the oldest account the user belongs to —
+// sufficient for MVP login (first account on record). Errors with
+// ErrAccountNotFound when the user has no memberships yet.
+func (r *AccountRepo) FindPrimaryByUserID(ctx context.Context, userID int64) (*model.Account, error) {
+	query := `SELECT a.id, a.name, a.slug, a.created_at, a.updated_at
+		FROM accounts a
+		JOIN account_users au ON au.account_id = a.id
+		WHERE au.user_id = $1
+		ORDER BY au.created_at ASC
+		LIMIT 1`
+	row := r.pool.QueryRow(ctx, query, userID)
+	var m model.Account
+	if err := scanAccount(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrAccountNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find primary account: %w", err)
+	}
+	return &m, nil
+}
+
 func (r *AccountRepo) AddUserTx(ctx context.Context, tx pgx.Tx, accountID, userID int64, role model.Role) (*model.AccountUser, error) {
 	query := `INSERT INTO account_users (account_id, user_id, role) VALUES ($1, $2, $3)
 		RETURNING id, created_at, updated_at`

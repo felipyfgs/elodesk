@@ -61,9 +61,33 @@ func (h *ConversationHandler) Create(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) UpdateLastSeen(c *fiber.Ctx) error {
+	// Ownership check: conversation must belong to the inbox that owns the
+	// authenticated channel API token. Prevents enumeration across tenants.
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
 	cid, err := strconv.ParseInt(c.Params("cid"), 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	convo, err := h.svc.GetByID(c.Context(), cid, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+	if convo.InboxID != inbox.ID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
 	}
 
 	if err := h.svc.UpdateLastSeen(c.Context(), cid); err != nil {

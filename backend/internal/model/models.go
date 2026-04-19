@@ -58,17 +58,20 @@ type Inbox struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
+// ChannelApi is the persisted shape of a Channel::Api record. Secret fields
+// (HmacToken ciphertext, ApiTokenHash) are marked json:"-" so they never leak
+// through accidental marshalling (broadcasts, responses, logs).
 type ChannelApi struct {
-	ID                 int64     `json:"id"`
-	AccountID          int64     `json:"accountId"`
-	WebhookURL         string    `json:"webhookUrl,omitempty"`
-	Identifier         string    `json:"identifier"`
-	HmacToken          string    `json:"hmacToken,omitempty"`
-	HmacMandatory      bool      `json:"hmacMandatory"`
-	Secret             string    `json:"secret,omitempty"`
-	ApiToken           string    `json:"apiToken,omitempty"`
-	CreatedAt          time.Time `json:"createdAt"`
-	UpdatedAt          time.Time `json:"updatedAt"`
+	ID            int64     `json:"id"`
+	AccountID     int64     `json:"accountId"`
+	WebhookURL    string    `json:"webhookUrl,omitempty"`
+	Identifier    string    `json:"identifier"`
+	HmacToken     string    `json:"-"` // base64(nonce || AES-GCM ciphertext)
+	HmacMandatory bool      `json:"hmacMandatory"`
+	Secret        string    `json:"-"`
+	ApiTokenHash  string    `json:"-"` // SHA-256 hex of plaintext api_token
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 type Contact struct {

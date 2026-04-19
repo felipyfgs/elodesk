@@ -42,9 +42,12 @@ func (r *InboxRepo) Create(ctx context.Context, m *model.Inbox) error {
 	return nil
 }
 
-func (r *InboxRepo) FindByID(ctx context.Context, id int64) (*model.Inbox, error) {
-	query := `SELECT ` + inboxSelectColumns + ` FROM inboxes WHERE id = $1`
-	row := r.pool.QueryRow(ctx, query, id)
+// FindByID enforces tenant scoping at the repo layer. Callers must pass the
+// account id from the authenticated request; cross-tenant ids resolve to
+// ErrInboxNotFound (never leak existence to the caller).
+func (r *InboxRepo) FindByID(ctx context.Context, id, accountID int64) (*model.Inbox, error) {
+	query := `SELECT ` + inboxSelectColumns + ` FROM inboxes WHERE id = $1 AND account_id = $2`
+	row := r.pool.QueryRow(ctx, query, id, accountID)
 	var m model.Inbox
 	if err := scanInbox(row, &m); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

@@ -12,20 +12,21 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 
+	"backend/internal/crypto"
 	"backend/internal/logger"
 )
 
 const (
 	TypeOutboundWebhook = "webhook:outbound"
 
-	MaxRetries     = 5
+	MaxRetries      = 5
 	deliveryTimeout = 10 * time.Second
 )
 
-func OutboundRetryDelay(n int, e error, t *asynq.Task) time.Duration {
+// OutboundRetryDelay implements the spec retry schedule: 1s, 5s, 30s, 2m, 10m.
+func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	delays := []time.Duration{
 		1 * time.Second,
 		5 * time.Second,
@@ -39,34 +40,44 @@ func OutboundRetryDelay(n int, e error, t *asynq.Task) time.Duration {
 	return 10 * time.Minute
 }
 
+// OutboundPayload is the task payload enqueued by OutboundWebhookService.
+// HmacCiphertext carries the per-channel HMAC key encrypted with BACKEND_KEK;
+// the processor decrypts it right before signing so plaintext never lives in
+// Redis. DeliveryID is generated at enqueue time and stays stable across all
+// retries of the same delivery.
 type OutboundPayload struct {
-	EventType             string          `json:"event"`
-	AccountID             int64           `json:"accountId"`
-	InboxID               int64           `json:"inboxId"`
-	WebhookURL            string          `json:"-"`
-	HmacToken             string          `json:"-"`
-	DeliveryID            string          `json:"deliveryId"`
-	Conversation          json.RawMessage `json:"conversation,omitempty"`
-	Message               json.RawMessage `json:"message,omitempty"`
+	EventType              string          `json:"event"`
+	AccountID              int64           `json:"accountId"`
+	InboxID                int64           `json:"inboxId"`
+	WebhookURL             string          `json:"webhookUrl"`
+	HmacCiphertext         string          `json:"hmacCiphertext"`
+	DeliveryID             string          `json:"deliveryId"`
+	Conversation           json.RawMessage `json:"conversation,omitempty"`
+	Message                json.RawMessage `json:"message,omitempty"`
 	ConversationAttributes json.RawMessage `json:"conversation_attributes,omitempty"`
 }
 
 type OutboundProcessor struct {
 	httpClient *http.Client
+	cipher     *crypto.Cipher
 }
 
-func NewOutboundProcessor() *OutboundProcessor {
+func NewOutboundProcessor(cipher *crypto.Cipher) *OutboundProcessor {
 	return &OutboundProcessor{
-		httpClient: &http.Client{
-			Timeout: deliveryTimeout,
-		},
+		httpClient: &http.Client{Timeout: deliveryTimeout},
+		cipher:     cipher,
 	}
 }
 
+// NewOutboundTask marshals the payload for asynq. Callers MUST populate
+// payload.DeliveryID before calling this.
 func NewOutboundTask(payload *OutboundPayload) (*asynq.Task, error) {
+	if payload.DeliveryID == "" {
+		return nil, fmt.Errorf("outbound webhook: DeliveryID is required")
+	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal outbound webhook payload: %w", err)
+		return nil, fmt.Errorf("marshal outbound webhook payload: %w", err)
 	}
 	return asynq.NewTask(TypeOutboundWebhook, data,
 		asynq.MaxRetry(MaxRetries),
@@ -74,106 +85,101 @@ func NewOutboundTask(payload *OutboundPayload) (*asynq.Task, error) {
 	), nil
 }
 
+// publicBody is what we ship to the provider (excludes infra fields like
+// webhookUrl and hmacCiphertext).
+type publicBody struct {
+	EventType              string          `json:"event"`
+	AccountID              int64           `json:"accountId"`
+	InboxID                int64           `json:"inboxId"`
+	DeliveryID             string          `json:"deliveryId"`
+	Conversation           json.RawMessage `json:"conversation,omitempty"`
+	Message                json.RawMessage `json:"message,omitempty"`
+	ConversationAttributes json.RawMessage `json:"conversation_attributes,omitempty"`
+}
+
 func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.Task) error {
 	var payload OutboundPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-		logger.Error().
-			Str("component", "outbound-webhook").
-			Err(err).
-			Msg("Failed to unmarshal outbound webhook payload")
+		logger.Error().Str("component", "outbound-webhook").Err(err).Msg("unmarshal payload")
 		return fmt.Errorf("unmarshal payload: %w", err)
 	}
 
 	if payload.WebhookURL == "" {
-		logger.Warn().
-			Str("component", "outbound-webhook").
+		logger.Warn().Str("component", "outbound-webhook").
 			Str("eventType", payload.EventType).
 			Int64("accountId", payload.AccountID).
-			Msg("Skipping webhook: no URL configured")
+			Msg("skip: no webhook URL")
 		return nil
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := json.Marshal(publicBody{
+		EventType:              payload.EventType,
+		AccountID:              payload.AccountID,
+		InboxID:                payload.InboxID,
+		DeliveryID:             payload.DeliveryID,
+		Conversation:           payload.Conversation,
+		Message:                payload.Message,
+		ConversationAttributes: payload.ConversationAttributes,
+	})
 	if err != nil {
-		logger.Error().
-			Str("component", "outbound-webhook").
-			Err(err).
-			Msg("Failed to marshal webhook body")
-		return fmt.Errorf("marshal body: %w", err)
+		return fmt.Errorf("marshal public body: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, payload.WebhookURL, bytes.NewReader(body))
 	if err != nil {
-		logger.Error().
-			Str("component", "outbound-webhook").
-			Err(err).
-			Str("webhookUrl", payload.WebhookURL).
-			Msg("Failed to create webhook request")
-		return fmt.Errorf("create request: %w", err)
+		return fmt.Errorf("build request: %w", err)
 	}
-
 	req.Header.Set("Content-Type", "application/json")
-
-	if payload.HmacToken != "" {
-		signature := computeHmacSha256(body, payload.HmacToken)
-		req.Header.Set("X-Chatwoot-Hmac-Sha256", signature)
-	}
-
-	if payload.DeliveryID == "" {
-		payload.DeliveryID = uuid.New().String()
-	}
 	req.Header.Set("X-Delivery-Id", payload.DeliveryID)
+
+	if payload.HmacCiphertext != "" {
+		key, err := p.cipher.Decrypt(payload.HmacCiphertext)
+		if err != nil {
+			logger.Error().Str("component", "outbound-webhook").Err(err).Msg("decrypt hmac key")
+			return fmt.Errorf("decrypt hmac key: %w", err)
+		}
+		req.Header.Set("X-Chatwoot-Hmac-Sha256", computeHmacSha256(body, key))
+	}
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		logger.Error().
-			Str("component", "outbound-webhook").
-			Err(err).
+		logger.Error().Str("component", "outbound-webhook").
 			Str("eventType", payload.EventType).
 			Str("webhookUrl", payload.WebhookURL).
 			Str("deliveryId", payload.DeliveryID).
 			Int("retryCount", getRetryCount(ctx)).
-			Msg("Webhook delivery failed")
-		return fmt.Errorf("webhook delivery failed: %w", err)
+			Err(err).Msg("delivery failed")
+		return fmt.Errorf("delivery failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
 
-	if resp.StatusCode >= 500 {
-		logger.Warn().
-			Str("component", "outbound-webhook").
+	switch {
+	case resp.StatusCode >= 500:
+		logger.Warn().Str("component", "outbound-webhook").
 			Int("statusCode", resp.StatusCode).
-			Str("eventType", payload.EventType).
-			Str("webhookUrl", payload.WebhookURL).
 			Str("deliveryId", payload.DeliveryID).
 			Int("retryCount", getRetryCount(ctx)).
-			Msg("Webhook server error, will retry")
+			Msg("server error, will retry")
 		return fmt.Errorf("webhook server error: status %d", resp.StatusCode)
-	}
 
-	if resp.StatusCode >= 400 {
-		logger.Warn().
-			Str("component", "outbound-webhook").
+	case resp.StatusCode >= 400:
+		logger.Warn().Str("component", "outbound-webhook").
 			Int("statusCode", resp.StatusCode).
-			Str("eventType", payload.EventType).
-			Str("webhookUrl", payload.WebhookURL).
 			Str("deliveryId", payload.DeliveryID).
 			Str("responseBody", string(respBody)).
-			Msg("Webhook client error, not retrying")
+			Msg("client error, dead-letter")
+		return asynq.SkipRetry
+
+	default:
+		logger.Info().Str("component", "outbound-webhook").
+			Int("statusCode", resp.StatusCode).
+			Str("deliveryId", payload.DeliveryID).
+			Int64("accountId", payload.AccountID).
+			Msg("delivered")
 		return nil
 	}
-
-	logger.Info().
-		Str("component", "outbound-webhook").
-		Int("statusCode", resp.StatusCode).
-		Str("eventType", payload.EventType).
-		Str("webhookUrl", payload.WebhookURL).
-		Str("deliveryId", payload.DeliveryID).
-		Int64("accountId", payload.AccountID).
-		Msg("Webhook delivered successfully")
-
-	return nil
 }
 
 func computeHmacSha256(body []byte, key string) string {

@@ -1,13 +1,12 @@
 package server
 
 import (
-	"time"
-
 	"github.com/gofiber/swagger"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 
 	"backend/internal/config"
+	appcrypto "backend/internal/crypto"
 	"backend/internal/database"
 	"backend/internal/handler"
 	"backend/internal/logger"
@@ -18,7 +17,14 @@ import (
 	"backend/internal/service"
 )
 
-func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *redis.Client) {
+// SetupRoutes wires all handlers/services/repos and returns the asynq client
+// so the main() shutdown path can close it gracefully.
+func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *redis.Client) (*asynq.Client, error) {
+	cipher, err := appcrypto.NewCipher(cfg.BackendKEK)
+	if err != nil {
+		return nil, err
+	}
+
 	userRepo := repo.NewUserRepo(db.Pool)
 	accountRepo := repo.NewAccountRepo(db.Pool)
 	refreshTokenRepo := repo.NewRefreshTokenRepo(db.Pool)
@@ -29,13 +35,10 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	conversationRepo := repo.NewConversationRepo(db.Pool)
 	messageRepo := repo.NewMessageRepo(db.Pool)
 
-	accessTTL, _ := time.ParseDuration(cfg.JWTAccessTTL)
-	refreshTTL, _ := time.ParseDuration(cfg.JWTRefreshTTL)
-
-	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, cfg.JWTSecret, accessTTL, refreshTTL)
+	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	authHandler := handler.NewAuthHandler(authSvc)
 
-	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo)
+	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, cipher)
 	inboxHandler := handler.NewInboxHandler(inboxSvc)
 
 	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo)
@@ -86,7 +89,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
 
 	public := s.App.Group("/public/api/v1")
-	publicInbox := public.Group("/inboxes/:identifier", middleware.ApiToken(channelApiRepo), middleware.HmacOptional())
+	publicInbox := public.Group("/inboxes/:identifier", middleware.ApiToken(channelApiRepo), middleware.HmacOptional(cipher))
 
 	publicInbox.Post("/contacts", contactHandler.CreateContact)
 	publicInbox.Get("/contacts/:sourceId", contactHandler.GetContact)
@@ -96,8 +99,12 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	publicInbox.Get("/contacts/:sourceId/conversations/:conversationId/messages", messageHandler.ListPublic)
 	publicInbox.Post("/contacts/:sourceId/conversations/:conversationId/messages", messageHandler.Create)
 
+	// 404 fallback must be LAST: any request not matching a route lands here.
+	s.App.Use(NotFoundHandler)
+
 	_ = outboundWebhookSvc
 	_ = realtimeSvc
 
 	logger.Info().Str("component", "server").Msg("Routes registered")
+	return asynqClient, nil
 }
