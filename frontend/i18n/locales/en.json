@@ -1,0 +1,137 @@
+{
+  "app": {
+    "name": "wzap",
+    "tagline": "Multi-tenant WhatsApp support"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account?",
+      "register": "Create account"
+    },
+    "register": {
+      "title": "Create account",
+      "email": "Email",
+      "password": "Password",
+      "name": "Your name",
+      "accountName": "Organization name (optional)",
+      "submit": "Register",
+      "haveAccount": "Already have an account?",
+      "login": "Sign in"
+    },
+    "logout": "Log out",
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "emailExists": "Email already registered"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "sessions": "Sessions",
+    "conversations": "Conversations",
+    "contacts": "Contacts",
+    "settings": "Settings",
+    "settingsGeneral": "General",
+    "settingsMembers": "Members",
+    "docs": "API docs",
+    "goTo": "Go to",
+    "actions": "Actions",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications.",
+    "noAccount": "No organization",
+    "theme": "Theme",
+    "primary": "Primary",
+    "neutral": "Neutral",
+    "appearance": "Appearance",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "home": {
+    "title": "Home",
+    "stats": {
+      "sessions": "Sessions",
+      "connected": "Connected",
+      "conversations": "Conversations",
+      "unread": "Unread"
+    },
+    "recent": "Recent conversations",
+    "empty": "No recent activity."
+  },
+  "sessions": {
+    "title": "WhatsApp sessions",
+    "new": "New session",
+    "empty": "No sessions yet — click \"New session\" to connect.",
+    "status": {
+      "DISCONNECTED": "Disconnected",
+      "CONNECTING": "Connecting…",
+      "QR": "Waiting for QR",
+      "CONNECTED": "Connected",
+      "LOGGED_OUT": "Session expired",
+      "ERROR": "Error"
+    },
+    "qr": {
+      "title": "Scan the QR in WhatsApp",
+      "expires": "Expires in {sec}s",
+      "waiting": "Waiting for pairing…"
+    },
+    "actions": {
+      "disconnect": "Disconnect",
+      "reconnect": "Reconnect",
+      "delete": "Delete"
+    },
+    "name": "Session name"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "empty": "No conversations yet.",
+    "filters": {
+      "all": "All",
+      "open": "Open",
+      "resolved": "Resolved",
+      "pending": "Pending"
+    },
+    "compose": {
+      "placeholder": "Type a message…",
+      "send": "Send"
+    },
+    "select": "Select a conversation",
+    "message": {
+      "status": {
+        "PENDING": "Sending",
+        "SENT": "Sent",
+        "DELIVERED": "Delivered",
+        "READ": "Read",
+        "FAILED": "Failed"
+      },
+      "edited": "edited",
+      "deleted": "Message deleted"
+    }
+  },
+  "contacts": {
+    "title": "Contacts",
+    "empty": "No contacts yet — new conversations create contacts automatically.",
+    "columns": {
+      "name": "Name",
+      "phone": "Phone",
+      "waJid": "WhatsApp JID",
+      "created": "Created at"
+    },
+    "search": "Search by name or phone…"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": {
+      "title": "Account",
+      "name": "Name",
+      "email": "Email",
+      "organization": "Organization"
+    },
+    "members": {
+      "title": "Members",
+      "empty": "No members listed."
+    }
+  }
+}

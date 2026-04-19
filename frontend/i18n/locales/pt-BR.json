@@ -1,0 +1,137 @@
+{
+  "app": {
+    "name": "wzap",
+    "tagline": "Atendimento WhatsApp multi-tenant"
+  },
+  "auth": {
+    "login": {
+      "title": "Entrar",
+      "email": "E-mail",
+      "password": "Senha",
+      "submit": "Entrar",
+      "noAccount": "Ainda não tem conta?",
+      "register": "Criar conta"
+    },
+    "register": {
+      "title": "Criar conta",
+      "email": "E-mail",
+      "password": "Senha",
+      "name": "Seu nome",
+      "accountName": "Nome da organização (opcional)",
+      "submit": "Cadastrar",
+      "haveAccount": "Já tem conta?",
+      "login": "Entrar"
+    },
+    "logout": "Sair",
+    "errors": {
+      "invalidCredentials": "E-mail ou senha inválidos",
+      "emailExists": "E-mail já cadastrado"
+    }
+  },
+  "nav": {
+    "home": "Início",
+    "sessions": "Sessões",
+    "conversations": "Conversas",
+    "contacts": "Contatos",
+    "settings": "Configurações",
+    "settingsGeneral": "Geral",
+    "settingsMembers": "Membros",
+    "docs": "Documentação da API",
+    "goTo": "Ir para",
+    "actions": "Ações",
+    "notifications": "Notificações",
+    "noNotifications": "Sem notificações no momento.",
+    "noAccount": "Sem organização",
+    "theme": "Tema",
+    "primary": "Primária",
+    "neutral": "Neutra",
+    "appearance": "Aparência",
+    "light": "Claro",
+    "dark": "Escuro"
+  },
+  "home": {
+    "title": "Início",
+    "stats": {
+      "sessions": "Sessões",
+      "connected": "Conectadas",
+      "conversations": "Conversas",
+      "unread": "Não lidas"
+    },
+    "recent": "Conversas recentes",
+    "empty": "Sem atividade recente."
+  },
+  "sessions": {
+    "title": "Sessões WhatsApp",
+    "new": "Nova sessão",
+    "empty": "Nenhuma sessão — clique em \"Nova sessão\" para conectar.",
+    "status": {
+      "DISCONNECTED": "Desconectado",
+      "CONNECTING": "Conectando…",
+      "QR": "Aguardando QR",
+      "CONNECTED": "Conectado",
+      "LOGGED_OUT": "Sessão expirada",
+      "ERROR": "Erro"
+    },
+    "qr": {
+      "title": "Escaneie o QR no WhatsApp",
+      "expires": "Expira em {sec}s",
+      "waiting": "Aguardando pareamento…"
+    },
+    "actions": {
+      "disconnect": "Desconectar",
+      "reconnect": "Reconectar",
+      "delete": "Excluir"
+    },
+    "name": "Nome da sessão"
+  },
+  "conversations": {
+    "title": "Conversas",
+    "empty": "Sem conversas ainda.",
+    "filters": {
+      "all": "Todas",
+      "open": "Abertas",
+      "resolved": "Resolvidas",
+      "pending": "Pendentes"
+    },
+    "compose": {
+      "placeholder": "Digite uma mensagem…",
+      "send": "Enviar"
+    },
+    "select": "Selecione uma conversa",
+    "message": {
+      "status": {
+        "PENDING": "Enviando",
+        "SENT": "Enviada",
+        "DELIVERED": "Entregue",
+        "READ": "Lida",
+        "FAILED": "Falhou"
+      },
+      "edited": "editada",
+      "deleted": "Mensagem apagada"
+    }
+  },
+  "contacts": {
+    "title": "Contatos",
+    "empty": "Nenhum contato — novas conversas criam contatos automaticamente.",
+    "columns": {
+      "name": "Nome",
+      "phone": "Telefone",
+      "waJid": "JID WhatsApp",
+      "created": "Criado em"
+    },
+    "search": "Buscar por nome ou telefone…"
+  },
+  "settings": {
+    "title": "Configurações",
+    "general": {
+      "title": "Conta",
+      "name": "Nome",
+      "email": "E-mail",
+      "organization": "Organização"
+    },
+    "members": {
+      "title": "Membros",
+      "empty": "Sem membros listados."
+    }
+  }
+}

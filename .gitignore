@@ -1,0 +1,23 @@
+node_modules/
+.turbo/
+dist/
+.output/
+.nuxt/
+coverage/
+*.log
+
+# env (per-repo; keep examples)
+.env
+.env.*
+!.env.example
+
+# go
+backend/bin/
+
+# editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# personal claude settings
+.claude/settings.local.json

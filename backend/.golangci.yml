@@ -1,0 +1,25 @@
+runners:
+  allow:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - misspell
+    - gofmt
+    - goimports
+
+linters:
+  disable:
+    - exhaustive
+    - exhaustruct
+    - wrapcheck
+    - varnamelen
+    - nilnil
+    - ireturn
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 10

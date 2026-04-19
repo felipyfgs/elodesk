@@ -1,0 +1,70 @@
+package repo
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"backend/internal/model"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var ErrContactInboxNotFound = errors.New("contact inbox not found")
+
+const contactInboxSelectColumns = "id, contact_id, inbox_id, source_id, hmac_verified, created_at, updated_at"
+
+type contactInboxScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanContactInbox(scanner contactInboxScanner, m *model.ContactInbox) error {
+	return scanner.Scan(&m.ID, &m.ContactID, &m.InboxID, &m.SourceID, &m.HmacVerified, &m.CreatedAt, &m.UpdatedAt)
+}
+
+type ContactInboxRepo struct {
+	pool *pgxpool.Pool
+}
+
+func NewContactInboxRepo(pool *pgxpool.Pool) *ContactInboxRepo {
+	return &ContactInboxRepo{pool: pool}
+}
+
+func (r *ContactInboxRepo) Create(ctx context.Context, m *model.ContactInbox) error {
+	query := `INSERT INTO contact_inboxes (contact_id, inbox_id, source_id, hmac_verified)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, updated_at`
+	err := r.pool.QueryRow(ctx, query, m.ContactID, m.InboxID, m.SourceID, m.HmacVerified).
+		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create contact inbox: %w", err)
+	}
+	return nil
+}
+
+func (r *ContactInboxRepo) FindBySourceID(ctx context.Context, sourceID string, inboxID int64) (*model.ContactInbox, error) {
+	query := `SELECT ` + contactInboxSelectColumns + ` FROM contact_inboxes WHERE source_id = $1 AND inbox_id = $2`
+	row := r.pool.QueryRow(ctx, query, sourceID, inboxID)
+	var m model.ContactInbox
+	if err := scanContactInbox(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrContactInboxNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find contact inbox by source_id: %w", err)
+	}
+	return &m, nil
+}
+
+func (r *ContactInboxRepo) FindByContactAndInbox(ctx context.Context, contactID, inboxID int64) (*model.ContactInbox, error) {
+	query := `SELECT ` + contactInboxSelectColumns + ` FROM contact_inboxes WHERE contact_id = $1 AND inbox_id = $2`
+	row := r.pool.QueryRow(ctx, query, contactID, inboxID)
+	var m model.ContactInbox
+	if err := scanContactInbox(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to find contact inbox: %w", err)
+	}
+	return &m, nil
+}
