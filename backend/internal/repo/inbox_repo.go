@@ -77,6 +77,21 @@ func (r *InboxRepo) ListByAccount(ctx context.Context, accountID int64) ([]model
 	return inboxes, rows.Err()
 }
 
+// AccountIDByID returns only the account_id of an inbox. Used by callers
+// (realtime membership check) that need to resolve ownership without fetching
+// the full row and without the caller already knowing the account.
+func (r *InboxRepo) AccountIDByID(ctx context.Context, id int64) (int64, error) {
+	var accountID int64
+	err := r.pool.QueryRow(ctx, `SELECT account_id FROM inboxes WHERE id = $1`, id).Scan(&accountID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, fmt.Errorf("%w: %w", ErrInboxNotFound, err)
+		}
+		return 0, fmt.Errorf("failed to resolve inbox account: %w", err)
+	}
+	return accountID, nil
+}
+
 func (r *InboxRepo) FindByChannelID(ctx context.Context, channelID int64) (*model.Inbox, error) {
 	query := `SELECT ` + inboxSelectColumns + ` FROM inboxes WHERE channel_id = $1`
 	row := r.pool.QueryRow(ctx, query, channelID)

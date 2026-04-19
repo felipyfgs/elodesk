@@ -1,5 +1,8 @@
-## MODIFIED Requirements
+# frontend-app Specification
 
+## Purpose
+TBD - created by archiving change rewrite-backend-in-go. Update Purpose after archive.
+## Requirements
 ### Requirement: Cliente Socket.IO com auto-reconnect
 
 O frontend SHALL fornecer composable `useRealtime()` baseado em WebSocket nativo (via `@vueuse/core#useWebSocket` ou cliente manual `new WebSocket(...)`) que:
@@ -18,8 +21,6 @@ O frontend SHALL fornecer composable `useRealtime()` baseado em WebSocket nativo
 
 - **WHEN** socket reconecta depois de perda de rede
 - **THEN** os rooms em que estava são re-entrados automaticamente
-
-## MODIFIED Requirements
 
 ### Requirement: Stores Pinia
 
@@ -43,10 +44,3 @@ O frontend SHALL usar `@pinia/nuxt` com stores:
 - **WHEN** inspeção do tipo `Inbox` em `stores/inboxes.ts`
 - **THEN** não existe mais campo `channelWhatsapp` nem referência a `wzapSessionId`/`wzapToken`
 
-## REMOVED Requirements
-
-### Requirement: SessionQrModal.vue exibe QR
-
-**Reason**: Autenticação WhatsApp é responsabilidade do provider externo (wzap/Evolution API/etc.). O backend não conhece QR. Provider expõe sua própria UI pra pareamento.
-
-**Migration**: Usuário abre a UI do provider (ex: dashboard do wzap) pra escanear QR. Nosso frontend só exibe o status da inbox reportado via realtime.

@@ -10,6 +10,7 @@ import (
 	"backend/internal/database"
 	"backend/internal/handler"
 	"backend/internal/logger"
+	"backend/internal/media"
 	"backend/internal/middleware"
 	"backend/internal/model"
 	"backend/internal/realtime"
@@ -34,6 +35,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	contactInboxRepo := repo.NewContactInboxRepo(db.Pool)
 	conversationRepo := repo.NewConversationRepo(db.Pool)
 	messageRepo := repo.NewMessageRepo(db.Pool)
+	attachmentRepo := repo.NewAttachmentRepo(db.Pool)
 
 	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -56,7 +58,13 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	hub := realtime.NewHub()
 	go hub.Run()
 	realtimeSvc := service.NewRealtimeService(hub)
-	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub)
+	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub, accountRepo, inboxRepo, conversationRepo)
+
+	minioClient, err := media.New(cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket)
+	if err != nil {
+		return nil, err
+	}
+	uploadHandler := handler.NewUploadHandler(minioClient, attachmentRepo)
 
 	healthHandler := handler.NewHealthHandler(db, redisClient)
 
@@ -87,6 +95,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Get("/conversations/:id", conversationHandler.Get)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
+	accounts.Post("/uploads/signed-url", uploadHandler.SignedUploadURL)
+	accounts.Get("/attachments/:id/signed-url", uploadHandler.SignedDownloadURL)
 
 	public := s.App.Group("/public/api/v1")
 	publicInbox := public.Group("/inboxes/:identifier", middleware.ApiToken(channelApiRepo), middleware.HmacOptional(cipher))

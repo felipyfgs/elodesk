@@ -3,28 +3,45 @@ package handler
 import (
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
 	"backend/internal/media"
+	"backend/internal/repo"
 )
 
 const presignedTTL = 15 * time.Minute
 
 type UploadHandler struct {
-	minio *media.MinioClient
+	minio          *media.MinioClient
+	attachmentRepo *repo.AttachmentRepo
 }
 
-func NewUploadHandler(minio *media.MinioClient) *UploadHandler {
-	return &UploadHandler{minio: minio}
+func NewUploadHandler(minio *media.MinioClient, attachmentRepo *repo.AttachmentRepo) *UploadHandler {
+	return &UploadHandler{minio: minio, attachmentRepo: attachmentRepo}
 }
 
+// SignedUploadURL generates a presigned PUT URL. The object path MUST begin
+// with "{accountId}/" of the authenticated request — this prevents an agent
+// from requesting a presigned URL that writes into another tenant's prefix.
 func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
 	objectPath := c.Query("path")
 	if objectPath == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "path query parameter is required"))
+	}
+
+	expectedPrefix := strconv.FormatInt(accountID, 10) + "/"
+	if !strings.HasPrefix(objectPath, expectedPrefix) {
+		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("Forbidden", "path must start with your accountId"))
 	}
 
 	presignedURL, err := h.minio.Client().PresignedPutObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL)
@@ -32,25 +49,39 @@ func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate presigned URL"))
 	}
 
-	return c.JSON(dto.SuccessResp(fiber.Map{
-		"upload_url": presignedURL.String(),
-	}))
+	return c.JSON(dto.SuccessResp(fiber.Map{"upload_url": presignedURL.String()}))
 }
 
+// SignedDownloadURL verifies the attachment belongs to the authenticated
+// account before producing a presigned GET URL. Without this, any agent could
+// download any tenant's attachment by guessing the id.
 func (h *UploadHandler) SignedDownloadURL(c *fiber.Ctx) error {
-	accountID := c.Params("aid")
-	attachmentID := c.Params("id")
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
 
-	objectPath := fmt.Sprintf("attachments/%s/%s", accountID, attachmentID)
+	attachmentID, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid attachment id"))
+	}
 
-	reqParams := url.Values{}
+	attachment, err := h.attachmentRepo.FindByID(c.Context(), attachmentID, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
 
-	presignedURL, err := h.minio.Client().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, reqParams)
+	var objectPath string
+	if attachment.FileKey != nil && *attachment.FileKey != "" {
+		objectPath = *attachment.FileKey
+	} else {
+		objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
+	}
+
+	presignedURL, err := h.minio.Client().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate download URL"))
 	}
 
-	return c.JSON(dto.SuccessResp(fiber.Map{
-		"download_url": presignedURL.String(),
-	}))
+	return c.JSON(dto.SuccessResp(fiber.Map{"download_url": presignedURL.String()}))
 }

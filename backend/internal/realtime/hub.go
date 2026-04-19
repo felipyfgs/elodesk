@@ -10,12 +10,13 @@ import (
 )
 
 type Client struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	userID int64
-	rooms  map[string]struct{}
-	send   chan []byte
-	mu     sync.RWMutex
+	hub     *Hub
+	conn    *websocket.Conn
+	userID  int64
+	rooms   map[string]struct{}
+	send    chan []byte
+	mu      sync.RWMutex
+	checker MembershipChecker
 }
 
 type broadcastEvent struct {

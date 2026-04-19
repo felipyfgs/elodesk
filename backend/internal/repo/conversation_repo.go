@@ -147,6 +147,21 @@ func (r *ConversationRepo) ListByAccount(ctx context.Context, f ConversationFilt
 	return convos, total, rows.Err()
 }
 
+// AccountIDByID returns only the owning account id for a conversation.
+// Used by callers that need to verify tenant ownership without fetching the
+// full row and without already knowing the account (e.g. realtime joins).
+func (r *ConversationRepo) AccountIDByID(ctx context.Context, id int64) (int64, error) {
+	var accountID int64
+	err := r.pool.QueryRow(ctx, `SELECT account_id FROM conversations WHERE id = $1`, id).Scan(&accountID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, fmt.Errorf("%w: %w", ErrConversationNotFound, err)
+		}
+		return 0, fmt.Errorf("failed to resolve conversation account: %w", err)
+	}
+	return accountID, nil
+}
+
 func (r *ConversationRepo) UpdateLastSeen(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE conversations SET last_activity_at = NOW(), updated_at = NOW() WHERE id = $1`, id)
