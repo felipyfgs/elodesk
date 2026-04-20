@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { ConfirmModal } from '#components'
 import { useAuthStore } from '~/stores/auth'
 import { useCustomAttributesStore, type CustomAttributeDefinition } from '~/stores/customAttributes'
 import { customAttributeSchema, type CustomAttributeForm } from '~/schemas/customAttribute'
@@ -7,13 +9,13 @@ const { t } = useI18n()
 const api = useApi()
 const auth = useAuthStore()
 const store = useCustomAttributesStore()
+const confirm = useOverlay().create(ConfirmModal)
 
 const isAdmin = computed(() => (auth.accountUser?.role ?? 0) >= 1)
 
 const open = ref(false)
 const editing = ref<CustomAttributeDefinition | null>(null)
 const saved = ref(false)
-const errors = ref<Record<string, string>>({})
 
 const displayTypes = ['text', 'number', 'currency', 'percent', 'link', 'date', 'list', 'checkbox'] as const
 
@@ -39,7 +41,6 @@ function resetForm() {
   form.attribute_description = null
   form.regex_pattern = null
   form.default_value = null
-  errors.value = {}
   editing.value = null
 }
 
@@ -58,23 +59,16 @@ function openEdit(def: CustomAttributeDefinition) {
   form.attribute_description = def.attributeDescription
   form.regex_pattern = def.regexPattern
   form.default_value = def.defaultValue
-  errors.value = {}
   open.value = true
 }
 
-async function submit() {
-  const result = customAttributeSchema.safeParse(form)
-  if (!result.success) {
-    errors.value = Object.fromEntries(result.error.issues.map(i => [i.path.join('.'), i.message]))
-    return
-  }
-  errors.value = {}
+async function submit(event: FormSubmitEvent<CustomAttributeForm>) {
   loading.value = true
   try {
     const body = {
-      ...result.data,
-      attribute_values: result.data.attribute_display_type === 'list'
-        ? (typeof result.data.attribute_values === 'string' ? result.data.attribute_values : null)
+      ...event.data,
+      attribute_values: event.data.attribute_display_type === 'list'
+        ? (typeof event.data.attribute_values === 'string' ? event.data.attribute_values : null)
         : null
     }
     if (editing.value) {
@@ -86,16 +80,26 @@ async function submit() {
     }
     saved.value = true
     open.value = false
-    setTimeout(() => { saved.value = false }, 2000)
+    resetForm()
+    setTimeout(() => {
+      saved.value = false
+    }, 2000)
   } finally {
     loading.value = false
   }
 }
 
-async function remove(def: CustomAttributeDefinition) {
-  if (!confirm(t('customAttributes.deleteConfirm'))) return
-  await api(`/custom-attributes/${def.id}`, { method: 'DELETE' })
-  store.remove(def.id, def.attributeModel)
+function openDelete(def: CustomAttributeDefinition) {
+  confirm.open({
+    title: t('common.delete'),
+    description: t('customAttributes.deleteConfirm'),
+    confirmLabel: t('common.delete'),
+    itemName: def.attributeDisplayName
+  }).then(async (ok) => {
+    if (!ok) return
+    await api(`/custom-attributes/${def.id}`, { method: 'DELETE' })
+    store.remove(def.id, def.attributeModel)
+  })
 }
 
 function allDefinitions(): CustomAttributeDefinition[] {
@@ -116,9 +120,14 @@ onMounted(fetchAttributes)
   </div>
 
   <template v-else>
-    <div v-if="saved" class="mb-4 text-sm text-green-600">
-      {{ t('common.success') }}
-    </div>
+    <UAlert
+      v-if="saved"
+      class="mb-4"
+      color="success"
+      variant="subtle"
+      icon="i-lucide-check-circle"
+      :title="t('common.success')"
+    />
 
     <UPageCard :title="t('customAttributes.title')" variant="subtle">
       <template #header>
@@ -135,13 +144,17 @@ onMounted(fetchAttributes)
         <div
           v-for="def in allDefinitions()"
           :key="def.id"
-          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[var(--ui-border)]"
+          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-default"
         >
           <div class="min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-medium">{{ def.attributeDisplayName }}</span>
-              <UBadge variant="subtle">{{ def.attributeKey }}</UBadge>
-              <UBadge variant="subtle">{{ t(`customAttributes.types.${def.attributeDisplayType}`) }}</UBadge>
+              <UBadge variant="subtle">
+                {{ def.attributeKey }}
+              </UBadge>
+              <UBadge variant="subtle">
+                {{ t(`customAttributes.types.${def.attributeDisplayType}`) }}
+              </UBadge>
               <UBadge>{{ def.attributeModel }}</UBadge>
             </div>
             <div v-if="def.attributeDescription" class="text-sm text-muted truncate mt-1">
@@ -152,7 +165,12 @@ onMounted(fetchAttributes)
             <UButton size="xs" variant="ghost" @click="openEdit(def)">
               {{ t('common.edit') }}
             </UButton>
-            <UButton size="xs" color="red" variant="ghost" @click="remove(def)">
+            <UButton
+              size="xs"
+              color="error"
+              variant="ghost"
+              @click="openDelete(def)"
+            >
               {{ t('common.delete') }}
             </UButton>
           </div>
@@ -161,31 +179,29 @@ onMounted(fetchAttributes)
     </UPageCard>
 
     <UModal v-model:open="open" :title="editing ? t('customAttributes.edit') : t('customAttributes.create')">
-      <form class="flex flex-col gap-4" @submit.prevent="submit">
-        <UFormField :label="t('customAttributes.key')" :error="errors.attribute_key">
+      <UForm
+        :schema="customAttributeSchema"
+        :state="form"
+        class="flex flex-col gap-4"
+        @submit="submit"
+      >
+        <UFormField :label="t('customAttributes.key')" name="attribute_key">
           <UInput v-model="form.attribute_key" class="w-full" placeholder="ex: department" />
         </UFormField>
 
-        <UFormField :label="t('customAttributes.displayName')" :error="errors.attribute_display_name">
+        <UFormField :label="t('customAttributes.displayName')" name="attribute_display_name">
           <UInput v-model="form.attribute_display_name" class="w-full" />
         </UFormField>
 
-        <UFormField :label="t('customAttributes.displayType')" :error="errors.attribute_display_type">
+        <UFormField :label="t('customAttributes.displayType')" name="attribute_display_type">
           <USelect
             v-model="form.attribute_display_type"
             :options="displayTypes"
             class="w-full"
-          >
-            <template #option="{ option }">
-              {{ t(`customAttributes.types.${option}`) }}
-            </template>
-            <template #selected="{ modelValue }">
-              {{ t(`customAttributes.types.${modelValue}`) }}
-            </template>
-          </USelect>
+          />
         </UFormField>
 
-        <UFormField :label="t('customAttributes.model')" :error="errors.attribute_model">
+        <UFormField :label="t('customAttributes.model')" name="attribute_model">
           <USelect
             v-model="form.attribute_model"
             :options="['contact', 'conversation']"
@@ -193,7 +209,7 @@ onMounted(fetchAttributes)
           />
         </UFormField>
 
-        <UFormField v-if="form.attribute_display_type === 'list'" :label="t('customAttributes.values')" :error="errors.attribute_values">
+        <UFormField v-if="form.attribute_display_type === 'list'" :label="t('customAttributes.values')" name="attribute_values">
           <UTextarea
             v-model="form.attribute_values!"
             class="w-full"
@@ -201,19 +217,19 @@ onMounted(fetchAttributes)
           />
         </UFormField>
 
-        <UFormField :label="t('customAttributes.description')" :error="errors.attribute_description">
+        <UFormField :label="t('customAttributes.description')" name="attribute_description">
           <UTextarea v-model="form.attribute_description!" class="w-full" />
         </UFormField>
 
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="open = false">
+          <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
           <UButton type="submit" :loading="loading">
             {{ t('common.save') }}
           </UButton>
         </div>
-      </form>
+      </UForm>
     </UModal>
   </template>
 </template>

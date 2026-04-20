@@ -14,18 +14,11 @@ const joined: JoinState = {
   conversations: new Set()
 }
 
-type MessageHandler = (payload: any) => void
+type MessageHandler = (payload: Record<string, unknown>) => void
 const handlers = new Map<string, Set<MessageHandler>>()
 let storeHandlersInitialized = false
 
-function buildUrl(token: string): string {
-  const runtime = useRuntimeConfig()
-  const base = runtime.public.wsUrl.replace(/^http/, 'ws')
-  const sep = base.includes('?') ? '&' : '?'
-  return `${base}/ws${sep}token=${encodeURIComponent(token)}`
-}
-
-function sendRaw(token: string, data: any) {
+function sendRaw(token: string, data: Record<string, unknown>) {
   const { status, ws } = getOrCreateSocket(token)
   if (status.value === 'OPEN' && ws.value) {
     ws.value.send(JSON.stringify(data))
@@ -36,7 +29,7 @@ function getOrCreateSocket(token: string) {
   const runtime = useRuntimeConfig()
   const base = runtime.public.wsUrl.replace(/^http/, 'ws')
   const sep = base.includes('?') ? '&' : '?'
-  const url = `${base}/ws${sep}token=${encodeURIComponent(token)}`
+  const url = `${base}/realtime${sep}token=${encodeURIComponent(token)}`
 
   const { status, ws, open, close } = useWebSocket(url, {
     heartbeat: { message: '{"type":"ping"}', interval: 30_000, pongTimeout: 10_000 },
@@ -80,9 +73,9 @@ export const useRealtime = () => {
 
     const tryRejoin = () => {
       if (status.value !== 'OPEN') return
-      for (const id of joined.accounts) sendRaw(token, { type: 'join.account', payload: { id } })
-      for (const id of joined.inboxes) sendRaw(token, { type: 'join.inbox', payload: { id } })
-      for (const id of joined.conversations) sendRaw(token, { type: 'join.conversation', payload: { id } })
+      for (const id of joined.accounts) sendRaw(token, { type: 'join.account', payload: { id: Number(id) } })
+      for (const id of joined.inboxes) sendRaw(token, { type: 'join.inbox', payload: { id: Number(id) } })
+      for (const id of joined.conversations) sendRaw(token, { type: 'join.conversation', payload: { id: Number(id) } })
     }
 
     if (status.value === 'OPEN') {
@@ -103,7 +96,7 @@ export const useRealtime = () => {
     ensureConnected()
     const { status } = getOrCreateSocket(auth.accessToken)
     if (status.value === 'OPEN') {
-      sendRaw(auth.accessToken, { type: 'join.account', payload: { id: accountId } })
+      sendRaw(auth.accessToken, { type: 'join.account', payload: { id: Number(accountId) } })
     }
   }
 
@@ -113,7 +106,7 @@ export const useRealtime = () => {
     ensureConnected()
     const { status } = getOrCreateSocket(auth.accessToken)
     if (status.value === 'OPEN') {
-      sendRaw(auth.accessToken, { type: 'join.inbox', payload: { id: inboxId } })
+      sendRaw(auth.accessToken, { type: 'join.inbox', payload: { id: Number(inboxId) } })
     }
   }
 
@@ -123,7 +116,7 @@ export const useRealtime = () => {
     ensureConnected()
     const { status } = getOrCreateSocket(auth.accessToken)
     if (status.value === 'OPEN') {
-      sendRaw(auth.accessToken, { type: 'join.conversation', payload: { id: conversationId } })
+      sendRaw(auth.accessToken, { type: 'join.conversation', payload: { id: Number(conversationId) } })
     }
   }
 
@@ -134,7 +127,9 @@ export const useRealtime = () => {
   function on<T = unknown>(event: string, handler: (payload: T) => void): () => void {
     if (!handlers.has(event)) handlers.set(event, new Set())
     handlers.get(event)!.add(handler as MessageHandler)
-    return () => { handlers.get(event)?.delete(handler as MessageHandler) }
+    return () => {
+      handlers.get(event)?.delete(handler as MessageHandler)
+    }
   }
 
   function disconnect() {
@@ -152,7 +147,7 @@ export const useRealtime = () => {
   if (!storeHandlersInitialized) {
     storeHandlersInitialized = true
     const labelsStore = useLabelsStore()
-    on('label.deleted', (payload: any) => {
+    on('label.deleted', (payload: Record<string, unknown>) => {
       labelsStore.remove(String(payload.label_id))
     })
   }

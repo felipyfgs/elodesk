@@ -6,18 +6,49 @@
   "auth": {
     "login": {
       "title": "Sign in",
+      "description": "Sign in to your account to continue.",
       "email": "Email",
+      "emailInvalid": "Invalid email",
       "password": "Password",
+      "passwordRequired": "Password is required",
+      "remember": "Remember me",
       "submit": "Sign in",
       "noAccount": "Don't have an account?",
-      "register": "Create account"
+      "register": "Create account",
+      "placeholders": {
+        "email": "you{'@'}example.com",
+        "password": "••••••••"
+      },
+      "mfaRequired": "MFA code required",
+      "mfaCode": "MFA code",
+      "mfaPlaceholder": "Enter your 6-digit code",
+      "mfaInvalidCode": "Invalid code. Please try again.",
+      "mfaTooManyAttempts": "Too many attempts. Try again later.",
+      "mfaLockedMessage": "Too many attempts. Try again in {min}:{sec}.",
+      "recoveryCodeLabel": "Recovery code",
+      "recoveryCodePlaceholder": "Enter recovery code",
+      "useRecoveryCode": "Use recovery code",
+      "useAuthenticator": "Use authenticator app",
+      "verifyMfa": "Verify"
     },
     "register": {
       "title": "Create account",
+      "description": "Create your account to get started.",
       "email": "Email",
       "password": "Password",
+      "confirmPassword": "Confirm password",
+      "passwordMin": "Must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
       "name": "Your name",
+      "nameRequired": "Name is required",
       "accountName": "Organization name (optional)",
+      "placeholders": {
+        "name": "John Doe",
+        "email": "you{'@'}example.com",
+        "password": "••••••••",
+        "confirmPassword": "••••••••",
+        "accountName": "Acme Inc."
+      },
       "submit": "Register",
       "haveAccount": "Already have an account?",
       "login": "Sign in"
@@ -26,6 +57,44 @@
     "errors": {
       "invalidCredentials": "Invalid email or password",
       "emailExists": "Email already registered"
+    },
+    "forgot": {
+      "title": "Forgot your password?",
+      "description": "Enter your email to receive a reset link.",
+      "email": "Email",
+      "placeholders": {
+        "email": "you{'@'}example.com"
+      },
+      "submit": "Send link",
+      "success": "If the email exists, you will receive password reset instructions.",
+      "backToLogin": "Back to login"
+    },
+    "reset": {
+      "title": "Reset password",
+      "description": "Choose a new password to access your account.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "placeholders": {
+        "password": "••••••••",
+        "confirmPassword": "••••••••"
+      },
+      "submit": "Reset password",
+      "success": "Password reset successfully.",
+      "invalidToken": "Invalid or expired link.",
+      "backToLogin": "Back to login"
+    },
+    "mfa": {
+      "title": "Two-factor authentication",
+      "setup": "Setup MFA",
+      "enable": "Enable",
+      "disable": "Disable",
+      "verify": "Verify code",
+      "scanQr": "Scan the QR with your authenticator app",
+      "enterCode": "Enter the 6-digit code",
+      "recoveryCodes": "Recovery codes",
+      "downloadCodes": "Download codes",
+      "enabled": "MFA enabled",
+      "disabled": "MFA disabled"
     }
   },
   "nav": {
@@ -33,11 +102,25 @@
     "sessions": "Sessions",
     "conversations": "Conversations",
     "contacts": "Contacts",
+    "inboxes": "Inboxes",
     "settings": "Settings",
-    "settingsGeneral": "General",
+    "settingsGeneral": "General Settings",
+    "settingsProfile": "Profile",
+    "settingsAgents": "Agents",
+    "settingsMacros": "Macros",
+    "settingsSla": "SLA",
+    "settingsIntegrations": "Integrations",
+    "settingsAuditLogs": "Audit Logs",
+    "settingsNotifications": "Notifications",
+    "settingsTeams": "Teams",
+    "settingsLabels": "Labels",
+    "settingsCanned": "Canned Responses",
+    "settingsAttributes": "Attributes",
     "settingsMembers": "Members",
+    "reports": "Reports",
     "docs": "API docs",
     "goTo": "Go to",
+    "create": "Create",
     "actions": "Actions",
     "notifications": "Notifications",
     "noNotifications": "No notifications.",
@@ -84,20 +167,160 @@
     },
     "name": "Session name"
   },
+  "inboxes": {
+    "title": "Inboxes",
+    "new": "New inbox",
+    "empty": "No inboxes created.",
+    "selectChannel": "Select a channel",
+    "settings": "Inbox settings",
+    "agents": "Agents",
+    "webhooks": "Webhooks",
+    "businessHours": "Business hours",
+    "general": "General",
+    "rotateHmac": "Rotate HMAC",
+    "rotateHmacConfirm": "Rotating the HMAC token will invalidate old tokens. Continue?",
+    "channels": {
+      "_": "Channel",
+      "api": "API",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "instagram": "Instagram",
+      "facebook_page": "Facebook Page",
+      "telegram": "Telegram",
+      "web_widget": "Web Widget",
+      "email": "Email"
+    },
+    "notFound": "Inbox not found.",
+    "wizards": {
+      "name": "Inbox name",
+      "invalidChannel": "Invalid channel.",
+      "api": { "description": "Create a REST API inbox for custom integrations." },
+      "whatsapp": {
+        "description": "Connect via WhatsApp Cloud API or 360dialog.",
+        "provider": "Provider",
+        "phoneNumber": "Phone number",
+        "phoneNumberId": "Phone Number ID",
+        "businessAccountId": "Business Account ID",
+        "apiKey": "API Key"
+      },
+      "sms": {
+        "description": "Send and receive SMS via Twilio, Bandwidth, or Zenvia.",
+        "provider": "Provider",
+        "phoneNumber": "Phone number",
+        "twilio": { "accountSid": "Account SID", "authToken": "Auth Token", "messagingServiceSid": "Messaging Service SID" },
+        "bandwidth": { "accountId": "Account ID", "applicationId": "Application ID", "username": "Username", "password": "Password" },
+        "zenvia": { "apiToken": "API Token" }
+      },
+      "instagram": {
+        "description": "Connect your Instagram Business via Direct Messages.",
+        "instagramId": "Instagram ID",
+        "accessToken": "Access Token"
+      },
+      "facebookPage": {
+        "description": "Connect a Facebook Page via Messenger.",
+        "pageId": "Page ID",
+        "pageAccessToken": "Page Access Token",
+        "userAccessToken": "User Access Token",
+        "instagramId": "Linked Instagram ID"
+      },
+      "telegram": {
+        "description": "Connect a Telegram bot.",
+        "botToken": "Bot Token"
+      },
+      "webWidget": {
+        "description": "Create a chat widget for your website.",
+        "websiteUrl": "Website URL",
+        "widgetColor": "Widget color",
+        "welcomeTitle": "Welcome title",
+        "welcomeTagline": "Welcome tagline",
+        "replyTime": "Reply time",
+        "replyTimes": {
+          "in_a_few_minutes": "In a few minutes",
+          "in_a_few_hours": "In a few hours",
+          "in_a_day": "In a day"
+        }
+      },
+      "email": {
+        "description": "Connect an email account via IMAP/SMTP or OAuth.",
+        "provider": "Provider",
+        "email": "Email address",
+        "imapSettings": "IMAP settings",
+        "imapAddress": "IMAP address",
+        "imapPort": "IMAP port",
+        "imapLogin": "IMAP login",
+        "imapPassword": "IMAP password",
+        "imapEnableSsl": "Enable IMAP SSL",
+        "smtpSettings": "SMTP settings",
+        "smtpAddress": "SMTP address",
+        "smtpPort": "SMTP port",
+        "smtpLogin": "SMTP login",
+        "smtpPassword": "SMTP password",
+        "smtpEnableSsl": "Enable SMTP SSL",
+        "enableSsl": "Enable SSL",
+        "redirecting": "Redirecting to OAuth authorization...",
+        "authorize": "Authorize"
+      }
+    },
+    "settingsPlaceholder": "Channel-specific settings for {channel} — coming soon.",
+    "webhooksPlaceholder": "Manage delivery webhooks for {channel} — coming soon.",
+    "businessHoursPlaceholder": "Configure business hours — coming soon.",
+    "businessHoursDescription": "Set the hours when your team is available for support.",
+    "agentsSelect": "Select agents",
+    "rotateHmacSuccess": "HMAC token rotated successfully. Copy the token now.",
+    "rotateHmacWarning": "New HMAC Token",
+    "rotateHmacCopyWarning": "Copy this token now — it will not be shown again.",
+    "secret": { "hide": "Hide", "reveal": "Reveal", "copy": "Copy" },
+    "webhookDescription": "Configure URLs to receive event notifications.",
+    "webhookAdd": "Add webhook",
+    "webhookUrl": "Webhook URL",
+    "noWebhooks": "No webhooks configured.",
+    "disableAll": "Disable all",
+    "enableAll": "Enable all",
+    "closed": "Closed",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+  },
   "conversations": {
     "title": "Conversations",
     "empty": "No conversations yet.",
+    "sidebar": {
+      "title": "Filters",
+      "mine": "Mine",
+      "unassigned": "Unassigned",
+      "all": "All",
+      "mentions": "Mentions",
+      "status": "Status",
+      "inboxes": "Inboxes",
+      "labels": "Labels",
+      "teams": "Teams"
+    },
     "filters": {
       "all": "All",
       "open": "Open",
       "resolved": "Resolved",
-      "pending": "Pending"
+      "pending": "Pending",
+      "snoozed": "Snoozed"
     },
     "compose": {
       "placeholder": "Type a message…",
-      "send": "Send"
+      "send": "Send",
+      "attach": "Attach file"
     },
     "select": "Select a conversation",
+    "actions": {
+      "open": "Reopen",
+      "pending": "Mark pending",
+      "resolve": "Resolve",
+      "snooze": "Snooze",
+      "changeStatus": "Change status"
+    },
     "message": {
       "status": {
         "PENDING": "Sending",
@@ -108,6 +331,36 @@
       },
       "edited": "edited",
       "deleted": "Message deleted"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "selectAll": "Select all",
+      "clearSelection": "Clear",
+      "resolve": "Resolve",
+      "open": "Reopen",
+      "snooze": {
+        "label": "Snooze",
+        "1h": "1 hour",
+        "4h": "4 hours",
+        "tomorrow": "Tomorrow",
+        "nextWeek": "Next week"
+      },
+      "assign": "Assign",
+      "assignAgent": "Assign agent",
+      "assignAgentDesc": "Assign {count} conversation(s) to an agent.",
+      "agentsComingSoon": "Agent list will be available after setting up agents.",
+      "assignTeam": "Assign team",
+      "assignTeamDesc": "Assign {count} conversation(s) to a team.",
+      "labels": "Labels",
+      "addLabel": "Add label",
+      "removeLabel": "Remove label",
+      "delete": "Delete",
+      "deleteConfirm": "Delete conversations?",
+      "deleteDesc": "This will resolve {count} conversation(s). This action cannot be undone.",
+      "success": "{count} conversation(s) updated successfully.",
+      "assigned": "{count} conversation(s) assigned.",
+      "labelsUpdated": "{count} conversation(s) updated.",
+      "resolved": "{count} conversation(s) resolved."
     }
   },
   "contacts": {
@@ -117,9 +370,25 @@
       "name": "Name",
       "phone": "Phone",
       "waJid": "WhatsApp JID",
+      "email": "Email",
       "created": "Created at"
     },
-    "search": "Search by name or phone…"
+    "search": "Search by name or phone…",
+    "new": "New contact",
+    "import": "Import CSV",
+    "importDrop": "Drop a CSV file here or click to select",
+    "bulk": {
+      "addLabel": "Add label",
+      "removeLabel": "Remove label",
+      "delete": "Delete",
+      "export": "Export"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "conversations": "Conversations",
+      "notes": "Notes",
+      "events": "Events"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -137,7 +406,65 @@
     "teams": "Teams",
     "canned": "Canned Responses",
     "attributes": "Custom Attributes",
-    "accessDenied": "Access restricted to administrators."
+    "accessDenied": "Access restricted to administrators.",
+    "profile": {
+      "title": "Profile",
+      "avatar": "Avatar",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password"
+    },
+    "agents": {
+      "title": "Agents",
+      "invite": "Invite agent",
+      "inviteEmail": "Agent email",
+      "role": "Role",
+      "empty": "No agents added.",
+      "inviteSent": "Invite sent",
+      "pending": "Pending",
+      "removeConfirm": "Are you sure you want to remove this agent?"
+    },
+    "macros": {
+      "title": "Macros",
+      "new": "New macro",
+      "empty": "No macros created.",
+      "conditions": "Conditions",
+      "actions": "Actions"
+    },
+    "sla": {
+      "title": "SLA",
+      "new": "New SLA policy",
+      "empty": "No SLA policies.",
+      "firstResponse": "First response",
+      "resolution": "Resolution",
+      "binding": "Binding"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "webhooks": "Webhooks",
+      "newWebhook": "New webhook",
+      "testSend": "Test send",
+      "empty": "No integrations configured."
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "empty": "No logs found.",
+      "exportCsv": "Export CSV",
+      "action": "Action",
+      "entity": "Entity",
+      "user": "User",
+      "date": "Date"
+    },
+    "notifications": {
+      "title": "Notification preferences",
+      "email": "Receive by email",
+      "push": "Receive push",
+      "mentions": "Mentions",
+      "assignments": "Assignments",
+      "newConversation": "New conversation",
+      "slaBreach": "SLA breach"
+    }
   },
   "labels": {
     "title": "Labels",
@@ -247,12 +574,36 @@
     "create": "Create",
     "edit": "Edit",
     "delete": "Delete",
+    "remove": "Remove",
+    "removed": "Removed",
     "close": "Close",
     "search": "Search…",
     "noResults": "No results.",
     "loading": "Loading…",
     "error": "Error",
     "success": "Success",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "copied": "Copied!",
+    "createdAt": "Created at",
+    "apply": "Apply",
+    "refresh": "Refresh"
+  },
+  "reports": {
+    "title": "Reports",
+    "overview": "Overview",
+    "conversations": "Conversations",
+    "agents": "Agents",
+    "inboxes": "Inboxes",
+    "teams": "Teams",
+    "labels": "Labels",
+    "csat": "CSAT",
+    "sla": "SLA",
+    "dateRange": "Date range",
+    "kpi": {
+      "totalConversations": "Total conversations",
+      "avgFirstResponse": "Avg first response time",
+      "avgResolution": "Avg resolution time",
+      "resolvedRate": "Resolution rate"
+    }
   }
 }

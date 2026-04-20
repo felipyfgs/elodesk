@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { ConfirmModal } from '#components'
 import { useAuthStore } from '~/stores/auth'
 import { useTeamsStore, type Team } from '~/stores/teams'
 import { teamSchema, type TeamForm } from '~/schemas/team'
@@ -7,13 +9,13 @@ const { t } = useI18n()
 const api = useApi()
 const auth = useAuthStore()
 const store = useTeamsStore()
+const confirm = useOverlay().create(ConfirmModal)
 
 const isAdmin = computed(() => (auth.accountUser?.role ?? 0) >= 1)
 
 const open = ref(false)
 const editing = ref<Team | null>(null)
 const saved = ref(false)
-const errors = ref<Record<string, string>>({})
 
 const form = reactive<TeamForm>({
   name: '',
@@ -27,7 +29,6 @@ function resetForm() {
   form.name = ''
   form.description = null
   form.allow_auto_assign = false
-  errors.value = {}
   editing.value = null
 }
 
@@ -41,42 +42,45 @@ function openEdit(team: Team) {
   form.name = team.name
   form.description = team.description
   form.allow_auto_assign = team.allowAutoAssign
-  errors.value = {}
   open.value = true
 }
 
-async function submit() {
-  const result = teamSchema.safeParse(form)
-  if (!result.success) {
-    errors.value = Object.fromEntries(result.error.issues.map(i => [i.path.join('.'), i.message]))
-    return
-  }
-  errors.value = {}
+async function submit(event: FormSubmitEvent<TeamForm>) {
   loading.value = true
   try {
     if (editing.value) {
-      const updated = await api<Team>(`/teams/${editing.value.id}`, { method: 'PUT', body: result.data })
+      const updated = await api<Team>(`/accounts/${auth.account?.id}/teams/${editing.value.id}`, { method: 'PATCH', body: event.data })
       store.upsert(updated)
     } else {
-      const created = await api<Team>('/teams', { method: 'POST', body: result.data })
+      const created = await api<Team>(`/accounts/${auth.account?.id}/teams`, { method: 'POST', body: event.data })
       store.upsert(created)
     }
     saved.value = true
     open.value = false
-    setTimeout(() => { saved.value = false }, 2000)
+    resetForm()
+    setTimeout(() => {
+      saved.value = false
+    }, 2000)
   } finally {
     loading.value = false
   }
 }
 
-async function remove(team: Team) {
-  if (!confirm(t('teams.deleteConfirm'))) return
-  await api(`/teams/${team.id}`, { method: 'DELETE' })
-  store.remove(team.id)
+function openDelete(team: Team) {
+  confirm.open({
+    title: t('common.delete'),
+    description: t('teams.deleteConfirm'),
+    confirmLabel: t('common.delete'),
+    itemName: team.name
+  }).then(async (ok) => {
+    if (!ok) return
+    await api(`/accounts/${auth.account?.id}/teams/${team.id}`, { method: 'DELETE' })
+    store.remove(team.id)
+  })
 }
 
 async function fetchTeams() {
-  const list = await api<Team[]>('/teams')
+  const list = await api<Team[]>(`/accounts/${auth.account?.id}/teams`)
   store.setAll(list)
 }
 
@@ -89,9 +93,14 @@ onMounted(fetchTeams)
   </div>
 
   <template v-else>
-    <div v-if="saved" class="mb-4 text-sm text-green-600">
-      {{ t('common.success') }}
-    </div>
+    <UAlert
+      v-if="saved"
+      class="mb-4"
+      color="success"
+      variant="subtle"
+      icon="i-lucide-check-circle"
+      :title="t('common.success')"
+    />
 
     <UPageCard :title="t('teams.title')" variant="subtle">
       <template #header>
@@ -108,22 +117,29 @@ onMounted(fetchTeams)
         <div
           v-for="team in store.list"
           :key="team.id"
-          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[var(--ui-border)]"
+          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-default"
         >
           <div class="min-w-0">
-            <div class="font-medium">{{ team.name }}</div>
+            <div class="font-medium">
+              {{ team.name }}
+            </div>
             <div v-if="team.description" class="text-sm text-muted truncate">
               {{ team.description }}
             </div>
           </div>
           <div class="flex items-center gap-1 shrink-0">
-            <UBadge v-if="store.membersByTeam[team.id]" variant="subtle">
-              {{ store.membersByTeam[team.id].length }} {{ t('teams.members') }}
+            <UBadge v-if="store.membersByTeam[team.id]?.length" variant="subtle">
+              {{ store.membersByTeam[team.id]!.length }} {{ t('teams.members') }}
             </UBadge>
             <UButton size="xs" variant="ghost" @click="openEdit(team)">
               {{ t('common.edit') }}
             </UButton>
-            <UButton size="xs" color="red" variant="ghost" @click="remove(team)">
+            <UButton
+              size="xs"
+              color="error"
+              variant="ghost"
+              @click="openDelete(team)"
+            >
               {{ t('common.delete') }}
             </UButton>
           </div>
@@ -132,28 +148,33 @@ onMounted(fetchTeams)
     </UPageCard>
 
     <UModal v-model:open="open" :title="editing ? t('teams.edit') : t('teams.create')">
-      <form class="flex flex-col gap-4" @submit.prevent="submit">
-        <UFormField :label="t('teams.name')" :error="errors.name">
+      <UForm
+        :schema="teamSchema"
+        :state="form"
+        class="flex flex-col gap-4"
+        @submit="submit"
+      >
+        <UFormField :label="t('teams.name')" name="name">
           <UInput v-model="form.name" class="w-full" />
         </UFormField>
 
-        <UFormField :label="t('teams.description')" :error="errors.description">
+        <UFormField :label="t('teams.description')" name="description">
           <UTextarea v-model="form.description!" class="w-full" />
         </UFormField>
 
-        <UFormField>
+        <UFormField name="allow_auto_assign">
           <UCheckbox v-model="form.allow_auto_assign" :label="t('teams.allowAutoAssign')" />
         </UFormField>
 
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="open = false">
+          <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
           <UButton type="submit" :loading="loading">
             {{ t('common.save') }}
           </UButton>
         </div>
-      </form>
+      </UForm>
     </UModal>
   </template>
 </template>

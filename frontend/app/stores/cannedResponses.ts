@@ -30,7 +30,7 @@ export const useCannedResponsesStore = defineStore('cannedResponses', {
       if (!term) return this.list
       const lower = term.toLowerCase()
       return this.list
-        .map(item => {
+        .map((item) => {
           let priority = 3
           if (item.shortCode.toLowerCase().startsWith(lower)) priority = 1
           else if (item.shortCode.toLowerCase().includes(lower)) priority = 2

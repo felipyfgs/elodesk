@@ -2,7 +2,10 @@
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useConversationsStore, type Conversation } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
+import { useNotificationsStore } from '~/stores/notifications'
 import type { Stat } from '~/types'
+
+definePageMeta({ layout: 'dashboard' })
 
 const { t } = useI18n()
 const { isNotificationsSlideoverOpen } = useDashboard()
@@ -10,6 +13,11 @@ const api = useApi()
 const auth = useAuthStore()
 const inboxes = useInboxesStore()
 const convs = useConversationsStore()
+const notificationsStore = useNotificationsStore()
+
+onMounted(() => {
+  notificationsStore.fetchRecent(10, false)
+})
 
 async function load() {
   if (!auth.account?.id) return
@@ -25,7 +33,7 @@ onMounted(load)
 
 const stats = computed<Stat[]>(() => {
   const connected = inboxes.list.filter(i => !!i.channelApi).length
-  const unread = convs.list.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0)
+  const unread = convs.list.reduce((acc, c) => acc + (c.meta?.unreadCount ?? 0), 0)
   return [
     { title: t('home.stats.sessions'), icon: 'i-lucide-webhook', value: inboxes.list.length, to: '/sessions' },
     { title: t('home.stats.connected'), icon: 'i-lucide-plug', value: connected, to: '/sessions' },
@@ -55,7 +63,15 @@ function contactTitle(c: Conversation) {
               square
               @click="isNotificationsSlideoverOpen = true"
             >
-              <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              <UChip
+                :show="notificationsStore.unreadCount > 0"
+                color="error"
+                size="sm"
+                :text="notificationsStore.unreadCount"
+                inset
+              >
+                <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
+              </UChip>
             </UButton>
           </UTooltip>
 

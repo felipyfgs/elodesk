@@ -160,6 +160,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	api := s.App.Group("/api/v1")
 
 	auth := api.Group("/auth")
+	auth.Get("/setup", authHandler.SetupStatus)
 	auth.Post("/register", authHandler.Register)
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/refresh", authHandler.Refresh)

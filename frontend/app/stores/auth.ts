@@ -6,6 +6,12 @@ export interface AuthUser {
   name: string
 }
 
+export interface AuthAccountUser {
+  userId: string
+  accountId: string
+  role: number
+}
+
 export interface AuthAccount {
   id: string
   name: string
@@ -15,6 +21,7 @@ export interface AuthAccount {
 interface AuthState {
   user: AuthUser | null
   account: AuthAccount | null
+  accountUser: AuthAccountUser | null
   accessToken: string | null
   refreshToken: string | null
 }
@@ -23,6 +30,7 @@ export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
     account: null,
+    accountUser: null,
     accessToken: null,
     refreshToken: null
   }),
@@ -30,9 +38,10 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: s => !!s.accessToken && !!s.user
   },
   actions: {
-    setSession(payload: { user: AuthUser, account?: AuthAccount, accessToken: string, refreshToken: string }) {
+    setSession(payload: { user: AuthUser, account?: AuthAccount, accountUser?: AuthAccountUser, accessToken: string, refreshToken: string }) {
       this.user = payload.user
       if (payload.account) this.account = payload.account
+      if (payload.accountUser) this.accountUser = payload.accountUser
       this.accessToken = payload.accessToken
       this.refreshToken = payload.refreshToken
       this.persist()
@@ -45,6 +54,7 @@ export const useAuthStore = defineStore('auth', {
     clear() {
       this.user = null
       this.account = null
+      this.accountUser = null
       this.accessToken = null
       this.refreshToken = null
       if (import.meta.client) localStorage.removeItem('auth')
@@ -67,6 +77,7 @@ export const useAuthStore = defineStore('auth', {
         JSON.stringify({
           user: this.user,
           account: this.account,
+          accountUser: this.accountUser,
           accessToken: this.accessToken,
           refreshToken: this.refreshToken
         })

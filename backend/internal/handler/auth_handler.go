@@ -65,6 +65,21 @@ func NewAuthHandler(svc *service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
+// @Summary System setup status
+// @Description Returns whether the system has been set up (at least one user exists)
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]bool
+// @Router /api/v1/auth/setup [get]
+func (h *AuthHandler) SetupStatus(c *fiber.Ctx) error {
+	hasUsers, err := h.svc.HasUsers(c.Context())
+	if err != nil {
+		logger.Error().Str("component", "auth").Err(err).Msg("failed to check setup status")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
+	}
+	return c.JSON(fiber.Map{"hasUsers": hasUsers, "success": true})
+}
+
 // @Summary Register a new user
 // @Description Creates a user, account, and returns JWT tokens
 // @Tags auth

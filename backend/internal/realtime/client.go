@@ -118,6 +118,7 @@ func (c *Client) handleMessage(cm clientMessage) {
 			return
 		}
 		c.hub.JoinRoom(c, AccountRoom(p.ID))
+		c.hub.JoinRoom(c, UserRoom(p.ID, c.userID))
 
 	case "join.inbox":
 		var p joinPayload

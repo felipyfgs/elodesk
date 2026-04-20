@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import { useSavedFiltersStore } from '~/stores/savedFilters'
+import { useAuthStore } from '~/stores/auth'
+import { useSavedFiltersStore, type SavedFilter } from '~/stores/savedFilters'
 
 const props = defineProps<{
   filterType: 'conversation' | 'contact'
 }>()
 
 const emit = defineEmits<{
-  apply: [filter: any]
+  apply: [filter: SavedFilter]
 }>()
 
 const { t } = useI18n()
 const api = useApi()
+const auth = useAuthStore()
 const store = useSavedFiltersStore()
 
 const showBuilder = ref(false)
@@ -22,15 +24,15 @@ const filters = computed(() =>
   props.filterType === 'conversation' ? store.conversationFilters : store.contactFilters
 )
 
-async function applyFilter(filter: any) {
-  activeId.value = filter.id
+async function applyFilter(filter: SavedFilter) {
+  activeId.value = filter.id ?? null
   emit('apply', filter)
 }
 
 async function removeFilter(id: string) {
   loading.value = true
   try {
-    await api(`/saved-filters/${id}`, { method: 'DELETE' })
+    await api(`/accounts/${auth.account?.id}/custom_filters/${id}`, { method: 'DELETE' })
     store.remove(id)
     if (activeId.value === id) activeId.value = null
   } finally {
@@ -45,7 +47,7 @@ function onSaved() {
 async function fetchFilters() {
   loading.value = true
   try {
-    const list = await api<any[]>('/saved-filters', {
+    const list = await api<SavedFilter[]>(`/accounts/${auth.account?.id}/custom_filters`, {
       params: { filter_type: props.filterType }
     })
     store.setAll([...store.list.filter(f => f.filterType !== props.filterType), ...list])
@@ -83,7 +85,9 @@ const menuItems = computed<(id: string) => DropdownMenuItem[][]>(() => (id: stri
     </div>
 
     <div v-if="!filters.length" class="px-2 py-1">
-      <p class="text-xs text-muted">{{ t('savedFilters.empty') }}</p>
+      <p class="text-xs text-muted">
+        {{ t('savedFilters.empty') }}
+      </p>
     </div>
 
     <div v-for="filter in filters" :key="filter.id" class="group relative">
@@ -108,7 +112,7 @@ const menuItems = computed<(id: string) => DropdownMenuItem[][]>(() => (id: stri
       </UDropdownMenu>
     </div>
 
-    <FilterBuilder
+    <FiltersFilterBuilder
       v-model="showBuilder"
       :filter-type="filterType"
       @save="onSaved"

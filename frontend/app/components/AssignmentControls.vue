@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useAuthStore } from '~/stores/auth'
 import { useTeamsStore } from '~/stores/teams'
-import { useConversationsStore } from '~/stores/conversations'
+import { useConversationsStore, type Conversation } from '~/stores/conversations'
 
 const props = defineProps<{
   conversationId: string
@@ -15,14 +16,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const api = useApi()
+const auth = useAuthStore()
 const teams = useTeamsStore()
 const conversations = useConversationsStore()
 
 const loading = ref(false)
-const agents = ref<{ id: string; name: string }[]>([])
+const agents = ref<{ id: string, name: string }[]>([])
 
 async function fetchAgents() {
-  agents.value = await api<{ id: string; name: string }[]>('/members')
+  agents.value = await api<{ id: string, name: string }[]>(`/accounts/${auth.account?.id}/agents`)
 }
 
 onMounted(fetchAgents)
@@ -66,7 +68,7 @@ const teamItems = computed<DropdownMenuItem[][]>(() => [
 async function assign(assigneeId: string | null) {
   loading.value = true
   try {
-    const conv = await api<any>(`/conversations/${props.conversationId}/assignments`, {
+    const conv = await api<Conversation>(`/accounts/${auth.account?.id}/conversations/${props.conversationId}/assignments`, {
       method: 'POST',
       body: { assignee_id: assigneeId, team_id: props.currentTeamId }
     })
@@ -80,7 +82,7 @@ async function assign(assigneeId: string | null) {
 async function setTeam(teamId: string | null) {
   loading.value = true
   try {
-    const conv = await api<any>(`/conversations/${props.conversationId}/assignments`, {
+    const conv = await api<Conversation>(`/accounts/${auth.account?.id}/conversations/${props.conversationId}/assignments`, {
       method: 'POST',
       body: { assignee_id: props.currentAssigneeId, team_id: teamId }
     })

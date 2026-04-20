@@ -120,18 +120,33 @@ type ContactFilter struct {
 	Query     string
 	Email     string
 	Phone     string
+	Labels    []string
 	Page      int
 	PerPage   int
 }
 
 func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Contact, int, error) {
-	countQuery := `SELECT COUNT(*) FROM contacts WHERE account_id = $1`
+	countQuery := `SELECT COUNT(*) FROM contacts c WHERE c.account_id = $1`
 	var args []any
 	args = append(args, f.AccountID)
+	argN := 2
 
+	joins := ""
 	if f.Query != "" {
-		countQuery += ` AND (name ILIKE $2 OR email ILIKE $2 OR phone_number ILIKE $2)`
+		countQuery += fmt.Sprintf(` AND (c.name ILIKE $%d OR c.email ILIKE $%d OR c.phone_number ILIKE $%d)`, argN, argN, argN)
 		args = append(args, "%"+f.Query+"%")
+		argN++
+	}
+
+	if len(f.Labels) > 0 {
+		joins += ` JOIN contact_inboxes ci ON ci.contact_id = c.id JOIN conversation_labels cl ON cl.conversation_id IN (SELECT id FROM conversations WHERE contact_inbox_id = ci.id) JOIN labels l ON l.id = cl.label_id`
+		placeholders := make([]string, len(f.Labels))
+		for i, label := range f.Labels {
+			placeholders[i] = fmt.Sprintf("$%d", argN)
+			args = append(args, label)
+			argN++
+		}
+		countQuery += fmt.Sprintf(` AND l.title IN (%s)`, strings.Join(placeholders, ", "))
 	}
 
 	var total int
@@ -143,13 +158,13 @@ func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Cont
 		return []model.Contact{}, 0, nil
 	}
 
-	dataQuery := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE account_id = $1`
+	dataQuery := `SELECT c.` + contactSelectColumns + ` FROM contacts c` + joins + ` WHERE c.account_id = $1`
 	if f.Query != "" {
-		dataQuery += ` AND (name ILIKE $2 OR email ILIKE $2 OR phone_number ILIKE $2)`
+		dataQuery += ` AND (c.name ILIKE $2 OR c.email ILIKE $2 OR c.phone_number ILIKE $2)`
 	}
 
 	offset := (f.Page - 1) * f.PerPage
-	dataQuery += fmt.Sprintf(` ORDER BY created_at DESC LIMIT %d OFFSET %d`, f.PerPage, offset)
+	dataQuery += fmt.Sprintf(` ORDER BY c.created_at DESC LIMIT %d OFFSET %d`, f.PerPage, offset)
 
 	rows, err := r.pool.Query(ctx, dataQuery, args...)
 	if err != nil {
@@ -252,6 +267,67 @@ func (r *ContactRepo) UpdateAdditionalAttrs(ctx context.Context, id, accountID i
 		}
 		return nil, fmt.Errorf("failed to update additional_attributes: %w", err)
 	}
+	return result, nil
+}
+
+type ImportContact struct {
+	Name  string
+	Email string
+	Phone string
+}
+
+type ImportResult struct {
+	Inserted int
+	Updated  int
+}
+
+func (r *ContactRepo) ImportBatch(ctx context.Context, accountID int64, batch []ImportContact) (ImportResult, error) {
+	if len(batch) == 0 {
+		return ImportResult{}, nil
+	}
+
+	batchExec := &pgx.Batch{}
+	for _, c := range batch {
+		var phone *string
+		if c.Phone != "" {
+			phone = &c.Phone
+		}
+		var email *string
+		if c.Email != "" {
+			email = &c.Email
+		}
+		batchExec.Queue(
+			`INSERT INTO contacts (account_id, name, email, phone_number) VALUES ($1, $2, $3, $4)
+			ON CONFLICT (account_id, lower(email)) WHERE email IS NOT NULL AND email != '' DO UPDATE SET
+				name = COALESCE(EXCLUDED.name, contacts.name),
+				phone_number = COALESCE(EXCLUDED.phone_number, contacts.phone_number),
+				updated_at = NOW()
+			RETURNING (xmax = 0) AS is_insert`,
+			accountID, c.Name, email, phone,
+		)
+	}
+
+	br := r.pool.SendBatch(ctx, batchExec)
+	defer func() {
+		if cerr := br.Close(); cerr != nil {
+			_ = cerr
+		}
+	}()
+
+	var result ImportResult
+	for range batch {
+		row := br.QueryRow()
+		var isInsert bool
+		if err := row.Scan(&isInsert); err != nil {
+			return result, fmt.Errorf("failed to import contact row: %w", err)
+		}
+		if isInsert {
+			result.Inserted++
+		} else {
+			result.Updated++
+		}
+	}
+
 	return result, nil
 }
 

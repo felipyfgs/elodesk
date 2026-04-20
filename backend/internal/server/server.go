@@ -11,6 +11,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/dto"
 	"backend/internal/logger"
+	"backend/internal/service"
 )
 
 type Server struct {
@@ -18,6 +19,9 @@ type Server struct {
 	Config *config.Config
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	slaBreachJob      *service.SLABreachJob
+	auditRetentionJob *service.AuditRetentionJob
 }
 
 func New(cfg *config.Config) *Server {
@@ -36,8 +40,8 @@ func New(cfg *config.Config) *Server {
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(cfg.CORSOriginsList(), ","),
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization, api_access_token",
-		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-Account-Id, api_access_token",
+		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 	}))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -51,6 +55,12 @@ func New(cfg *config.Config) *Server {
 }
 
 func (s *Server) Start() error {
+	if s.slaBreachJob != nil {
+		s.slaBreachJob.Start(s.ctx)
+	}
+	if s.auditRetentionJob != nil {
+		s.auditRetentionJob.Start(s.ctx)
+	}
 	addr := s.Config.ServerHost + ":" + s.Config.Port
 	logger.Info().Str("component", "server").Str("addr", addr).Msg("Starting API server")
 	return s.App.Listen(addr)
@@ -58,6 +68,12 @@ func (s *Server) Start() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	logger.Info().Str("component", "server").Msg("Shutting down API server")
+	if s.slaBreachJob != nil {
+		s.slaBreachJob.Stop()
+	}
+	if s.auditRetentionJob != nil {
+		s.auditRetentionJob.Stop()
+	}
 	s.cancel()
 
 	done := make(chan error, 1)

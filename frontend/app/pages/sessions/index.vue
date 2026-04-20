@@ -2,6 +2,8 @@
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useAuthStore } from '~/stores/auth'
 
+definePageMeta({ layout: 'dashboard' })
+
 const { t } = useI18n()
 const api = useApi()
 const rt = useRealtime()
@@ -11,13 +13,16 @@ const inboxes = useInboxesStore()
 const creating = ref(false)
 const newName = ref('')
 const credentials = ref<{ inbox: Inbox, identifier: string, apiToken: string, hmacToken: string } | null>(null)
+const credentialsOpen = ref(false)
 const copiedField = ref<string | null>(null)
 const toast = useToast()
 
 function copyToClipboard(text: string, field: string) {
   navigator.clipboard.writeText(text)
   copiedField.value = field
-  setTimeout(() => { copiedField.value = null }, 2000)
+  setTimeout(() => {
+    copiedField.value = null
+  }, 2000)
 }
 
 async function loadInboxes() {
@@ -42,6 +47,7 @@ async function createInbox() {
     inboxes.upsert(res.inbox)
     newName.value = ''
     credentials.value = res
+    credentialsOpen.value = true
   } catch {
     toast.add({ title: t('sessions.createFailed'), color: 'error' })
   } finally {
@@ -135,7 +141,7 @@ onMounted(async () => {
         </UPageCard>
       </UPageGrid>
 
-      <UModal v-model:open="!!credentials" :close="() => credentials = null">
+      <UModal v-model:open="credentialsOpen">
         <template #content>
           <div v-if="credentials" class="p-6 flex flex-col gap-4">
             <h2 class="text-lg font-semibold">

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { ConfirmModal } from '#components'
 import { useAuthStore } from '~/stores/auth'
 import { useLabelsStore, type Label } from '~/stores/labels'
 import { labelSchema, type LabelForm } from '~/schemas/label'
@@ -7,13 +9,13 @@ const { t } = useI18n()
 const api = useApi()
 const auth = useAuthStore()
 const store = useLabelsStore()
+const confirm = useOverlay().create(ConfirmModal)
 
 const isAdmin = computed(() => (auth.accountUser?.role ?? 0) >= 1)
 
 const open = ref(false)
 const editing = ref<Label | null>(null)
 const saved = ref(false)
-const errors = ref<Record<string, string>>({})
 
 const form = reactive<LabelForm>({
   title: '',
@@ -29,7 +31,6 @@ function resetForm() {
   form.color = '#1f93ff'
   form.description = null
   form.show_on_sidebar = false
-  errors.value = {}
   editing.value = null
 }
 
@@ -44,42 +45,45 @@ function openEdit(label: Label) {
   form.color = label.color
   form.description = label.description
   form.show_on_sidebar = label.showOnSidebar
-  errors.value = {}
   open.value = true
 }
 
-async function submit() {
-  const result = labelSchema.safeParse(form)
-  if (!result.success) {
-    errors.value = Object.fromEntries(result.error.issues.map(i => [i.path.join('.'), i.message]))
-    return
-  }
-  errors.value = {}
+async function submit(event: FormSubmitEvent<LabelForm>) {
   loading.value = true
   try {
     if (editing.value) {
-      const updated = await api<Label>(`/labels/${editing.value.id}`, { method: 'PUT', body: result.data })
+      const updated = await api<Label>(`/accounts/${auth.account?.id}/labels/${editing.value.id}`, { method: 'PATCH', body: event.data })
       store.upsert(updated)
     } else {
-      const created = await api<Label>('/labels', { method: 'POST', body: result.data })
+      const created = await api<Label>(`/accounts/${auth.account?.id}/labels`, { method: 'POST', body: event.data })
       store.upsert(created)
     }
     saved.value = true
     open.value = false
-    setTimeout(() => { saved.value = false }, 2000)
+    resetForm()
+    setTimeout(() => {
+      saved.value = false
+    }, 2000)
   } finally {
     loading.value = false
   }
 }
 
-async function remove(label: Label) {
-  if (!confirm(t('labels.deleteConfirm'))) return
-  await api(`/labels/${label.id}`, { method: 'DELETE' })
-  store.remove(label.id)
+function openDelete(label: Label) {
+  confirm.open({
+    title: t('common.delete'),
+    description: t('labels.deleteConfirm'),
+    confirmLabel: t('common.delete'),
+    itemName: label.title
+  }).then(async (ok) => {
+    if (!ok) return
+    await api(`/accounts/${auth.account?.id}/labels/${label.id}`, { method: 'DELETE' })
+    store.remove(label.id)
+  })
 }
 
 async function fetchLabels() {
-  const list = await api<Label[]>('/labels')
+  const list = await api<Label[]>(`/accounts/${auth.account?.id}/labels`)
   store.setAll(list)
 }
 
@@ -92,9 +96,14 @@ onMounted(fetchLabels)
   </div>
 
   <template v-else>
-    <div v-if="saved" class="mb-4 text-sm text-green-600">
-      {{ t('common.success') }}
-    </div>
+    <UAlert
+      v-if="saved"
+      class="mb-4"
+      color="success"
+      variant="subtle"
+      icon="i-lucide-check-circle"
+      :title="t('common.success')"
+    />
 
     <UPageCard :title="t('labels.title')" variant="subtle">
       <template #header>
@@ -111,7 +120,7 @@ onMounted(fetchLabels)
         <div
           v-for="label in store.list"
           :key="label.id"
-          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[var(--ui-border)]"
+          class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-default"
         >
           <div class="flex items-center gap-2 min-w-0">
             <UBadge :style="{ backgroundColor: label.color, color: '#fff' }">
@@ -125,7 +134,12 @@ onMounted(fetchLabels)
             <UButton size="xs" variant="ghost" @click="openEdit(label)">
               {{ t('common.edit') }}
             </UButton>
-            <UButton size="xs" color="red" variant="ghost" @click="remove(label)">
+            <UButton
+              size="xs"
+              color="error"
+              variant="ghost"
+              @click="openDelete(label)"
+            >
               {{ t('common.delete') }}
             </UButton>
           </div>
@@ -134,35 +148,40 @@ onMounted(fetchLabels)
     </UPageCard>
 
     <UModal v-model:open="open" :title="editing ? t('labels.edit') : t('labels.create')">
-      <form class="flex flex-col gap-4" @submit.prevent="submit">
-        <UFormField :label="t('labels.name')" :error="errors.title">
+      <UForm
+        :schema="labelSchema"
+        :state="form"
+        class="flex flex-col gap-4"
+        @submit="submit"
+      >
+        <UFormField :label="t('labels.name')" name="title">
           <UInput v-model="form.title" class="w-full" />
         </UFormField>
 
-        <UFormField :label="t('labels.color')" :error="errors.color">
+        <UFormField :label="t('labels.color')" name="color">
           <div class="flex gap-2 items-center w-full">
-            <input v-model="form.color" type="color" class="h-9 w-12 cursor-pointer rounded border border-[var(--ui-border)]" />
+            <UColorPicker v-model="form.color" size="sm" />
             <UInput v-model="form.color" class="flex-1" />
           </div>
         </UFormField>
 
-        <UFormField :label="t('labels.description')" :error="errors.description">
+        <UFormField :label="t('labels.description')" name="description">
           <UTextarea v-model="form.description!" class="w-full" />
         </UFormField>
 
-        <UFormField>
+        <UFormField name="show_on_sidebar">
           <UCheckbox v-model="form.show_on_sidebar" :label="t('labels.showOnSidebar')" />
         </UFormField>
 
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="open = false">
+          <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
           <UButton type="submit" :loading="loading">
             {{ t('common.save') }}
           </UButton>
         </div>
-      </form>
+      </UForm>
     </UModal>
   </template>
 </template>

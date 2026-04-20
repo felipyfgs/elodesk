@@ -8,15 +8,14 @@ const props = defineProps<{
   contactId: string
 }>()
 
-const { t } = useI18n()
 const api = useApi()
 const auth = useAuthStore()
 
-const localValue = ref(props.value ?? '')
+const localValue = ref<string>(props.value as string ?? '')
 const saving = ref(false)
 
 watch(() => props.value, (v) => {
-  localValue.value = v ?? ''
+  localValue.value = (v as string) ?? ''
 })
 
 async function save() {
@@ -90,7 +89,7 @@ function handleChange() {
     <UCheckbox
       v-else-if="definition.attributeDisplayType === 'checkbox'"
       :model-value="!!localValue"
-      @update:model-value="(v: boolean) => { localValue = v; handleChange() }"
+      @update:model-value="(v: boolean | string) => { localValue = String(!!v); handleChange() }"
     />
 
     <USelect

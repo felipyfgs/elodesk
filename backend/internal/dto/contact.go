@@ -62,3 +62,15 @@ func ContactsToResp(contacts []model.Contact) []ContactResp {
 	}
 	return result
 }
+
+type ContactImportResp struct {
+	Inserted  int           `json:"inserted"`
+	Updated   int           `json:"updated"`
+	Errors    []ImportError `json:"errors,omitempty"`
+	TotalRows int           `json:"totalRows"`
+}
+
+type ImportError struct {
+	Row    int    `json:"row"`
+	Reason string `json:"reason"`
+}

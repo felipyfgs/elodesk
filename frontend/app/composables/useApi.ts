@@ -18,6 +18,11 @@ export const useApi = () => {
         options.headers = headers
       }
     },
+    onResponse({ response }) {
+      if (response._data?.success && response._data?.data !== undefined) {
+        response._data = response._data.data
+      }
+    },
     async onResponseError({ response, request, options }) {
       if (response.status === 401 && auth.refreshToken && !(options as { _retried?: boolean })._retried) {
         try {
@@ -37,7 +42,7 @@ export const useApi = () => {
     if (refreshPromise) return refreshPromise
     refreshPromise = (async () => {
       try {
-        const res = await $fetch<{ accessToken: string, refreshToken: string }>(
+        const raw = await $fetch<{ success: boolean, data: { accessToken: string, refreshToken: string } }>(
           '/auth/refresh',
           {
             baseURL: runtime.public.apiUrl,
@@ -45,6 +50,7 @@ export const useApi = () => {
             body: { refreshToken: auth.refreshToken }
           }
         )
+        const res = raw.data ?? raw as unknown as { accessToken: string, refreshToken: string }
         auth.setTokens(res.accessToken, res.refreshToken)
       } finally {
         refreshPromise = null

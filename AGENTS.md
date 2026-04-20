@@ -57,9 +57,10 @@ Push/PR → 2 jobs: `go test -race` + `golangci-lint` (Go 1.25) | `pnpm lint` + 
 ### Frontend (`frontend/app/`)
 - **Composables**: `useApi.ts` ($fetch + JWT + auto 401 retry via `/auth/refresh`), `useAuth.ts`, `useRealtime.ts` (WebSocket, rooms, auto-reconnect)
 - **Stores**: 11 Pinia stores (`auth`, `accounts`, `inboxes`, `conversations`, `messages`, `labels`, `notes`, `teams`, `cannedResponses`, `customAttributes`, `savedFilters`)
-- **Validation**: Zod schemas in `app/schemas/`
+- **Validation**: Zod schemas in `app/schemas/` — multi-step wizard forms split into per-step schemas (`*StepSetup`, `*StepCredentials`, etc.)
 - **i18n**: pt-BR + en via `@nuxtjs/i18n`
-- **UI**: `@nuxt/ui` v4 + Tailwind CSS v4
+- **UI**: `@nuxt/ui` v4 + Tailwind CSS v4 — all UI primitives sourced from Nuxt UI (no custom wrappers unless adding domain behavior)
+- **UI contract**: `openspec/changes/standardize-frontend-nuxt-ui/specs/frontend-ui-primitives/spec.md` — authoritative source for component choices (`UChat*` for threads, `UStepper` for wizards, `UTimeline` for events, `useToast` for feedback, `useOverlay` for modals, semantic color utilities only)
 
 ## Domain Model
 
@@ -107,8 +108,8 @@ JWT access (HS256, 15m) + refresh tokens (48 random bytes, SHA-256 at rest). Rot
 ## Style
 
 Code-style rules are maintained in skills (loaded on demand):
-- Go: `go-backend-standards`, `go-error-handling`, `go-logging-config`, `go-security-patterns`, `go-testing-patterns`, `go-db-migrations`
-- Frontend: `frontend-nuxt-standards`
+- Go: `go-backend`, `go-errors`, `go-logging`, `go-security`, `go-testing`, `go-migrations`
+- Frontend: `nuxt-frontend`
 
 ## Referência (`_refs/`)
 
@@ -116,11 +117,11 @@ O diretório `_refs/` contém projetos de estudo úteis para consulta. **Sempre 
 
 ## OpenSpec Workflow
 
-Changes in `openspec/changes/<name>/`. Commands in `.opencode/commands/`:
-- `/opsx-propose` — create change + artifacts
-- `/opsx-explore` — think mode (no code changes)
-- `/opsx-apply` — implement tasks
-- `/opsx-archive` — archive to `openspec/changes/archive/`
+Changes in `openspec/changes/<name>/`. Commands live in `.claude/commands/` (mirrored in `.opencode/commands/`):
+- `/opsx:propose` — create change + artifacts
+- `/opsx:explore` — think mode (no code changes)
+- `/opsx:apply` — implement tasks
+- `/opsx:archive` — archive to `openspec/changes/archive/YYYY-MM-DD-<name>/`
 - `/go-quality` — backend quality review + auto-fix
 - `/frontend-quality` — frontend quality review + auto-fix
 - `/full-test` — run all tests
@@ -131,10 +132,21 @@ Changes in `openspec/changes/<name>/`. Commands in `.opencode/commands/`:
 | Prefix | Auth | Purpose |
 |--------|------|---------|
 | `GET /health`, `GET /docs/*` | none | Health, Swagger |
-| `POST /api/v1/auth/*` | none | Register, login, refresh, logout |
-| `GET /realtime` | JWT (query/WS header) | WebSocket |
-| `/api/v1/accounts/:aid/*` | JWT + org scope | Inboxes, contacts, conversations, messages, uploads, labels, teams, canned, attributes, filters |
+| `POST /api/v1/auth/*` | none | Register, login, refresh, logout, forgot, reset, mfa, invitations/:token/accept |
+| `GET /realtime` | JWT (query/WS header) | WebSocket (rooms: account, inbox, conversation, user) |
+| `PUT /api/v1/users/:id` | JWT (self) | Profile edit + password change |
+| `/api/v1/users/:id/notification_preferences` | JWT (self) | GET/PUT user notification preferences |
+| `/api/v1/accounts/:aid/*` | JWT + org scope | Inboxes, contacts, conversations, messages, uploads, labels, teams, canned, attributes, filters, agents, macros, slas, webhooks, audit_logs, notifications, reports (overview, conversations, :entity, csat, sla) |
 | `/public/api/v1/inboxes/:identifier/*` | api_token (SHA-256) | Contacts, conversations, messages |
 | `/webhooks/*` | none | SMS, Instagram, Facebook, Telegram |
 | `/widget/:token`, `/widget/:token/ws` | CORS + rate limit | SSE widget |
 | `/api/v1/widget/*` | widget auth | Sessions, messages, identify, attachments |
+
+## Background jobs
+
+The backend runs two in-process ticker-based jobs alongside the HTTP server:
+
+- **SLA breach detection** — every 60s scans conversations past their `sla_*_due_at`, flags `sla_breached=true`, emits `sla.breached` on the account realtime room, persists a notification for the assignee, and records an audit log.
+- **Audit retention** — every 24h deletes `audit_logs` older than 90 days.
+
+There is no asynq worker process configured yet — tasks enqueued by the outbound webhook pipeline sit in Redis without a consumer. Wire a dedicated worker binary when shipping webhook delivery to production.

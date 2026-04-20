@@ -1,4 +1,5 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+import { defineNuxtConfig } from 'nuxt/config'
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -8,6 +9,8 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n'
   ],
 
+  ssr: false,
+
   devtools: {
     enabled: true
   },
@@ -16,12 +19,33 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
-      wsUrl: process.env.NUXT_PUBLIC_WS_URL || 'http://localhost:3001'
+      apiUrl: '',
+      wsUrl: ''
     }
   },
 
   compatibilityDate: '2024-07-11',
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        'zod/v4',
+        'date-fns',
+        'pinia',
+        'reka-ui'
+      ]
+    }
+  },
+
+  // Workaround for Nuxt 4.4.2 duplicate useAppConfig warning (nuxt/nuxt#34812)
+  hooks: {
+    'nitro:config'(nitroConfig) {
+      const imports = (nitroConfig as { imports?: { imports?: Array<{ name?: string }> } }).imports
+      if (imports?.imports) {
+        imports.imports = imports.imports.filter(i => i?.name !== 'useAppConfig')
+      }
+    }
+  },
 
   eslint: {
     config: {
@@ -44,6 +68,13 @@ export default defineNuxtConfig({
       cookieKey: 'i18n_redirected',
       redirectOn: 'root',
       fallbackLocale: 'pt-BR'
+    },
+    bundle: {
+      optimizeTranslationDirective: false
     }
+  },
+
+  pinia: {
+    storesDirs: []
   }
 })

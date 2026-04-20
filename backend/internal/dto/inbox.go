@@ -21,3 +21,18 @@ type CreateInboxResp struct {
 	ApiToken   string `json:"apiToken"`
 	HmacToken  string `json:"hmacToken"`
 }
+
+type InboxAgentResp struct {
+	ID        int64     `json:"id"`
+	InboxID   int64     `json:"inboxId"`
+	UserID    int64     `json:"userId"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type SetInboxAgentsReq struct {
+	UserIDs []int64 `json:"userIds"`
+}
+
+type UpdateInboxReq struct {
+	Name string `json:"name" validate:"required"`
+}

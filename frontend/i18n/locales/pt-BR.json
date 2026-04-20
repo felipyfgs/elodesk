@@ -6,18 +6,49 @@
   "auth": {
     "login": {
       "title": "Entrar",
+      "description": "Acesse sua conta para continuar.",
       "email": "E-mail",
+      "emailInvalid": "E-mail inválido",
       "password": "Senha",
+      "passwordRequired": "Senha obrigatória",
+      "remember": "Lembrar de mim",
       "submit": "Entrar",
       "noAccount": "Ainda não tem conta?",
-      "register": "Criar conta"
+      "register": "Criar conta",
+      "placeholders": {
+        "email": "voce{'@'}exemplo.com",
+        "password": "••••••••"
+      },
+      "mfaRequired": "Código MFA necessário",
+      "mfaCode": "Código MFA",
+      "mfaPlaceholder": "Digite seu código de 6 dígitos",
+      "mfaInvalidCode": "Código inválido. Tente novamente.",
+      "mfaTooManyAttempts": "Muitas tentativas. Tente novamente mais tarde.",
+      "mfaLockedMessage": "Muitas tentativas. Tente novamente em {min}:{sec}.",
+      "recoveryCodeLabel": "Código de recuperação",
+      "recoveryCodePlaceholder": "Digite o código de recuperação",
+      "useRecoveryCode": "Usar código de recuperação",
+      "useAuthenticator": "Usar app autenticador",
+      "verifyMfa": "Verificar"
     },
     "register": {
       "title": "Criar conta",
+      "description": "Crie sua conta para começar.",
       "email": "E-mail",
       "password": "Senha",
+      "confirmPassword": "Confirmar senha",
+      "passwordMin": "Mínimo 8 caracteres",
+      "passwordMismatch": "As senhas não coincidem",
       "name": "Seu nome",
+      "nameRequired": "Nome obrigatório",
       "accountName": "Nome da organização (opcional)",
+      "placeholders": {
+        "name": "João Silva",
+        "email": "voce{'@'}exemplo.com",
+        "password": "••••••••",
+        "confirmPassword": "••••••••",
+        "accountName": "Acme Inc."
+      },
       "submit": "Cadastrar",
       "haveAccount": "Já tem conta?",
       "login": "Entrar"
@@ -26,6 +57,44 @@
     "errors": {
       "invalidCredentials": "E-mail ou senha inválidos",
       "emailExists": "E-mail já cadastrado"
+    },
+    "forgot": {
+      "title": "Esqueceu sua senha?",
+      "description": "Informe seu e-mail para receber o link de redefinição.",
+      "email": "E-mail",
+      "placeholders": {
+        "email": "voce{'@'}exemplo.com"
+      },
+      "submit": "Enviar link",
+      "success": "Se o e-mail existir, você receberá instruções para redefinir sua senha.",
+      "backToLogin": "Voltar ao login"
+    },
+    "reset": {
+      "title": "Redefinir senha",
+      "description": "Escolha uma nova senha para acessar sua conta.",
+      "newPassword": "Nova senha",
+      "confirmPassword": "Confirmar senha",
+      "placeholders": {
+        "password": "••••••••",
+        "confirmPassword": "••••••••"
+      },
+      "submit": "Redefinir senha",
+      "success": "Senha redefinida com sucesso.",
+      "invalidToken": "Link inválido ou expirado.",
+      "backToLogin": "Voltar ao login"
+    },
+    "mfa": {
+      "title": "Autenticação em dois fatores",
+      "setup": "Configurar MFA",
+      "enable": "Ativar",
+      "disable": "Desativar",
+      "verify": "Verificar código",
+      "scanQr": "Escaneie o QR com seu app autenticador",
+      "enterCode": "Digite o código de 6 dígitos",
+      "recoveryCodes": "Códigos de recuperação",
+      "downloadCodes": "Baixar códigos",
+      "enabled": "MFA ativado",
+      "disabled": "MFA desativado"
     }
   },
   "nav": {
@@ -33,11 +102,25 @@
     "sessions": "Sessões",
     "conversations": "Conversas",
     "contacts": "Contatos",
+    "inboxes": "Inboxes",
     "settings": "Configurações",
-    "settingsGeneral": "Geral",
+    "settingsGeneral": "Configurações gerais",
+    "settingsProfile": "Perfil",
+    "settingsAgents": "Agentes",
+    "settingsMacros": "Macros",
+    "settingsSla": "SLA",
+    "settingsIntegrations": "Integrações",
+    "settingsAuditLogs": "Audit Logs",
+    "settingsNotifications": "Notificações",
+    "settingsTeams": "Equipes",
+    "settingsLabels": "Labels",
+    "settingsCanned": "Respostas rápidas",
+    "settingsAttributes": "Atributos",
     "settingsMembers": "Membros",
+    "reports": "Relatórios",
     "docs": "Documentação da API",
     "goTo": "Ir para",
+    "create": "Criar",
     "actions": "Ações",
     "notifications": "Notificações",
     "noNotifications": "Sem notificações no momento.",
@@ -84,20 +167,160 @@
     },
     "name": "Nome da sessão"
   },
+  "inboxes": {
+    "title": "Inboxes",
+    "new": "Nova inbox",
+    "empty": "Nenhuma inbox criada.",
+    "selectChannel": "Selecione um canal",
+    "settings": "Configurações da inbox",
+    "agents": "Agentes",
+    "webhooks": "Webhooks",
+    "businessHours": "Horário comercial",
+    "general": "Geral",
+    "rotateHmac": "Rotacionar HMAC",
+    "rotateHmacConfirm": "Rotacionar o HMAC token invalidará tokens antigos. Continuar?",
+    "channels": {
+      "_": "Canal",
+      "api": "API",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "instagram": "Instagram",
+      "facebook_page": "Facebook Page",
+      "telegram": "Telegram",
+      "web_widget": "Web Widget",
+      "email": "E-mail"
+    },
+    "notFound": "Inbox não encontrada.",
+    "wizards": {
+      "name": "Nome da inbox",
+      "invalidChannel": "Canal inválido.",
+      "api": { "description": "Crie uma inbox de API REST para integrações personalizadas." },
+      "whatsapp": {
+        "description": "Conecte via WhatsApp Cloud API ou 360dialog.",
+        "provider": "Provedor",
+        "phoneNumber": "Número de telefone",
+        "phoneNumberId": "Phone Number ID",
+        "businessAccountId": "Business Account ID",
+        "apiKey": "API Key"
+      },
+      "sms": {
+        "description": "Envie e receba SMS via Twilio, Bandwidth ou Zenvia.",
+        "provider": "Provedor",
+        "phoneNumber": "Número de telefone",
+        "twilio": { "accountSid": "Account SID", "authToken": "Auth Token", "messagingServiceSid": "Messaging Service SID" },
+        "bandwidth": { "accountId": "Account ID", "applicationId": "Application ID", "username": "Usuário", "password": "Senha" },
+        "zenvia": { "apiToken": "API Token" }
+      },
+      "instagram": {
+        "description": "Conecte seu Instagram Business via Direct Messages.",
+        "instagramId": "Instagram ID",
+        "accessToken": "Access Token"
+      },
+      "facebookPage": {
+        "description": "Conecte uma página do Facebook via Messenger.",
+        "pageId": "Page ID",
+        "pageAccessToken": "Page Access Token",
+        "userAccessToken": "User Access Token",
+        "instagramId": "Instagram ID vinculado"
+      },
+      "telegram": {
+        "description": "Conecte um bot Telegram.",
+        "botToken": "Bot Token"
+      },
+      "webWidget": {
+        "description": "Crie um widget de chat para seu site.",
+        "websiteUrl": "URL do site",
+        "widgetColor": "Cor do widget",
+        "welcomeTitle": "Título de boas-vindas",
+        "welcomeTagline": "Subtítulo de boas-vindas",
+        "replyTime": "Tempo de resposta",
+        "replyTimes": {
+          "in_a_few_minutes": "Em poucos minutos",
+          "in_a_few_hours": "Em algumas horas",
+          "in_a_day": "Em um dia"
+        }
+      },
+      "email": {
+        "description": "Conecte uma conta de e-mail via IMAP/SMTP ou OAuth.",
+        "provider": "Provedor",
+        "email": "Endereço de e-mail",
+        "imapSettings": "Configurações IMAP",
+        "imapAddress": "Endereço IMAP",
+        "imapPort": "Porta IMAP",
+        "imapLogin": "Login IMAP",
+        "imapPassword": "Senha IMAP",
+        "imapEnableSsl": "Habilitar SSL IMAP",
+        "smtpSettings": "Configurações SMTP",
+        "smtpAddress": "Endereço SMTP",
+        "smtpPort": "Porta SMTP",
+        "smtpLogin": "Login SMTP",
+        "smtpPassword": "Senha SMTP",
+        "smtpEnableSsl": "Habilitar SSL SMTP",
+        "enableSsl": "Habilitar SSL",
+        "redirecting": "Redirecionando para autorização OAuth...",
+        "authorize": "Autorizar"
+      }
+    },
+    "settingsPlaceholder": "Configurações específicas do canal {channel} — em breve.",
+    "webhooksPlaceholder": "Gerencie webhooks de entrega para o canal {channel} — em breve.",
+    "businessHoursPlaceholder": "Configure horários de atendimento — em breve.",
+    "businessHoursDescription": "Defina os horários em que sua equipe está disponível para atendimento.",
+    "agentsSelect": "Selecionar agentes",
+    "rotateHmacSuccess": "HMAC token rotacionado com sucesso. Copie o token agora.",
+    "rotateHmacWarning": "Novo HMAC Token",
+    "rotateHmacCopyWarning": "Copie este token agora — ele não será mostrado novamente.",
+    "secret": { "hide": "Ocultar", "reveal": "Revelar", "copy": "Copiar" },
+    "webhookDescription": "Configure URLs para receber notificações de eventos.",
+    "webhookAdd": "Adicionar webhook",
+    "webhookUrl": "URL do webhook",
+    "noWebhooks": "Nenhum webhook configurado.",
+    "disableAll": "Desativar todos",
+    "enableAll": "Ativar todos",
+    "closed": "Fechado",
+    "days": {
+      "monday": "Segunda-feira",
+      "tuesday": "Terça-feira",
+      "wednesday": "Quarta-feira",
+      "thursday": "Quinta-feira",
+      "friday": "Sexta-feira",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    }
+  },
   "conversations": {
     "title": "Conversas",
     "empty": "Sem conversas ainda.",
+    "sidebar": {
+      "title": "Filtros",
+      "mine": "Minhas",
+      "unassigned": "Sem agente",
+      "all": "Todas",
+      "mentions": "Menções",
+      "status": "Status",
+      "inboxes": "Inboxes",
+      "labels": "Labels",
+      "teams": "Equipes"
+    },
     "filters": {
       "all": "Todas",
       "open": "Abertas",
       "resolved": "Resolvidas",
-      "pending": "Pendentes"
+      "pending": "Pendentes",
+      "snoozed": "Adiadas"
     },
     "compose": {
       "placeholder": "Digite uma mensagem…",
-      "send": "Enviar"
+      "send": "Enviar",
+      "attach": "Anexar arquivo"
     },
     "select": "Selecione uma conversa",
+    "actions": {
+      "open": "Reabrir",
+      "pending": "Marcar pendente",
+      "resolve": "Resolver",
+      "snooze": "Adiar",
+      "changeStatus": "Alterar status"
+    },
     "message": {
       "status": {
         "PENDING": "Enviando",
@@ -108,6 +331,36 @@
       },
       "edited": "editada",
       "deleted": "Mensagem apagada"
+    },
+    "bulk": {
+      "selected": "{count} selecionada(s)",
+      "selectAll": "Selecionar todas",
+      "clearSelection": "Limpar",
+      "resolve": "Resolver",
+      "open": "Reabrir",
+      "snooze": {
+        "label": "Adiar",
+        "1h": "1 hora",
+        "4h": "4 horas",
+        "tomorrow": "Amanhã",
+        "nextWeek": "Próxima semana"
+      },
+      "assign": "Atribuir",
+      "assignAgent": "Atribuir agente",
+      "assignAgentDesc": "Atribuir {count} conversa(s) a um agente.",
+      "agentsComingSoon": "Lista de agentes disponível após configuração.",
+      "assignTeam": "Atribuir equipe",
+      "assignTeamDesc": "Atribuir {count} conversa(s) a uma equipe.",
+      "labels": "Labels",
+      "addLabel": "Adicionar label",
+      "removeLabel": "Remover label",
+      "delete": "Excluir",
+      "deleteConfirm": "Excluir conversas?",
+      "deleteDesc": "Isso resolverá {count} conversa(s). Esta ação não pode ser desfeita.",
+      "success": "{count} conversa(s) atualizada(s) com sucesso.",
+      "assigned": "{count} conversa(s) atribuída(s).",
+      "labelsUpdated": "{count} conversa(s) atualizada(s).",
+      "resolved": "{count} conversa(s) resolvida(s)."
     }
   },
   "contacts": {
@@ -117,9 +370,25 @@
       "name": "Nome",
       "phone": "Telefone",
       "waJid": "JID WhatsApp",
+      "email": "E-mail",
       "created": "Criado em"
     },
-    "search": "Buscar por nome ou telefone…"
+    "search": "Buscar por nome ou telefone…",
+    "new": "Novo contato",
+    "import": "Importar CSV",
+    "importDrop": "Arraste um arquivo CSV aqui ou clique para selecionar",
+    "bulk": {
+      "addLabel": "Adicionar label",
+      "removeLabel": "Remover label",
+      "delete": "Excluir",
+      "export": "Exportar"
+    },
+    "tabs": {
+      "overview": "Visão geral",
+      "conversations": "Conversas",
+      "notes": "Notas",
+      "events": "Eventos"
+    }
   },
   "settings": {
     "title": "Configurações",
@@ -137,7 +406,65 @@
     "teams": "Equipes",
     "canned": "Respostas rápidas",
     "attributes": "Atributos customizados",
-    "accessDenied": "Acesso restrito a administradores."
+    "accessDenied": "Acesso restrito a administradores.",
+    "profile": {
+      "title": "Perfil",
+      "avatar": "Avatar",
+      "changePassword": "Alterar senha",
+      "currentPassword": "Senha atual",
+      "newPassword": "Nova senha",
+      "confirmPassword": "Confirmar senha"
+    },
+    "agents": {
+      "title": "Agentes",
+      "invite": "Convidar agente",
+      "inviteEmail": "E-mail do agente",
+      "role": "Cargo",
+      "empty": "Nenhum agente adicionado.",
+      "inviteSent": "Convite enviado",
+      "pending": "Pendente",
+      "removeConfirm": "Tem certeza que deseja remover este agente?"
+    },
+    "macros": {
+      "title": "Macros",
+      "new": "Nova macro",
+      "empty": "Nenhuma macro criada.",
+      "conditions": "Condições",
+      "actions": "Ações"
+    },
+    "sla": {
+      "title": "SLA",
+      "new": "Nova política SLA",
+      "empty": "Nenhuma política SLA.",
+      "firstResponse": "Primeira resposta",
+      "resolution": "Resolução",
+      "binding": "Vínculo"
+    },
+    "integrations": {
+      "title": "Integrações",
+      "webhooks": "Webhooks",
+      "newWebhook": "Novo webhook",
+      "testSend": "Testar envio",
+      "empty": "Nenhuma integração configurada."
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "empty": "Nenhum log encontrado.",
+      "exportCsv": "Exportar CSV",
+      "action": "Ação",
+      "entity": "Entidade",
+      "user": "Usuário",
+      "date": "Data"
+    },
+    "notifications": {
+      "title": "Preferências de notificação",
+      "email": "Receber por e-mail",
+      "push": "Receber push",
+      "mentions": "Menções",
+      "assignments": "Atribuições",
+      "newConversation": "Nova conversa",
+      "slaBreach": "Violação de SLA"
+    }
   },
   "labels": {
     "title": "Labels",
@@ -247,12 +574,36 @@
     "create": "Criar",
     "edit": "Editar",
     "delete": "Excluir",
+    "remove": "Remover",
+    "removed": "Removido",
     "close": "Fechar",
     "search": "Buscar…",
     "noResults": "Nenhum resultado.",
     "loading": "Carregando…",
     "error": "Erro",
     "success": "Sucesso",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "copied": "Copiado!",
+    "createdAt": "Criado em",
+    "apply": "Aplicar",
+    "refresh": "Atualizar"
+  },
+  "reports": {
+    "title": "Relatórios",
+    "overview": "Visão geral",
+    "conversations": "Conversas",
+    "agents": "Agentes",
+    "inboxes": "Inboxes",
+    "teams": "Equipes",
+    "labels": "Labels",
+    "csat": "CSAT",
+    "sla": "SLA",
+    "dateRange": "Período",
+    "kpi": {
+      "totalConversations": "Total de conversas",
+      "avgFirstResponse": "Tempo médio 1ª resposta",
+      "avgResolution": "Tempo médio de resolução",
+      "resolvedRate": "Taxa de resolução"
+    }
   }
 }

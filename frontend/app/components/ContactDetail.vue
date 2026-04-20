@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
 import { useAuthStore } from '~/stores/auth'
 import { useLabelsStore } from '~/stores/labels'
-import { useCustomAttributesStore, type CustomAttributeDefinition } from '~/stores/customAttributes'
+import { useCustomAttributesStore } from '~/stores/customAttributes'
 import { useConversationsStore, type Conversation } from '~/stores/conversations'
 import { contactSchema, type ContactForm } from '~/schemas/contact'
 import { format } from 'date-fns'
@@ -24,11 +25,12 @@ const contact = ref<{
   phone_number: string | null
   identifier: string | null
   custom_attributes: Record<string, unknown>
+  labels?: { id: string }[]
 } | null>(null)
 
 const loading = ref(true)
 const saving = ref(false)
-const errors = ref<Record<string, string>>({})
+const saved = ref(false)
 
 const form = reactive<ContactForm>({
   name: '',
@@ -45,29 +47,29 @@ async function load() {
   try {
     const c = await api<typeof contact.value>(`/accounts/${auth.account.id}/contacts/${props.contactId}`)
     contact.value = c
-    form.name = c.name ?? ''
-    form.email = c.email
-    form.phone_number = c.phone_number
-    form.identifier = c.identifier
+    form.name = c?.name ?? ''
+    form.email = c?.email
+    form.phone_number = c?.phone_number
+    form.identifier = c?.identifier
   } finally {
     loading.value = false
   }
 }
 
-async function saveContact() {
-  const result = contactSchema.safeParse(form)
-  if (!result.success) {
-    errors.value = Object.fromEntries(result.error.issues.map(i => [i.path.join('.'), i.message]))
-    return
-  }
-  errors.value = {}
+async function saveContact(event: FormSubmitEvent<ContactForm>) {
+  const accountId = auth.account?.id
+  if (!accountId) return
   saving.value = true
   try {
     const updated = await api<typeof contact.value>(
-      `/accounts/${auth.account.id}/contacts/${props.contactId}`,
-      { method: 'POST', body: result.data }
+      `/accounts/${accountId}/contacts/${props.contactId}`,
+      { method: 'POST', body: event.data }
     )
     contact.value = updated
+    saved.value = true
+    setTimeout(() => {
+      saved.value = false
+    }, 2000)
   } finally {
     saving.value = false
   }
@@ -87,12 +89,12 @@ const contactConversations = computed(() =>
   )
 )
 
-const contactLabels = computed(() => labelsStore.list.filter(l =>
+const _contactLabels = computed(() => labelsStore.list.filter(l =>
   contact.value?.labels?.some((cl: { id: string }) => cl.id === l.id)
 ))
 
-function statusColor(status: string) {
-  const map: Record<string, string> = { OPEN: 'success', PENDING: 'warning', RESOLVED: 'neutral', SNOOZED: 'info' }
+function statusColor(status: string): 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral' {
+  const map: Record<string, 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'> = { OPEN: 'success', PENDING: 'warning', RESOLVED: 'neutral', SNOOZED: 'info' }
   return map[status] ?? 'neutral'
 }
 </script>
@@ -107,32 +109,46 @@ function statusColor(status: string) {
 
     <div v-if="activeTab === 'info'" class="space-y-4">
       <UPageCard variant="outline" :title="t('contactDetail.title')">
-        <form class="flex flex-col gap-4" @submit.prevent="saveContact">
-          <UFormField :label="t('contactDetail.name')" :error="errors.name">
+        <UAlert
+          v-if="saved"
+          class="mb-4"
+          color="success"
+          variant="subtle"
+          icon="i-lucide-check-circle"
+          :title="t('common.success')"
+        />
+
+        <UForm
+          :schema="contactSchema"
+          :state="form"
+          class="flex flex-col gap-4"
+          @submit="saveContact"
+        >
+          <UFormField :label="t('contactDetail.name')" name="name">
             <UInput v-model="form.name" class="w-full" />
           </UFormField>
 
-          <UFormField :label="t('contactDetail.email')" :error="errors.email">
+          <UFormField :label="t('contactDetail.email')" name="email">
             <UInput v-model="form.email!" type="email" class="w-full" />
           </UFormField>
 
-          <UFormField :label="t('contactDetail.phone')" :error="errors.phone_number">
+          <UFormField :label="t('contactDetail.phone')" name="phone_number">
             <UInput v-model="form.phone_number!" class="w-full" />
           </UFormField>
 
-          <UFormField :label="t('contactDetail.identifier')" :error="errors.identifier">
+          <UFormField :label="t('contactDetail.identifier')" name="identifier">
             <UInput v-model="form.identifier!" class="w-full" />
           </UFormField>
 
           <div class="flex justify-end gap-2">
-            <UButton variant="ghost" @click="load">
+            <UButton type="button" variant="ghost" @click="load">
               {{ t('contactDetail.cancel') }}
             </UButton>
             <UButton type="submit" :loading="saving">
               {{ t('contactDetail.save') }}
             </UButton>
           </div>
-        </form>
+        </UForm>
       </UPageCard>
 
       <UPageCard variant="outline" :title="t('contactDetail.labels')">
@@ -166,7 +182,7 @@ function statusColor(status: string) {
           <div
             v-for="conv in contactConversations"
             :key="conv.id"
-            class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-[var(--ui-border)]"
+            class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-default"
           >
             <div class="flex items-center gap-3 min-w-0">
               <UBadge :color="statusColor(conv.status)" variant="subtle">

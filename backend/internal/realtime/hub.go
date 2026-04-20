@@ -147,3 +147,10 @@ func InboxRoom(inboxID int64) string {
 func ConversationRoom(conversationID int64) string {
 	return fmt.Sprintf("conversation:%d", conversationID)
 }
+
+// UserRoom is the per-user realtime channel used for notifications. It is
+// scoped by account so a user with access to multiple accounts receives only
+// events relevant to the active tenant.
+func UserRoom(accountID, userID int64) string {
+	return fmt.Sprintf("account:%d:user:%d", accountID, userID)
+}

@@ -1,0 +1,8 @@
+export { apiInboxSchema, type ApiInboxForm } from './api'
+export { whatsappInboxSchema, type WhatsAppInboxForm } from './whatsapp'
+export { smsInboxSchema, type SmsInboxForm } from './sms'
+export { instagramInboxSchema, type InstagramInboxForm } from './instagram'
+export { facebookPageInboxSchema, type FacebookPageInboxForm } from './facebookPage'
+export { telegramInboxSchema, type TelegramInboxForm } from './telegram'
+export { webWidgetInboxSchema, type WebWidgetInboxForm } from './webWidget'
+export { emailInboxSchema, type EmailInboxForm } from './email'

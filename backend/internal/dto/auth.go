@@ -65,3 +65,54 @@ type JWTPayload struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`
 }
+
+// --- Password Recovery ---
+
+type ForgotReq struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ForgotResp struct {
+	Status string `json:"status"`
+}
+
+type ResetValidateResp struct {
+	Valid bool `json:"valid"`
+}
+
+type ResetReq struct {
+	Token       string `json:"token" validate:"required"`
+	NewPassword string `json:"newPassword" validate:"required,min=8"`
+}
+
+// --- MFA ---
+
+type MfaSetupResp struct {
+	OTPAuthURI string `json:"otpauthUri"`
+	Secret     string `json:"secret"`
+}
+
+type MfaEnableReq struct {
+	Code string `json:"code" validate:"required,len=6"`
+}
+
+type MfaEnableResp struct {
+	RecoveryCodes []string `json:"recoveryCodes"`
+}
+
+type MfaVerifyReq struct {
+	MfaToken string `json:"mfaToken" validate:"required"`
+	Code     string `json:"code" validate:"required,min=1"`
+}
+
+type MfaDisableReq struct {
+	CurrentPassword string `json:"currentPassword" validate:"required"`
+}
+
+// --- MFA Login Step ---
+
+// LoginRespMfa is returned when MFA is required instead of normal LoginResp.
+type LoginRespMfa struct {
+	MfaRequired bool   `json:"mfaRequired"`
+	MfaToken    string `json:"mfaToken"`
+}

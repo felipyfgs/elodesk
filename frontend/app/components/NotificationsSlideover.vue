@@ -1,12 +1,43 @@
 <script setup lang="ts">
-import { formatTimeAgo } from '@vueuse/core'
-import type { Notification } from '~/types'
+import NotificationItem from '~/components/notifications/NotificationItem.vue'
+import { useNotificationsStore, type Notification } from '~/stores/notifications'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 const { t } = useI18n()
+const realtime = useRealtime()
+const store = useNotificationsStore()
 
-// Placeholder — quando o backend expuser `/me/notifications` podemos plugar aqui.
-const notifications = ref<Notification[]>([])
+realtime.on('notification.new', (payload: Record<string, unknown>) => {
+  store.handleRealtime({ type: 'notification.new', payload: payload as unknown as Notification })
+})
+realtime.on('notification.read', (payload: Record<string, unknown>) => {
+  store.handleRealtime({ type: 'notification.read', payload: payload as { id: number } })
+})
+realtime.on('notification.read_all', () => {
+  store.handleRealtime({ type: 'notification.read_all' })
+})
+
+async function loadNotifications() {
+  if (store.items.length === 0) await store.fetchRecent(25, false)
+}
+
+watch(isNotificationsSlideoverOpen, (open) => {
+  if (open) loadNotifications()
+})
+
+onMounted(() => {
+  store.fetchRecent(25, false)
+})
+
+async function onItemClick(n: Notification) {
+  if (!n.readAt) await store.markRead(n.id)
+}
+
+async function markAllRead() {
+  await store.markAllRead()
+}
+
+defineExpose({ unreadCount: computed(() => store.unreadCount) })
 </script>
 
 <template>
@@ -14,29 +45,29 @@ const notifications = ref<Notification[]>([])
     v-model:open="isNotificationsSlideoverOpen"
     :title="t('nav.notifications')"
   >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <span class="font-semibold">{{ t('nav.notifications') }}</span>
+        <UButton
+          v-if="store.unreadCount > 0"
+          variant="ghost"
+          size="sm"
+          @click="markAllRead"
+        >
+          {{ t('nav.notifications') }}
+        </UButton>
+      </div>
+    </template>
     <template #body>
-      <p v-if="!notifications.length" class="text-sm text-muted p-2">
+      <p v-if="!store.items.length" class="text-sm text-muted p-2">
         {{ t('nav.noNotifications') }}
       </p>
-      <NuxtLink
-        v-for="n in notifications"
+      <NotificationItem
+        v-for="n in store.items"
         :key="n.id"
-        :to="`/conversations`"
-        class="px-3 py-2.5 rounded-md hover:bg-elevated/50 flex items-center gap-3 relative -mx-3 first:-mt-3 last:-mb-3"
-      >
-        <UChip color="error" :show="!!n.unread" inset>
-          <UAvatar v-bind="n.sender.avatar" :alt="n.sender.name" size="md" />
-        </UChip>
-        <div class="text-sm flex-1">
-          <p class="flex items-center justify-between">
-            <span class="text-highlighted font-medium">{{ n.sender.name }}</span>
-            <time :datetime="n.date" class="text-muted text-xs" v-text="formatTimeAgo(new Date(n.date))" />
-          </p>
-          <p class="text-dimmed">
-            {{ n.body }}
-          </p>
-        </div>
-      </NuxtLink>
+        :notification="n"
+        @click="onItemClick"
+      />
     </template>
   </USlideover>
 </template>

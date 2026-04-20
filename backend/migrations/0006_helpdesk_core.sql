@@ -12,10 +12,10 @@ CREATE TABLE IF NOT EXISTS labels (
     description TEXT,
     show_on_sidebar BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (account_id, lower(title))
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_labels_account_title ON labels(account_id, lower(title));
 CREATE INDEX IF NOT EXISTS idx_labels_account ON labels(account_id);
 
 -- Label Taggings (polymorphic)
@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS teams (
     description TEXT,
     allow_auto_assign BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (account_id, lower(name))
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_account_name ON teams(account_id, lower(name));
 CREATE INDEX IF NOT EXISTS idx_teams_account ON teams(account_id);
 
 -- Team Members

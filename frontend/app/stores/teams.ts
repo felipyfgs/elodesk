@@ -39,6 +39,7 @@ export const useTeamsStore = defineStore('teams', {
     },
     remove(id: string) {
       this.list = this.list.filter(t => t.id !== id)
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.membersByTeam[id]
     },
     setMembers(teamId: string, members: TeamMember[]) {

@@ -52,6 +52,10 @@ func NewAuthService(
 	}
 }
 
+func (s *AuthService) HasUsers(ctx context.Context) (bool, error) {
+	return s.userRepo.HasUsers(ctx)
+}
+
 type RegisterResult struct {
 	User         *model.User
 	Account      *model.Account
