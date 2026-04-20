@@ -16,10 +16,10 @@ import (
 type WhatsAppWebhookHandler struct {
 	svc       *wa.Service
 	inboxRepo *repo.InboxRepo
-	chWaRepo  *repo.ChannelWhatsappRepo
+	chWaRepo  *repo.ChannelWhatsAppRepo
 }
 
-func NewWhatsAppWebhookHandler(svc *wa.Service, inboxRepo *repo.InboxRepo, chWaRepo *repo.ChannelWhatsappRepo) *WhatsAppWebhookHandler {
+func NewWhatsAppWebhookHandler(svc *wa.Service, inboxRepo *repo.InboxRepo, chWaRepo *repo.ChannelWhatsAppRepo) *WhatsAppWebhookHandler {
 	return &WhatsAppWebhookHandler{svc: svc, inboxRepo: inboxRepo, chWaRepo: chWaRepo}
 }
 
@@ -77,7 +77,7 @@ func (h *WhatsAppWebhookHandler) HandleDelivery(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (h *WhatsAppWebhookHandler) findChannelByIdentifier(ctx context.Context, identifier string) (*model.ChannelWhatsapp, error) {
+func (h *WhatsAppWebhookHandler) findChannelByIdentifier(ctx context.Context, identifier string) (*model.ChannelWhatsApp, error) {
 	inbox, err := h.inboxRepo.FindByIdentifier(ctx, identifier)
 	if err != nil {
 		return nil, err

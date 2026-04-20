@@ -8,6 +8,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 
+	"backend/internal/audit"
 	appchannel "backend/internal/channel"
 	fbchan "backend/internal/channel/facebook"
 	igchan "backend/internal/channel/instagram"
@@ -41,7 +42,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accountRepo := repo.NewAccountRepo(db.Pool)
 	refreshTokenRepo := repo.NewRefreshTokenRepo(db.Pool)
 	inboxRepo := repo.NewInboxRepo(db.Pool)
-	channelApiRepo := repo.NewChannelApiRepo(db.Pool)
+	channelApiRepo := repo.NewChannelAPIRepo(db.Pool)
+	inboxAgentRepo := repo.NewInboxAgentRepo(db.Pool)
 	contactRepo := repo.NewContactRepo(db.Pool)
 	contactInboxRepo := repo.NewContactInboxRepo(db.Pool)
 	conversationRepo := repo.NewConversationRepo(db.Pool)
@@ -55,18 +57,56 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	noteRepo := repo.NewNoteRepo(db.Pool)
 	customAttrDefRepo := repo.NewCustomAttributeDefinitionRepo(db.Pool)
 	customFilterRepo := repo.NewCustomFilterRepo(db.Pool)
+	passwordResetTokenRepo := repo.NewPasswordResetTokenRepo(db.Pool)
+	mfaRecoveryCodeRepo := repo.NewMfaRecoveryCodeRepo(db.Pool)
+	agentRepo := repo.NewAgentRepo(db.Pool)
+	agentInvitationRepo := repo.NewAgentInvitationRepo(db.Pool)
+	auditLogRepo := repo.NewAuditLogRepo(db.Pool)
+	notificationRepo := repo.NewNotificationRepo(db.Pool)
 
-	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	mfaTokenStore := service.NewInMemoryMfaTokenStore()
+	mfaSvc := service.NewMfaService(userRepo, mfaRecoveryCodeRepo, refreshTokenRepo, cipher, mfaTokenStore)
+
+	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, mfaSvc, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	authHandler := handler.NewAuthHandler(authSvc)
 
-	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, cipher)
-	inboxHandler := handler.NewInboxHandler(inboxSvc)
+	passwordRecoverySvc := service.NewPasswordRecoveryService(userRepo, passwordResetTokenRepo, refreshTokenRepo)
+	passwordRecoveryHandler := handler.NewPasswordRecoveryHandler(passwordRecoverySvc)
+
+	mfaHandler := handler.NewMfaHandler(mfaSvc, authSvc)
+
+	auditLogger := audit.NewLogger(auditLogRepo)
+
+	agentSvc := service.NewAgentService(agentRepo, agentInvitationRepo, userRepo, accountRepo, authSvc)
+	agentsHandler := handler.NewAgentHandler(agentSvc, agentInvitationRepo, auditLogger)
+
+	userProfileSvc := service.NewUserProfileService(userRepo, refreshTokenRepo, auditLogRepo)
+	userProfileHandler := handler.NewUserProfileHandler(userProfileSvc)
+
+	macroRepo := repo.NewMacroRepo(db.Pool)
+	macroSvc := service.NewMacroService(macroRepo, db.Pool)
+	macrosHandler := handler.NewMacroHandler(macroSvc, auditLogger)
+
+	slaRepo := repo.NewSLARepo(db.Pool)
+	slaSvc := service.NewSLAService(slaRepo)
+	slaHandler := handler.NewSLAHandler(slaSvc)
+
+	outboundWebhookRepo := repo.NewOutboundWebhookRepo(db.Pool)
+	webhooksHandler := handler.NewWebhookHandler(outboundWebhookRepo, auditLogger, cipher)
+
+	auditLogsHandler := handler.NewAuditLogHandler(auditLogRepo)
+
+	reportsRepo := repo.NewReportsRepo(db.Pool)
+	reportsHandler := handler.NewReportHandler(reportsRepo, slaRepo)
+
+	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, inboxAgentRepo, cipher)
+	inboxHandler := handler.NewInboxHandler(inboxSvc, auditLogger)
 
 	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo)
 	contactHandler := handler.NewContactHandler(contactSvc, inboxRepo, contactInboxRepo)
 
-	conversationSvc := service.NewConversationService(conversationRepo, contactInboxRepo, contactRepo)
-	conversationHandler := handler.NewConversationHandler(conversationSvc, inboxRepo, contactInboxRepo)
+	conversationSvc := service.NewConversationService(conversationRepo, contactInboxRepo, contactRepo, slaRepo, nil)
+	conversationHandler := handler.NewConversationHandler(conversationSvc, inboxRepo, contactInboxRepo, auditLogger)
 
 	messageSvc := service.NewMessageService(messageRepo)
 	messageHandler := handler.NewMessageHandler(messageSvc, inboxRepo, contactInboxRepo)
@@ -79,23 +119,30 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	realtimeSvc := service.NewRealtimeService(hub)
 	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub, accountRepo, inboxRepo, conversationRepo)
 
-	labelsSvc := service.NewLabelsService(labelRepo, realtimeSvc)
-	labelsHandler := handler.NewLabelsHandler(labelsSvc)
+	notificationSvc := service.NewNotificationService(notificationRepo, hub)
+	notificationsHandler := handler.NewNotificationHandler(notificationSvc)
+	conversationSvc.SetNotifications(notificationSvc)
 
-	teamsSvc := service.NewTeamsService(teamRepo, teamMemberRepo, accountRepo)
-	teamsHandler := handler.NewTeamsHandler(teamsSvc)
+	s.slaBreachJob = service.NewSLABreachJob(slaRepo, notificationSvc, realtimeSvc, auditLogger, 60*time.Second)
+	s.auditRetentionJob = service.NewAuditRetentionJob(auditLogRepo, 90, 24*time.Hour)
 
-	cannedSvc := service.NewCannedResponsesService(cannedResponseRepo)
-	cannedHandler := handler.NewCannedResponsesHandler(cannedSvc)
+	labelsSvc := service.NewLabelService(labelRepo, realtimeSvc)
+	labelsHandler := handler.NewLabelHandler(labelsSvc)
 
-	notesSvc := service.NewNotesService(noteRepo, realtimeSvc)
-	notesHandler := handler.NewNotesHandler(notesSvc)
+	teamsSvc := service.NewTeamService(teamRepo, teamMemberRepo, accountRepo)
+	teamsHandler := handler.NewTeamHandler(teamsSvc)
 
-	customAttrsSvc := service.NewCustomAttributesService(customAttrDefRepo, contactRepo, conversationRepo)
-	customAttrsHandler := handler.NewCustomAttributesHandler(customAttrsSvc)
+	cannedSvc := service.NewCannedResponseService(cannedResponseRepo)
+	cannedHandler := handler.NewCannedResponseHandler(cannedSvc)
 
-	savedFiltersSvc := service.NewSavedFiltersService(customFilterRepo, customAttrDefRepo, contactRepo, conversationRepo)
-	savedFiltersHandler := handler.NewSavedFiltersHandler(savedFiltersSvc, customAttrDefRepo, db.Pool)
+	notesSvc := service.NewNoteService(noteRepo, realtimeSvc)
+	notesHandler := handler.NewNoteHandler(notesSvc)
+
+	customAttrsSvc := service.NewCustomAttributeService(customAttrDefRepo, contactRepo, conversationRepo)
+	customAttrsHandler := handler.NewCustomAttributeHandler(customAttrsSvc)
+
+	savedFiltersSvc := service.NewSavedFilterService(customFilterRepo, customAttrDefRepo, contactRepo, conversationRepo)
+	savedFiltersHandler := handler.NewSavedFilterHandler(savedFiltersSvc, customAttrDefRepo, db.Pool)
 
 	minioClient, err := media.New(cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket)
 	if err != nil {
@@ -117,6 +164,14 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/refresh", authHandler.Refresh)
 	auth.Post("/logout", middleware.JwtAuth(authSvc), authHandler.Logout)
+	auth.Post("/forgot", passwordRecoveryHandler.Forgot)
+	auth.Get("/reset/:token/validate", passwordRecoveryHandler.ValidateResetToken)
+	auth.Post("/reset", passwordRecoveryHandler.Reset)
+	auth.Post("/mfa/setup", middleware.JwtAuth(authSvc), mfaHandler.Setup)
+	auth.Post("/mfa/enable", middleware.JwtAuth(authSvc), mfaHandler.Enable)
+	auth.Post("/mfa/verify", mfaHandler.Verify)
+	auth.Post("/mfa/disable", middleware.JwtAuth(authSvc), mfaHandler.Disable)
+	auth.Post("/invitations/:token/accept", agentsHandler.AcceptInvitation)
 
 	jwtAuth := middleware.JwtAuth(authSvc)
 	orgScope := middleware.OrgScope(accountRepo)
@@ -128,7 +183,11 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/inboxes", ownerAdmin, inboxHandler.Create)
 	accounts.Get("/inboxes", inboxHandler.List)
 	accounts.Get("/inboxes/:id", inboxHandler.GetByID)
+	accounts.Put("/inboxes/:id", ownerAdmin, inboxHandler.Update)
+	accounts.Get("/inboxes/:id/agents", inboxHandler.ListAgents)
+	accounts.Put("/inboxes/:id/agents", agentPlus, inboxHandler.SetAgents)
 	accounts.Get("/contacts", contactHandler.Search)
+	accounts.Post("/contacts/import", ownerAdmin, contactHandler.Import)
 	accounts.Get("/contacts/:id", contactHandler.Get)
 	accounts.Get("/conversations", conversationHandler.List)
 	accounts.Get("/conversations/:id", conversationHandler.Get)
@@ -140,6 +199,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/contacts/:id", contactHandler.UpdateContactByID)
 	accounts.Get("/contacts/:id/conversations", contactHandler.ListContactConversations)
 	accounts.Post("/conversations/:id/assignments", agentPlus, conversationHandler.Assign)
+	accounts.Patch("/conversations/:id/status", agentPlus, conversationHandler.ToggleStatus)
 
 	accounts.Post("/conversations/:id/labels", agentPlus, labelsHandler.ApplyToConversation)
 	accounts.Delete("/conversations/:id/labels/:labelId", agentPlus, labelsHandler.RemoveFromConversation)
@@ -189,6 +249,45 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	accounts.Post("/conversations/filter", agentPlus, savedFiltersHandler.FilterConversations)
 	accounts.Post("/contacts/filter", agentPlus, savedFiltersHandler.FilterContacts)
+
+	accounts.Get("/agents", ownerAdmin, agentsHandler.List)
+	accounts.Post("/agents/invite", ownerAdmin, agentsHandler.Invite)
+	accounts.Patch("/agents/:userId", ownerAdmin, agentsHandler.Update)
+	accounts.Delete("/agents/:userId", ownerAdmin, agentsHandler.Remove)
+
+	api.Put("/users/:id", jwtAuth, userProfileHandler.UpdateProfile)
+
+	accounts.Get("/macros", agentPlus, macrosHandler.List)
+	accounts.Post("/macros", ownerAdmin, macrosHandler.Create)
+	accounts.Get("/macros/:id", agentPlus, macrosHandler.Get)
+	accounts.Patch("/macros/:id", ownerAdmin, macrosHandler.Update)
+	accounts.Delete("/macros/:id", ownerAdmin, macrosHandler.Delete)
+	accounts.Post("/conversations/:convId/apply_macro/:macroId", agentPlus, macrosHandler.Apply)
+
+	accounts.Get("/slas", ownerAdmin, slaHandler.List)
+	accounts.Post("/slas", ownerAdmin, slaHandler.Create)
+	accounts.Get("/slas/:id", ownerAdmin, slaHandler.Get)
+	accounts.Patch("/slas/:id", ownerAdmin, slaHandler.Update)
+	accounts.Delete("/slas/:id", ownerAdmin, slaHandler.Delete)
+	accounts.Get("/reports/sla", ownerAdmin, slaHandler.Report)
+	accounts.Get("/reports/overview", ownerAdmin, reportsHandler.Overview)
+	accounts.Get("/reports/conversations", ownerAdmin, reportsHandler.Conversations)
+	accounts.Get("/reports/csat", ownerAdmin, reportsHandler.CSAT)
+	accounts.Get("/reports/:entity", ownerAdmin, reportsHandler.Entity)
+
+	accounts.Get("/webhooks", ownerAdmin, webhooksHandler.List)
+	accounts.Post("/webhooks", ownerAdmin, webhooksHandler.Create)
+	accounts.Patch("/webhooks/:id", ownerAdmin, webhooksHandler.Update)
+	accounts.Delete("/webhooks/:id", ownerAdmin, webhooksHandler.Delete)
+
+	accounts.Get("/audit_logs", ownerAdmin, auditLogsHandler.List)
+
+	accounts.Get("/notifications", agentPlus, notificationsHandler.List)
+	accounts.Post("/notifications/mark_all_read", agentPlus, notificationsHandler.MarkAllRead)
+	accounts.Post("/notifications/:id/read", agentPlus, notificationsHandler.MarkRead)
+
+	api.Get("/users/:id/notification_preferences", jwtAuth, notificationsHandler.GetPreferences)
+	api.Put("/users/:id/notification_preferences", jwtAuth, notificationsHandler.SetPreferences)
 
 	public := s.App.Group("/public/api/v1")
 	publicInbox := public.Group("/inboxes/:identifier", middleware.ApiToken(channelApiRepo), middleware.HmacOptional(cipher))
@@ -273,12 +372,12 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	)
 	channelRegistry.Register(appchannel.KindSms, smsChannel)
 
-	smsWebhookHandler := handler.NewSmsWebhookHandler(
+	smsWebhookHandler := handler.NewSMSWebhookHandler(
 		channelSMSRepo, messageRepo, smsRegistry, smsIngestSvc, realtimeSvc,
 	)
 
 	smsBaseURL := cfg.APIURL
-	smsInboxHandler := handler.NewSmsInboxHandler(
+	smsInboxHandler := handler.NewSMSInboxHandler(
 		channelSMSRepo, inboxRepo, smsRegistry, cipher, smsBaseURL,
 	)
 

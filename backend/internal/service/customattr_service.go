@@ -39,21 +39,21 @@ var validDisplayTypes = map[string]bool{
 	"link": true, "date": true, "list": true, "checkbox": true,
 }
 
-type CustomAttributesService struct {
+type CustomAttributeService struct {
 	defRepo     *repo.CustomAttributeDefinitionRepo
 	contactRepo *repo.ContactRepo
 	convRepo    *repo.ConversationRepo
 }
 
-func NewCustomAttributesService(defRepo *repo.CustomAttributeDefinitionRepo, contactRepo *repo.ContactRepo, convRepo *repo.ConversationRepo) *CustomAttributesService {
-	return &CustomAttributesService{defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
+func NewCustomAttributeService(defRepo *repo.CustomAttributeDefinitionRepo, contactRepo *repo.ContactRepo, convRepo *repo.ConversationRepo) *CustomAttributeService {
+	return &CustomAttributeService{defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
 }
 
-func (s *CustomAttributesService) ListDefinitions(ctx context.Context, accountID int64, attributeModel string) ([]model.CustomAttributeDefinition, error) {
+func (s *CustomAttributeService) ListDefinitions(ctx context.Context, accountID int64, attributeModel string) ([]model.CustomAttributeDefinition, error) {
 	return s.defRepo.ListByAccount(ctx, accountID, attributeModel)
 }
 
-func (s *CustomAttributesService) CreateDefinition(ctx context.Context, accountID int64, m *model.CustomAttributeDefinition) (*model.CustomAttributeDefinition, error) {
+func (s *CustomAttributeService) CreateDefinition(ctx context.Context, accountID int64, m *model.CustomAttributeDefinition) (*model.CustomAttributeDefinition, error) {
 	m.AttributeKey = strings.TrimSpace(m.AttributeKey)
 	if !attrKeyRegex.MatchString(m.AttributeKey) {
 		return nil, fmt.Errorf("invalid attribute_key format")
@@ -86,7 +86,7 @@ func (s *CustomAttributesService) CreateDefinition(ctx context.Context, accountI
 	return m, nil
 }
 
-func (s *CustomAttributesService) UpdateDefinition(ctx context.Context, id, accountID int64, m *model.CustomAttributeDefinition) (*model.CustomAttributeDefinition, error) {
+func (s *CustomAttributeService) UpdateDefinition(ctx context.Context, id, accountID int64, m *model.CustomAttributeDefinition) (*model.CustomAttributeDefinition, error) {
 	existing, err := s.defRepo.FindByID(ctx, id, accountID)
 	if err != nil {
 		return nil, err
@@ -127,31 +127,31 @@ func (s *CustomAttributesService) UpdateDefinition(ctx context.Context, id, acco
 	return existing, nil
 }
 
-func (s *CustomAttributesService) DeleteDefinition(ctx context.Context, id, accountID int64) error {
+func (s *CustomAttributeService) DeleteDefinition(ctx context.Context, id, accountID int64) error {
 	return s.defRepo.Delete(ctx, id, accountID)
 }
 
-func (s *CustomAttributesService) GetDefinitionByID(ctx context.Context, id, accountID int64) (*model.CustomAttributeDefinition, error) {
+func (s *CustomAttributeService) GetDefinitionByID(ctx context.Context, id, accountID int64) (*model.CustomAttributeDefinition, error) {
 	return s.defRepo.FindByID(ctx, id, accountID)
 }
 
-func (s *CustomAttributesService) SetContactAttributes(ctx context.Context, contactID, accountID int64, values map[string]any) (*string, error) {
+func (s *CustomAttributeService) SetContactAttributes(ctx context.Context, contactID, accountID int64, values map[string]any) (*string, error) {
 	return s.setAttributes(ctx, "contact", contactID, accountID, values)
 }
 
-func (s *CustomAttributesService) RemoveContactAttributes(ctx context.Context, contactID, accountID int64, keys []string) (*string, error) {
+func (s *CustomAttributeService) RemoveContactAttributes(ctx context.Context, contactID, accountID int64, keys []string) (*string, error) {
 	return s.removeAttributes(ctx, "contact", contactID, accountID, keys)
 }
 
-func (s *CustomAttributesService) SetConversationAttributes(ctx context.Context, conversationID, accountID int64, values map[string]any) (*string, error) {
+func (s *CustomAttributeService) SetConversationAttributes(ctx context.Context, conversationID, accountID int64, values map[string]any) (*string, error) {
 	return s.setAttributes(ctx, "conversation", conversationID, accountID, values)
 }
 
-func (s *CustomAttributesService) RemoveConversationAttributes(ctx context.Context, conversationID, accountID int64, keys []string) (*string, error) {
+func (s *CustomAttributeService) RemoveConversationAttributes(ctx context.Context, conversationID, accountID int64, keys []string) (*string, error) {
 	return s.removeAttributes(ctx, "conversation", conversationID, accountID, keys)
 }
 
-func (s *CustomAttributesService) setAttributes(ctx context.Context, targetType string, targetID, accountID int64, values map[string]any) (*string, error) {
+func (s *CustomAttributeService) setAttributes(ctx context.Context, targetType string, targetID, accountID int64, values map[string]any) (*string, error) {
 	for key := range values {
 		def, err := s.defRepo.FindByKeyAndModel(ctx, accountID, key, targetType)
 		if err != nil {
@@ -221,7 +221,7 @@ func (s *CustomAttributesService) setAttributes(ctx context.Context, targetType 
 	return &result, nil
 }
 
-func (s *CustomAttributesService) removeAttributes(ctx context.Context, targetType string, targetID, accountID int64, keys []string) (*string, error) {
+func (s *CustomAttributeService) removeAttributes(ctx context.Context, targetType string, targetID, accountID int64, keys []string) (*string, error) {
 	var existingAttrs string
 	if targetType == "contact" {
 		c, err := s.contactRepo.FindByID(ctx, targetID, accountID)

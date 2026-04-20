@@ -16,22 +16,22 @@ var (
 	ErrInvalidAttributeKey   = fmt.Errorf("invalid_attribute_key")
 )
 
-type SavedFiltersService struct {
+type SavedFilterService struct {
 	filterRepo  *repo.CustomFilterRepo
 	defRepo     *repo.CustomAttributeDefinitionRepo
 	contactRepo *repo.ContactRepo
 	convRepo    *repo.ConversationRepo
 }
 
-func NewSavedFiltersService(filterRepo *repo.CustomFilterRepo, defRepo *repo.CustomAttributeDefinitionRepo, contactRepo *repo.ContactRepo, convRepo *repo.ConversationRepo) *SavedFiltersService {
-	return &SavedFiltersService{filterRepo: filterRepo, defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
+func NewSavedFilterService(filterRepo *repo.CustomFilterRepo, defRepo *repo.CustomAttributeDefinitionRepo, contactRepo *repo.ContactRepo, convRepo *repo.ConversationRepo) *SavedFilterService {
+	return &SavedFilterService{filterRepo: filterRepo, defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
 }
 
-func (s *SavedFiltersService) List(ctx context.Context, accountID, userID int64, filterType string) ([]model.CustomFilter, error) {
+func (s *SavedFilterService) List(ctx context.Context, accountID, userID int64, filterType string) ([]model.CustomFilter, error) {
 	return s.filterRepo.ListByUser(ctx, accountID, userID, filterType)
 }
 
-func (s *SavedFiltersService) Create(ctx context.Context, accountID, userID int64, name, filterType string, query json.RawMessage) (*model.CustomFilter, error) {
+func (s *SavedFilterService) Create(ctx context.Context, accountID, userID int64, name, filterType string, query json.RawMessage) (*model.CustomFilter, error) {
 	count, err := s.filterRepo.CountByUser(ctx, accountID, userID)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (s *SavedFiltersService) Create(ctx context.Context, accountID, userID int6
 	return m, nil
 }
 
-func (s *SavedFiltersService) Update(ctx context.Context, id, accountID, userID int64, name *string, filterType *string, query *json.RawMessage) (*model.CustomFilter, error) {
+func (s *SavedFilterService) Update(ctx context.Context, id, accountID, userID int64, name *string, filterType *string, query *json.RawMessage) (*model.CustomFilter, error) {
 	m, err := s.filterRepo.FindByID(ctx, id, accountID, userID)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (s *SavedFiltersService) Update(ctx context.Context, id, accountID, userID 
 	return m, nil
 }
 
-func (s *SavedFiltersService) Delete(ctx context.Context, id, accountID, userID int64) error {
+func (s *SavedFilterService) Delete(ctx context.Context, id, accountID, userID int64) error {
 	return s.filterRepo.Delete(ctx, id, accountID, userID)
 }
 

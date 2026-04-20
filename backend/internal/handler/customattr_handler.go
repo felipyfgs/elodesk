@@ -12,15 +12,15 @@ import (
 	"backend/internal/service"
 )
 
-type CustomAttributesHandler struct {
-	svc *service.CustomAttributesService
+type CustomAttributeHandler struct {
+	svc *service.CustomAttributeService
 }
 
-func NewCustomAttributesHandler(svc *service.CustomAttributesService) *CustomAttributesHandler {
-	return &CustomAttributesHandler{svc: svc}
+func NewCustomAttributeHandler(svc *service.CustomAttributeService) *CustomAttributeHandler {
+	return &CustomAttributeHandler{svc: svc}
 }
 
-func (h *CustomAttributesHandler) ListDefinitions(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) ListDefinitions(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -36,7 +36,7 @@ func (h *CustomAttributesHandler) ListDefinitions(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CustomAttrDefsToResp(defs)))
 }
 
-func (h *CustomAttributesHandler) CreateDefinition(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) CreateDefinition(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -70,7 +70,7 @@ func (h *CustomAttributesHandler) CreateDefinition(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.CustomAttrDefToResp(def)))
 }
 
-func (h *CustomAttributesHandler) UpdateDefinition(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) UpdateDefinition(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -115,7 +115,7 @@ func (h *CustomAttributesHandler) UpdateDefinition(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CustomAttrDefToResp(def)))
 }
 
-func (h *CustomAttributesHandler) DeleteDefinition(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) DeleteDefinition(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -133,7 +133,7 @@ func (h *CustomAttributesHandler) DeleteDefinition(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *CustomAttributesHandler) SetContactAttributes(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) SetContactAttributes(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -157,7 +157,7 @@ func (h *CustomAttributesHandler) SetContactAttributes(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(result))
 }
 
-func (h *CustomAttributesHandler) RemoveContactAttributes(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) RemoveContactAttributes(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -181,7 +181,7 @@ func (h *CustomAttributesHandler) RemoveContactAttributes(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(result))
 }
 
-func (h *CustomAttributesHandler) SetConversationAttributes(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) SetConversationAttributes(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -205,7 +205,7 @@ func (h *CustomAttributesHandler) SetConversationAttributes(c *fiber.Ctx) error 
 	return c.JSON(dto.SuccessResp(result))
 }
 
-func (h *CustomAttributesHandler) RemoveConversationAttributes(c *fiber.Ctx) error {
+func (h *CustomAttributeHandler) RemoveConversationAttributes(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

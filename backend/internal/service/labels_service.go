@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,24 +12,24 @@ import (
 )
 
 var ErrLabelTitleTaken = repo.ErrLabelTitleTaken
-var ErrInvalidLabelColor = fmt.Errorf("invalid hex color")
+var ErrInvalidLabelColor = errors.New("invalid hex color")
 
 var hexColorRegex = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
-type LabelsService struct {
+type LabelService struct {
 	labelRepo *repo.LabelRepo
 	rt        *RealtimeService
 }
 
-func NewLabelsService(labelRepo *repo.LabelRepo, rt *RealtimeService) *LabelsService {
-	return &LabelsService{labelRepo: labelRepo, rt: rt}
+func NewLabelService(labelRepo *repo.LabelRepo, rt *RealtimeService) *LabelService {
+	return &LabelService{labelRepo: labelRepo, rt: rt}
 }
 
-func (s *LabelsService) List(ctx context.Context, accountID int64) ([]model.Label, error) {
+func (s *LabelService) List(ctx context.Context, accountID int64) ([]model.Label, error) {
 	return s.labelRepo.ListByAccount(ctx, accountID)
 }
 
-func (s *LabelsService) Create(ctx context.Context, accountID int64, title string, color string, description *string, showOnSidebar bool) (*model.Label, error) {
+func (s *LabelService) Create(ctx context.Context, accountID int64, title string, color string, description *string, showOnSidebar bool) (*model.Label, error) {
 	title = strings.ToLower(strings.TrimSpace(title))
 	if title == "" {
 		return nil, fmt.Errorf("label title is required")
@@ -56,7 +57,7 @@ func (s *LabelsService) Create(ctx context.Context, accountID int64, title strin
 	return m, nil
 }
 
-func (s *LabelsService) Update(ctx context.Context, id, accountID int64, title *string, color *string, description *string, showOnSidebar *bool) (*model.Label, error) {
+func (s *LabelService) Update(ctx context.Context, id, accountID int64, title *string, color *string, description *string, showOnSidebar *bool) (*model.Label, error) {
 	m, err := s.labelRepo.FindByID(ctx, id, accountID)
 	if err != nil {
 		return nil, err
@@ -85,7 +86,7 @@ func (s *LabelsService) Update(ctx context.Context, id, accountID int64, title *
 	return m, nil
 }
 
-func (s *LabelsService) Delete(ctx context.Context, id, accountID int64) error {
+func (s *LabelService) Delete(ctx context.Context, id, accountID int64) error {
 	if err := s.labelRepo.Delete(ctx, id, accountID); err != nil {
 		return err
 	}
@@ -96,7 +97,7 @@ func (s *LabelsService) Delete(ctx context.Context, id, accountID int64) error {
 	return nil
 }
 
-func (s *LabelsService) ApplyLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
+func (s *LabelService) ApplyLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
 	if _, err := s.labelRepo.FindByID(ctx, labelID, accountID); err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func (s *LabelsService) ApplyLabel(ctx context.Context, accountID, labelID int64
 	return nil
 }
 
-func (s *LabelsService) RemoveLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
+func (s *LabelService) RemoveLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
 	if err := s.labelRepo.RemoveLabel(ctx, accountID, labelID, taggableType, taggableID); err != nil {
 		return err
 	}
@@ -137,6 +138,6 @@ func (s *LabelsService) RemoveLabel(ctx context.Context, accountID, labelID int6
 	return nil
 }
 
-func (s *LabelsService) ListByTaggable(ctx context.Context, accountID int64, taggableType string, taggableID int64) ([]model.Label, error) {
+func (s *LabelService) ListByTaggable(ctx context.Context, accountID int64, taggableType string, taggableID int64) ([]model.Label, error) {
 	return s.labelRepo.ListByTaggable(ctx, accountID, taggableType, taggableID)
 }

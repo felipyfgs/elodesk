@@ -11,15 +11,15 @@ import (
 	"backend/internal/service"
 )
 
-type LabelsHandler struct {
-	svc *service.LabelsService
+type LabelHandler struct {
+	svc *service.LabelService
 }
 
-func NewLabelsHandler(svc *service.LabelsService) *LabelsHandler {
-	return &LabelsHandler{svc: svc}
+func NewLabelHandler(svc *service.LabelService) *LabelHandler {
+	return &LabelHandler{svc: svc}
 }
 
-func (h *LabelsHandler) List(c *fiber.Ctx) error {
+func (h *LabelHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -33,7 +33,7 @@ func (h *LabelsHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.LabelsToResp(labels)))
 }
 
-func (h *LabelsHandler) Create(c *fiber.Ctx) error {
+func (h *LabelHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -61,7 +61,7 @@ func (h *LabelsHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.LabelToResp(label)))
 }
 
-func (h *LabelsHandler) Update(c *fiber.Ctx) error {
+func (h *LabelHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -85,7 +85,7 @@ func (h *LabelsHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.LabelToResp(label)))
 }
 
-func (h *LabelsHandler) Delete(c *fiber.Ctx) error {
+func (h *LabelHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -103,7 +103,7 @@ func (h *LabelsHandler) Delete(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *LabelsHandler) ApplyToConversation(c *fiber.Ctx) error {
+func (h *LabelHandler) ApplyToConversation(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -126,7 +126,7 @@ func (h *LabelsHandler) ApplyToConversation(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *LabelsHandler) RemoveFromConversation(c *fiber.Ctx) error {
+func (h *LabelHandler) RemoveFromConversation(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -149,7 +149,7 @@ func (h *LabelsHandler) RemoveFromConversation(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *LabelsHandler) ListConversationLabels(c *fiber.Ctx) error {
+func (h *LabelHandler) ListConversationLabels(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -168,7 +168,7 @@ func (h *LabelsHandler) ListConversationLabels(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.LabelsToResp(labels)))
 }
 
-func (h *LabelsHandler) ApplyToContact(c *fiber.Ctx) error {
+func (h *LabelHandler) ApplyToContact(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -191,7 +191,7 @@ func (h *LabelsHandler) ApplyToContact(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *LabelsHandler) RemoveFromContact(c *fiber.Ctx) error {
+func (h *LabelHandler) RemoveFromContact(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -214,7 +214,7 @@ func (h *LabelsHandler) RemoveFromContact(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *LabelsHandler) ListContactLabels(c *fiber.Ctx) error {
+func (h *LabelHandler) ListContactLabels(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

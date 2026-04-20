@@ -17,14 +17,14 @@ import (
 
 type WhatsAppInboxHandler struct {
 	inboxRepo           *repo.InboxRepo
-	channelWhatsappRepo *repo.ChannelWhatsappRepo
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo
 	cipher              *crypto.Cipher
 	waSvc               *wa.Service
 }
 
 func NewWhatsAppInboxHandler(
 	inboxRepo *repo.InboxRepo,
-	channelWhatsappRepo *repo.ChannelWhatsappRepo,
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo,
 	cipher *crypto.Cipher,
 	waSvc *wa.Service,
 ) *WhatsAppInboxHandler {
@@ -53,7 +53,7 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to encrypt api key"))
 	}
 
-	ch := &model.ChannelWhatsapp{
+	ch := &model.ChannelWhatsApp{
 		AccountID:        accountID,
 		Provider:         req.Provider,
 		PhoneNumber:      req.PhoneNumber,

@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/logger"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -30,7 +33,7 @@ func NewContactHandler(
 }
 
 func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -78,7 +81,7 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 }
 
 func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -104,7 +107,7 @@ func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
 }
 
 func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -145,11 +148,23 @@ func (h *ContactHandler) Search(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
 	}
 
-	query := c.Query("q", "")
+	query := c.Query("search", c.Query("q", ""))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
-	perPage, _ := strconv.Atoi(c.Query("per_page", "25"))
+	perPage, _ := strconv.Atoi(c.Query("pageSize", c.Query("per_page", "25")))
+	if perPage > 100 {
+		perPage = 100
+	}
+	if perPage < 1 {
+		perPage = 25
+	}
 
-	contacts, total, err := h.svc.Search(c.Context(), accountID, query, page, perPage)
+	labels := c.Query("labels")
+	var labelList []string
+	if labels != "" {
+		labelList = strings.Split(labels, ",")
+	}
+
+	contacts, total, err := h.svc.SearchWithLabels(c.Context(), accountID, query, labelList, page, perPage)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -225,4 +240,56 @@ func (h *ContactHandler) ListContactConversations(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ConversationsToResp(convos)))
+}
+
+func (h *ContactHandler) Import(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	body := c.Body()
+	if len(body) > 10*1024*1024 {
+		return c.Status(fiber.StatusRequestEntityTooLarge).JSON(dto.ErrorResp("Too Large", "file must be under 10 MB"))
+	}
+
+	parsed, err := ParseContactCSV(string(body))
+	if err != nil {
+		if errors.Is(err, ErrMissingRequiredColumn) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "CSV must have at least 'name' or 'email' column"))
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "failed to parse CSV"))
+	}
+
+	const batchSize = 500
+	var resp dto.ContactImportResp
+	importErrors := parsed.Errors
+	processed := 0
+
+	for i := 0; i < len(parsed.Contacts); i += batchSize {
+		end := i + batchSize
+		if end > len(parsed.Contacts) {
+			end = len(parsed.Contacts)
+		}
+		batch := parsed.Contacts[i:end]
+
+		result, err := h.svc.ImportBatch(c.Context(), accountID, batch)
+		if err != nil {
+			logger.Error().Str("component", "handler").Err(err).Msg("contact import batch error")
+			for j := range batch {
+				importErrors = append(importErrors, dto.ImportError{Row: i + j + 2, Reason: "batch insert failed"})
+			}
+		} else {
+			resp.Inserted += result.Inserted
+			resp.Updated += result.Updated
+		}
+		processed += len(batch)
+	}
+
+	resp.TotalRows = processed
+	if len(importErrors) > 0 {
+		resp.Errors = importErrors
+	}
+
+	return c.JSON(dto.SuccessResp(resp))
 }

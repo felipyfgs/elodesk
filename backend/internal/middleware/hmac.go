@@ -18,7 +18,7 @@ import (
 // from the channel row (AES-GCM ciphertext in hmac_token).
 func HmacOptional(cipher *crypto.Cipher) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+		channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 		if !ok {
 			return c.Next()
 		}

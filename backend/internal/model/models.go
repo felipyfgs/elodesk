@@ -5,12 +5,15 @@ import (
 )
 
 type User struct {
-	ID           int64     `json:"id"`
-	Email        string    `json:"email"`
-	Name         string    `json:"name"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID                  int64     `json:"id"`
+	Email               string    `json:"email"`
+	Name                string    `json:"name"`
+	PasswordHash        string    `json:"-"`
+	AvatarURL           *string   `json:"avatarUrl,omitempty"`
+	MfaEnabled          bool      `json:"mfaEnabled"`
+	MfaSecretCiphertext *string   `json:"-"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
 }
 
 type Account struct {
@@ -58,10 +61,10 @@ type Inbox struct {
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
-// ChannelApi is the persisted shape of a Channel::Api record. Secret fields
+// ChannelAPI is the persisted shape of a Channel::Api record. Secret fields
 // (HmacToken ciphertext, ApiTokenHash) are marked json:"-" so they never leak
 // through accidental marshalling (broadcasts, responses, logs).
-type ChannelApi struct {
+type ChannelAPI struct {
 	ID            int64     `json:"id"`
 	AccountID     int64     `json:"accountId"`
 	WebhookURL    string    `json:"webhookUrl,omitempty"`
@@ -190,7 +193,7 @@ const (
 	FileTypeFallback AttachmentFileType = 5
 )
 
-type ChannelWhatsapp struct {
+type ChannelWhatsApp struct {
 	ID                           int64      `json:"id"`
 	AccountID                    int64      `json:"accountId"`
 	Provider                     string     `json:"provider"`
@@ -390,4 +393,89 @@ type CustomFilter struct {
 	Query      *string   `json:"query"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+type InboxAgent struct {
+	ID        int64     `json:"id"`
+	InboxID   int64     `json:"inboxId"`
+	UserID    int64     `json:"userId"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type AgentInvitation struct {
+	ID         int64      `json:"id"`
+	AccountID  int64      `json:"accountId"`
+	Email      string     `json:"email"`
+	Role       Role       `json:"role"`
+	Name       *string    `json:"name,omitempty"`
+	TokenHash  string     `json:"-"`
+	ExpiresAt  time.Time  `json:"expiresAt"`
+	ConsumedAt *time.Time `json:"consumedAt,omitempty"`
+	CreatedBy  int64      `json:"createdBy"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+}
+
+type Macro struct {
+	ID         int64     `json:"id"`
+	AccountID  int64     `json:"accountId"`
+	Name       string    `json:"name"`
+	Visibility string    `json:"visibility"`
+	Conditions string    `json:"conditions"`
+	Actions    string    `json:"actions"`
+	CreatedBy  int64     `json:"createdBy"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+type SLAPolicy struct {
+	ID                   int64     `json:"id"`
+	AccountID            int64     `json:"accountId"`
+	Name                 string    `json:"name"`
+	FirstResponseMinutes int       `json:"firstResponseMinutes"`
+	ResolutionMinutes    int       `json:"resolutionMinutes"`
+	BusinessHoursOnly    bool      `json:"businessHoursOnly"`
+	CreatedAt            time.Time `json:"createdAt"`
+	UpdatedAt            time.Time `json:"updatedAt"`
+}
+
+type SLABinding struct {
+	ID      int64  `json:"id"`
+	SlaID   int64  `json:"slaId"`
+	InboxID *int64 `json:"inboxId,omitempty"`
+	LabelID *int64 `json:"labelId,omitempty"`
+}
+
+type AuditLog struct {
+	ID         int64  `json:"id"`
+	AccountID  int64  `json:"accountId"`
+	UserID     *int64 `json:"userId,omitempty"`
+	Action     string `json:"action"`
+	EntityType string `json:"entityType,omitempty"`
+	EntityID   *int64 `json:"entityId,omitempty"`
+	Metadata   string `json:"metadata,omitempty"`
+	IPAddress  string `json:"ipAddress,omitempty"`
+	UserAgent  string `json:"userAgent,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+type Notification struct {
+	ID        int64      `json:"id"`
+	AccountID int64      `json:"accountId"`
+	UserID    int64      `json:"userId"`
+	Type      string     `json:"type"`
+	Payload   string     `json:"payload"`
+	ReadAt    *time.Time `json:"readAt,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+}
+
+type OutboundWebhook struct {
+	ID            int64     `json:"id"`
+	AccountID     int64     `json:"accountId"`
+	URL           string    `json:"url"`
+	Subscriptions string    `json:"subscriptions"`
+	Secret        string    `json:"-"`
+	IsActive      bool      `json:"isActive"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }

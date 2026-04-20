@@ -43,7 +43,7 @@ type WaSendPayload struct {
 }
 
 type Service struct {
-	channelWhatsappRepo *repo.ChannelWhatsappRepo
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo
 	inboxRepo           *repo.InboxRepo
 	messageRepo         *repo.MessageRepo
 	conversationRepo    *repo.ConversationRepo
@@ -57,7 +57,7 @@ type Service struct {
 }
 
 func NewService(
-	channelWhatsappRepo *repo.ChannelWhatsappRepo,
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo,
 	inboxRepo *repo.InboxRepo,
 	messageRepo *repo.MessageRepo,
 	conversationRepo *repo.ConversationRepo,
@@ -131,7 +131,7 @@ func (s *Service) findInboxByIdentifier(ctx context.Context, identifier string) 
 	return s.inboxRepo.FindByIdentifier(ctx, identifier)
 }
 
-func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWhatsapp, inbox *model.Inbox, im appchannel.InboundMessage) error {
+func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWhatsApp, inbox *model.Inbox, im appchannel.InboundMessage) error {
 	dk := dedupKey(im.SourceID)
 	acquired, err := s.dedup.Acquire(ctx, dk)
 	if err != nil {
@@ -212,7 +212,7 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 	return nil
 }
 
-func (s *Service) processStatusUpdate(ctx context.Context, ch *model.ChannelWhatsapp, su appchannel.StatusUpdate) error {
+func (s *Service) processStatusUpdate(ctx context.Context, ch *model.ChannelWhatsApp, su appchannel.StatusUpdate) error {
 	msg, err := s.messageRepo.FindBySourceID(ctx, su.SourceID, ch.AccountID)
 	if err != nil {
 		return fmt.Errorf("find message by source_id: %w", err)
@@ -254,7 +254,7 @@ func (s *Service) ensureConversation(ctx context.Context, accountID, inboxID, co
 	return s.conversationRepo.EnsureOpen(ctx, accountID, inboxID, contactID)
 }
 
-func (s *Service) SendOutbound(ctx context.Context, ch *model.ChannelWhatsapp, to string, content string) (string, error) {
+func (s *Service) SendOutbound(ctx context.Context, ch *model.ChannelWhatsApp, to string, content string) (string, error) {
 	apiKey, err := s.cipher.Decrypt(ch.ApiKeyCiphertext)
 	if err != nil {
 		return "", fmt.Errorf("decrypt api key: %w", err)
@@ -314,7 +314,7 @@ func (s *Service) EnqueueAsyncSend(ctx context.Context, payload *WaSendPayload) 
 	return nil
 }
 
-func (s *Service) VerifyHandshake(ctx context.Context, ch *model.ChannelWhatsapp, query map[string]string) (string, bool) {
+func (s *Service) VerifyHandshake(ctx context.Context, ch *model.ChannelWhatsApp, query map[string]string) (string, bool) {
 	if ch.Provider != "whatsapp_cloud" {
 		return "", false
 	}
@@ -330,7 +330,7 @@ func (s *Service) VerifyHandshake(ctx context.Context, ch *model.ChannelWhatsapp
 	return provider.VerifyHandshake(ctx, query, token)
 }
 
-func (s *Service) SyncTemplatesForChannel(ctx context.Context, ch *model.ChannelWhatsapp) ([]appchannel.Template, error) {
+func (s *Service) SyncTemplatesForChannel(ctx context.Context, ch *model.ChannelWhatsApp) ([]appchannel.Template, error) {
 	apiKey, err := s.cipher.Decrypt(ch.ApiKeyCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt api key: %w", err)

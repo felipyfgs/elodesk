@@ -12,15 +12,15 @@ import (
 	"backend/internal/service"
 )
 
-type NotesHandler struct {
-	svc *service.NotesService
+type NoteHandler struct {
+	svc *service.NoteService
 }
 
-func NewNotesHandler(svc *service.NotesService) *NotesHandler {
-	return &NotesHandler{svc: svc}
+func NewNoteHandler(svc *service.NoteService) *NoteHandler {
+	return &NoteHandler{svc: svc}
 }
 
-func (h *NotesHandler) List(c *fiber.Ctx) error {
+func (h *NoteHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -45,7 +45,7 @@ func (h *NotesHandler) List(c *fiber.Ctx) error {
 	}))
 }
 
-func (h *NotesHandler) Create(c *fiber.Ctx) error {
+func (h *NoteHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -74,7 +74,7 @@ func (h *NotesHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.NoteToResp(note)))
 }
 
-func (h *NotesHandler) Update(c *fiber.Ctx) error {
+func (h *NoteHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -108,7 +108,7 @@ func (h *NotesHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.NoteToResp(note)))
 }
 
-func (h *NotesHandler) Delete(c *fiber.Ctx) error {
+func (h *NoteHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

@@ -12,7 +12,7 @@ import (
 // ApiToken authenticates provider (Channel::Api) requests by looking up the
 // SHA-256 hash of the provided `api_access_token` header. The plaintext token
 // is never stored — only the hash in channels_api.api_token_hash.
-func ApiToken(channelApiRepo *repo.ChannelApiRepo) fiber.Handler {
+func ApiToken(channelApiRepo *repo.ChannelAPIRepo) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Get("api_access_token")
 		if token == "" {

@@ -11,15 +11,15 @@ import (
 	"backend/internal/service"
 )
 
-type TeamsHandler struct {
-	svc *service.TeamsService
+type TeamHandler struct {
+	svc *service.TeamService
 }
 
-func NewTeamsHandler(svc *service.TeamsService) *TeamsHandler {
-	return &TeamsHandler{svc: svc}
+func NewTeamHandler(svc *service.TeamService) *TeamHandler {
+	return &TeamHandler{svc: svc}
 }
 
-func (h *TeamsHandler) List(c *fiber.Ctx) error {
+func (h *TeamHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -33,7 +33,7 @@ func (h *TeamsHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.TeamsToResp(teams)))
 }
 
-func (h *TeamsHandler) Create(c *fiber.Ctx) error {
+func (h *TeamHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -57,7 +57,7 @@ func (h *TeamsHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.TeamToResp(team)))
 }
 
-func (h *TeamsHandler) Update(c *fiber.Ctx) error {
+func (h *TeamHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -81,7 +81,7 @@ func (h *TeamsHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.TeamToResp(team)))
 }
 
-func (h *TeamsHandler) Delete(c *fiber.Ctx) error {
+func (h *TeamHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -99,7 +99,7 @@ func (h *TeamsHandler) Delete(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *TeamsHandler) ListMembers(c *fiber.Ctx) error {
+func (h *TeamHandler) ListMembers(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -118,7 +118,7 @@ func (h *TeamsHandler) ListMembers(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(members))
 }
 
-func (h *TeamsHandler) AddMembers(c *fiber.Ctx) error {
+func (h *TeamHandler) AddMembers(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -142,7 +142,7 @@ func (h *TeamsHandler) AddMembers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(members))
 }
 
-func (h *TeamsHandler) RemoveMembers(c *fiber.Ctx) error {
+func (h *TeamHandler) RemoveMembers(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

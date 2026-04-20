@@ -8,8 +8,8 @@ import (
 )
 
 // Broadcast safety: `payload` is serialised to JSON verbatim. Domain models
-// that carry secrets (model.User.PasswordHash, model.ChannelApi.HmacToken,
-// model.ChannelApi.Secret, model.ChannelApi.ApiTokenHash) are tagged json:"-"
+// that carry secrets (model.User.PasswordHash, model.ChannelAPI.HmacToken,
+// model.ChannelAPI.Secret, model.ChannelAPI.ApiTokenHash) are tagged json:"-"
 // so passing them directly is safe. Callers SHOULD prefer dedicated dto.*
 // response types for broadcasts to keep the wire shape explicit.
 

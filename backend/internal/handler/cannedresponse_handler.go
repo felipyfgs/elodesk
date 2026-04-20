@@ -11,15 +11,15 @@ import (
 	"backend/internal/service"
 )
 
-type CannedResponsesHandler struct {
-	svc *service.CannedResponsesService
+type CannedResponseHandler struct {
+	svc *service.CannedResponseService
 }
 
-func NewCannedResponsesHandler(svc *service.CannedResponsesService) *CannedResponsesHandler {
-	return &CannedResponsesHandler{svc: svc}
+func NewCannedResponseHandler(svc *service.CannedResponseService) *CannedResponseHandler {
+	return &CannedResponseHandler{svc: svc}
 }
 
-func (h *CannedResponsesHandler) List(c *fiber.Ctx) error {
+func (h *CannedResponseHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -36,7 +36,7 @@ func (h *CannedResponsesHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CannedResponsesToResp(items)))
 }
 
-func (h *CannedResponsesHandler) Create(c *fiber.Ctx) error {
+func (h *CannedResponseHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -55,7 +55,7 @@ func (h *CannedResponsesHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.CannedResponseToResp(item)))
 }
 
-func (h *CannedResponsesHandler) Update(c *fiber.Ctx) error {
+func (h *CannedResponseHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -79,7 +79,7 @@ func (h *CannedResponsesHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CannedResponseToResp(item)))
 }
 
-func (h *CannedResponsesHandler) Delete(c *fiber.Ctx) error {
+func (h *CannedResponseHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

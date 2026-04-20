@@ -30,7 +30,7 @@ func NewMessageHandler(
 }
 
 func (h *MessageHandler) Create(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelApi)
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}

@@ -15,17 +15,17 @@ import (
 	"backend/internal/service"
 )
 
-type SavedFiltersHandler struct {
-	svc     *service.SavedFiltersService
+type SavedFilterHandler struct {
+	svc     *service.SavedFilterService
 	defRepo *repo.CustomAttributeDefinitionRepo
 	pool    *pgxpool.Pool
 }
 
-func NewSavedFiltersHandler(svc *service.SavedFiltersService, defRepo *repo.CustomAttributeDefinitionRepo, pool *pgxpool.Pool) *SavedFiltersHandler {
-	return &SavedFiltersHandler{svc: svc, defRepo: defRepo, pool: pool}
+func NewSavedFilterHandler(svc *service.SavedFilterService, defRepo *repo.CustomAttributeDefinitionRepo, pool *pgxpool.Pool) *SavedFilterHandler {
+	return &SavedFilterHandler{svc: svc, defRepo: defRepo, pool: pool}
 }
 
-func (h *SavedFiltersHandler) List(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -46,7 +46,7 @@ func (h *SavedFiltersHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CustomFiltersToResp(filters)))
 }
 
-func (h *SavedFiltersHandler) Create(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -70,7 +70,7 @@ func (h *SavedFiltersHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.CustomFilterToResp(f)))
 }
 
-func (h *SavedFiltersHandler) Update(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -99,7 +99,7 @@ func (h *SavedFiltersHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.CustomFilterToResp(f)))
 }
 
-func (h *SavedFiltersHandler) Delete(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -122,7 +122,7 @@ func (h *SavedFiltersHandler) Delete(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-func (h *SavedFiltersHandler) FilterConversations(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) FilterConversations(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -152,7 +152,7 @@ func (h *SavedFiltersHandler) FilterConversations(c *fiber.Ctx) error {
 	return h.executeFilter(c, accountID, where, args, page, perPage, "conversations")
 }
 
-func (h *SavedFiltersHandler) FilterContacts(c *fiber.Ctx) error {
+func (h *SavedFilterHandler) FilterContacts(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -182,7 +182,7 @@ func (h *SavedFiltersHandler) FilterContacts(c *fiber.Ctx) error {
 	return h.executeFilter(c, accountID, where, args, page, perPage, "contacts")
 }
 
-func (h *SavedFiltersHandler) executeFilter(c *fiber.Ctx, accountID int64, where string, args []any, page, perPage int, tableName string) error {
+func (h *SavedFilterHandler) executeFilter(c *fiber.Ctx, accountID int64, where string, args []any, page, perPage int, tableName string) error {
 	ctx := c.Context()
 
 	if where == "" {

@@ -28,23 +28,23 @@ func NewOutboundWebhookService(asynqClient *asynq.Client) *OutboundWebhookServic
 	return &OutboundWebhookService{asynqClient: asynqClient}
 }
 
-func (s *OutboundWebhookService) DispatchMessageCreated(ctx context.Context, ch *model.ChannelApi, inboxID int64, conv *model.Conversation, msg *model.Message) error {
+func (s *OutboundWebhookService) DispatchMessageCreated(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation, msg *model.Message) error {
 	return s.dispatch(ctx, ch, inboxID, EventTypeMessageCreated, conv, msg, nil)
 }
 
-func (s *OutboundWebhookService) DispatchMessageUpdated(ctx context.Context, ch *model.ChannelApi, inboxID int64, conv *model.Conversation, msg *model.Message) error {
+func (s *OutboundWebhookService) DispatchMessageUpdated(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation, msg *model.Message) error {
 	return s.dispatch(ctx, ch, inboxID, EventTypeMessageUpdated, conv, msg, nil)
 }
 
-func (s *OutboundWebhookService) DispatchConversationStatusChanged(ctx context.Context, ch *model.ChannelApi, inboxID int64, conv *model.Conversation) error {
+func (s *OutboundWebhookService) DispatchConversationStatusChanged(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation) error {
 	return s.dispatch(ctx, ch, inboxID, EventTypeConversationStatusChanged, conv, nil, nil)
 }
 
-func (s *OutboundWebhookService) DispatchConversationUpdated(ctx context.Context, ch *model.ChannelApi, inboxID int64, conv *model.Conversation, attributes json.RawMessage) error {
+func (s *OutboundWebhookService) DispatchConversationUpdated(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation, attributes json.RawMessage) error {
 	return s.dispatch(ctx, ch, inboxID, EventTypeConversationUpdated, conv, nil, attributes)
 }
 
-func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.ChannelApi, inboxID int64, eventType string, conv *model.Conversation, msg *model.Message, convAttrs json.RawMessage) error {
+func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.ChannelAPI, inboxID int64, eventType string, conv *model.Conversation, msg *model.Message, convAttrs json.RawMessage) error {
 	// DeliveryID is generated HERE (once per delivery) and stored in the task
 	// payload so it survives retries. The processor never regenerates it.
 	payload := &webhook.OutboundPayload{

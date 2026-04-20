@@ -27,6 +27,7 @@ type AuthService struct {
 	userRepo         *repo.UserRepo
 	accountRepo      *repo.AccountRepo
 	refreshTokenRepo *repo.RefreshTokenRepo
+	mfaService       *MfaService
 	jwtSecret        string
 	accessTTL        time.Duration
 	refreshTTL       time.Duration
@@ -36,6 +37,7 @@ func NewAuthService(
 	userRepo *repo.UserRepo,
 	accountRepo *repo.AccountRepo,
 	refreshTokenRepo *repo.RefreshTokenRepo,
+	mfaService *MfaService,
 	jwtSecret string,
 	accessTTL, refreshTTL time.Duration,
 ) *AuthService {
@@ -43,6 +45,7 @@ func NewAuthService(
 		userRepo:         userRepo,
 		accountRepo:      accountRepo,
 		refreshTokenRepo: refreshTokenRepo,
+		mfaService:       mfaService,
 		jwtSecret:        jwtSecret,
 		accessTTL:        accessTTL,
 		refreshTTL:       refreshTTL,
@@ -125,6 +128,7 @@ type LoginResult struct {
 	Account      *model.Account
 	AccessToken  string
 	RefreshToken string
+	MfaToken     string // non-empty when MFA is required
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*LoginResult, error) {
@@ -143,6 +147,15 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*Login
 	}
 	if !match {
 		return nil, ErrInvalidCredentials
+	}
+
+	// If MFA is enabled, return an MFA token instead of JWT pair.
+	if user.MfaEnabled {
+		mfaToken, err := s.mfaService.GenerateMfaToken(user.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate mfa token: %w", err)
+		}
+		return &LoginResult{User: user, MfaToken: mfaToken}, nil
 	}
 
 	account, err := s.accountRepo.FindPrimaryByUserID(ctx, user.ID)
@@ -231,6 +244,36 @@ func (s *AuthService) Logout(ctx context.Context, userID int64, rawToken string,
 		return fmt.Errorf("failed to find refresh token: %w", err)
 	}
 	return s.refreshTokenRepo.Revoke(ctx, stored.ID)
+}
+
+// IssueTokenPair generates a JWT pair for a given user ID. Used after MFA verification.
+func (s *AuthService) IssueTokenPair(ctx context.Context, userID int64) (*LoginResult, error) {
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+
+	account, err := s.accountRepo.FindPrimaryByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve primary account: %w", err)
+	}
+
+	accessToken, err := s.generateAccessToken(user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	refreshToken, err := s.generateRefreshToken(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return &LoginResult{
+		User:         user,
+		Account:      account,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *AuthService) ValidateAccessToken(tokenStr string) (*repo.AuthUser, error) {

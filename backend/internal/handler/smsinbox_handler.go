@@ -16,7 +16,7 @@ import (
 	"backend/internal/repo"
 )
 
-type SmsInboxHandler struct {
+type SMSInboxHandler struct {
 	channelSMSRepo *repo.ChannelSMSRepo
 	inboxRepo      *repo.InboxRepo
 	registry       *sms.Registry
@@ -24,14 +24,14 @@ type SmsInboxHandler struct {
 	baseURL        string
 }
 
-func NewSmsInboxHandler(
+func NewSMSInboxHandler(
 	channelSMSRepo *repo.ChannelSMSRepo,
 	inboxRepo *repo.InboxRepo,
 	registry *sms.Registry,
 	cipher *crypto.Cipher,
 	baseURL string,
-) *SmsInboxHandler {
-	return &SmsInboxHandler{
+) *SMSInboxHandler {
+	return &SMSInboxHandler{
 		channelSMSRepo: channelSMSRepo,
 		inboxRepo:      inboxRepo,
 		registry:       registry,
@@ -40,7 +40,7 @@ func NewSmsInboxHandler(
 	}
 }
 
-func (h *SmsInboxHandler) Provision(c *fiber.Ctx) error {
+func (h *SMSInboxHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -141,7 +141,7 @@ func (h *SmsInboxHandler) Provision(c *fiber.Ctx) error {
 	}))
 }
 
-func (h *SmsInboxHandler) buildProviderConfig(provider string, cfg *dto.SMSProviderConfig) (*sms.ProviderConfig, error) {
+func (h *SMSInboxHandler) buildProviderConfig(provider string, cfg *dto.SMSProviderConfig) (*sms.ProviderConfig, error) {
 	pc := &sms.ProviderConfig{}
 
 	switch provider {

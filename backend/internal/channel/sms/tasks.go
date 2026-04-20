@@ -15,20 +15,20 @@ import (
 )
 
 const (
-	TypeChannelSmsIngest = "channel:sms:ingest"
-	TypeChannelSmsSend   = "channel:sms:send"
+	TypeChannelSMSIngest = "channel:sms:ingest"
+	TypeChannelSMSSend   = "channel:sms:send"
 	smsMaxRetries        = 5
 	smsTimeout           = 30 * time.Second
 )
 
-type SmsIngestPayload struct {
+type SMSIngestPayload struct {
 	ChannelID int64             `json:"channelId"`
 	Provider  string            `json:"provider"`
 	RawBody   string            `json:"rawBody"`
 	Headers   map[string]string `json:"headers"`
 }
 
-type SmsSendPayload struct {
+type SMSSendPayload struct {
 	ChannelID                int64    `json:"channelId"`
 	AccountID                int64    `json:"accountId"`
 	InboxID                  int64    `json:"inboxId"`
@@ -44,33 +44,33 @@ type SmsSendPayload struct {
 	StatusCallbackURL        string   `json:"statusCallbackUrl,omitempty"`
 }
 
-type SmsIngestProcessor struct {
+type SMSIngestProcessor struct {
 	ingestSvc  *IngestService
 	registry   *Registry
 	httpClient *http.Client
 }
 
-func NewSmsIngestProcessor(ingestSvc *IngestService, registry *Registry) *SmsIngestProcessor {
-	return &SmsIngestProcessor{
+func NewSMSIngestProcessor(ingestSvc *IngestService, registry *Registry) *SMSIngestProcessor {
+	return &SMSIngestProcessor{
 		ingestSvc:  ingestSvc,
 		registry:   registry,
 		httpClient: &http.Client{Timeout: smsTimeout},
 	}
 }
 
-func NewSmsIngestTask(payload *SmsIngestPayload) (*asynq.Task, error) {
+func NewSMSIngestTask(payload *SMSIngestPayload) (*asynq.Task, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal sms ingest payload: %w", err)
 	}
-	return asynq.NewTask(TypeChannelSmsIngest, data,
+	return asynq.NewTask(TypeChannelSMSIngest, data,
 		asynq.MaxRetry(smsMaxRetries),
 		asynq.Timeout(smsTimeout),
 	), nil
 }
 
-func (p *SmsIngestProcessor) HandleSmsIngest(ctx context.Context, t *asynq.Task) error {
-	var payload SmsIngestPayload
+func (p *SMSIngestProcessor) HandleSMSIngest(ctx context.Context, t *asynq.Task) error {
+	var payload SMSIngestPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		logger.Error().Str("component", "sms-ingest").Err(err).Msg("unmarshal payload")
 		return fmt.Errorf("unmarshal payload: %w", err)
@@ -79,7 +79,7 @@ func (p *SmsIngestProcessor) HandleSmsIngest(ctx context.Context, t *asynq.Task)
 	return fmt.Errorf("sms-ingest: use HandleInboundHTTP instead")
 }
 
-func (p *SmsIngestProcessor) HandleInboundHTTP(ctx context.Context, channelID int64, provider string, rawBody []byte, r *http.Request) error {
+func (p *SMSIngestProcessor) HandleInboundHTTP(ctx context.Context, channelID int64, provider string, rawBody []byte, r *http.Request) error {
 	prov, err := p.registry.Get(provider)
 	if err != nil {
 		return fmt.Errorf("sms ingest: get provider: %w", err)
@@ -98,15 +98,15 @@ func (p *SmsIngestProcessor) HandleInboundHTTP(ctx context.Context, channelID in
 	return p.ingestSvc.IngestInbound(ctx, ch, inbound)
 }
 
-type SmsSendProcessor struct {
+type SMSSendProcessor struct {
 	channelSMSRepo *repo.ChannelSMSRepo
 	messageRepo    *repo.MessageRepo
 	registry       *Registry
 	httpClient     *http.Client
 }
 
-func NewSmsSendProcessor(channelSMSRepo *repo.ChannelSMSRepo, messageRepo *repo.MessageRepo, registry *Registry) *SmsSendProcessor {
-	return &SmsSendProcessor{
+func NewSMSSendProcessor(channelSMSRepo *repo.ChannelSMSRepo, messageRepo *repo.MessageRepo, registry *Registry) *SMSSendProcessor {
+	return &SMSSendProcessor{
 		channelSMSRepo: channelSMSRepo,
 		messageRepo:    messageRepo,
 		registry:       registry,
@@ -114,19 +114,19 @@ func NewSmsSendProcessor(channelSMSRepo *repo.ChannelSMSRepo, messageRepo *repo.
 	}
 }
 
-func NewSmsSendTask(payload *SmsSendPayload) (*asynq.Task, error) {
+func NewSMSSendTask(payload *SMSSendPayload) (*asynq.Task, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal sms send payload: %w", err)
 	}
-	return asynq.NewTask(TypeChannelSmsSend, data,
+	return asynq.NewTask(TypeChannelSMSSend, data,
 		asynq.MaxRetry(smsMaxRetries),
 		asynq.Timeout(smsTimeout),
 	), nil
 }
 
-func (p *SmsSendProcessor) HandleSmsSend(ctx context.Context, t *asynq.Task) error {
-	var payload SmsSendPayload
+func (p *SMSSendProcessor) HandleSMSSend(ctx context.Context, t *asynq.Task) error {
+	var payload SMSSendPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		logger.Error().Str("component", "sms-send").Err(err).Msg("unmarshal payload")
 		return fmt.Errorf("unmarshal payload: %w", err)

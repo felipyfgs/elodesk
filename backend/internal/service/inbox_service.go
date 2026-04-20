@@ -16,21 +16,23 @@ import (
 // hmac_token as AES-GCM ciphertext) and never returned again.
 type InboxCredentials struct {
 	Inbox      *model.Inbox
-	ChannelApi *model.ChannelApi
+	ChannelAPI *model.ChannelAPI
 	ApiToken   string
 	HmacToken  string
 }
 
 type InboxService struct {
 	inboxRepo      *repo.InboxRepo
-	channelApiRepo *repo.ChannelApiRepo
+	channelApiRepo *repo.ChannelAPIRepo
+	inboxAgentRepo *repo.InboxAgentRepo
 	cipher         *crypto.Cipher
 }
 
-func NewInboxService(inboxRepo *repo.InboxRepo, channelApiRepo *repo.ChannelApiRepo, cipher *crypto.Cipher) *InboxService {
+func NewInboxService(inboxRepo *repo.InboxRepo, channelApiRepo *repo.ChannelAPIRepo, inboxAgentRepo *repo.InboxAgentRepo, cipher *crypto.Cipher) *InboxService {
 	return &InboxService{
 		inboxRepo:      inboxRepo,
 		channelApiRepo: channelApiRepo,
+		inboxAgentRepo: inboxAgentRepo,
 		cipher:         cipher,
 	}
 }
@@ -45,7 +47,7 @@ func (s *InboxService) Provision(ctx context.Context, accountID int64, name stri
 		return nil, fmt.Errorf("encrypt hmac token: %w", err)
 	}
 
-	channelApi := &model.ChannelApi{
+	channelApi := &model.ChannelAPI{
 		AccountID:     accountID,
 		Identifier:    identifier,
 		HmacToken:     hmacCiphertext,
@@ -69,7 +71,7 @@ func (s *InboxService) Provision(ctx context.Context, accountID int64, name stri
 
 	return &InboxCredentials{
 		Inbox:      inbox,
-		ChannelApi: channelApi,
+		ChannelAPI: channelApi,
 		ApiToken:   apiTokenPlaintext,
 		HmacToken:  hmacTokenPlaintext,
 	}, nil
@@ -93,4 +95,16 @@ func generateRandomToken(numBytes int) string {
 	b := make([]byte, numBytes)
 	_, _ = rand.Read(b)
 	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func (s *InboxService) ListInboxAgents(ctx context.Context, inboxID, accountID int64) ([]model.InboxAgent, error) {
+	return s.inboxAgentRepo.ListByInbox(ctx, inboxID, accountID)
+}
+
+func (s *InboxService) SetInboxAgents(ctx context.Context, inboxID, accountID int64, userIDs []int64) error {
+	return s.inboxAgentRepo.SetByInbox(ctx, inboxID, accountID, userIDs)
+}
+
+func (s *InboxService) UpdateName(ctx context.Context, id, accountID int64, name string) error {
+	return s.inboxRepo.UpdateName(ctx, id, accountID, name)
 }

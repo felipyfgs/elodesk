@@ -113,6 +113,14 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return handleServiceError(c, err)
 	}
 
+	// If MFA is required, return mfa_required response instead of JWT pair.
+	if res.MfaToken != "" {
+		return c.JSON(dto.SuccessResp(dto.LoginRespMfa{
+			MfaRequired: true,
+			MfaToken:    res.MfaToken,
+		}))
+	}
+
 	return c.JSON(dto.SuccessResp(dto.LoginResp{
 		User:         userToResp(res.User),
 		Account:      accountToResp(res.Account),

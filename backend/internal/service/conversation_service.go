@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"backend/internal/logger"
 	"backend/internal/model"
 	"backend/internal/repo"
 )
@@ -12,17 +13,23 @@ type ConversationService struct {
 	conversationRepo *repo.ConversationRepo
 	contactInboxRepo *repo.ContactInboxRepo
 	contactRepo      *repo.ContactRepo
+	slaRepo          *repo.SLARepo
+	notifications    NotificationCreator
 }
 
 func NewConversationService(
 	conversationRepo *repo.ConversationRepo,
 	contactInboxRepo *repo.ContactInboxRepo,
 	contactRepo *repo.ContactRepo,
+	slaRepo *repo.SLARepo,
+	notifications NotificationCreator,
 ) *ConversationService {
 	return &ConversationService{
 		conversationRepo: conversationRepo,
 		contactInboxRepo: contactInboxRepo,
 		contactRepo:      contactRepo,
+		slaRepo:          slaRepo,
+		notifications:    notifications,
 	}
 }
 
@@ -66,6 +73,12 @@ func (s *ConversationService) Create(ctx context.Context, accountID, inboxID, co
 	if err := s.conversationRepo.Create(ctx, convo); err != nil {
 		return nil, err
 	}
+
+	if s.slaRepo != nil {
+		if _, err := s.slaRepo.AttachIfUnset(ctx, accountID, convo.ID); err != nil {
+			logger.Warn().Str("component", "conversation").Err(err).Int64("conversation_id", convo.ID).Msg("failed to attach sla policy")
+		}
+	}
 	return convo, nil
 }
 
@@ -91,6 +104,24 @@ func (s *ConversationService) UpdateLastSeen(ctx context.Context, id int64) erro
 	return s.conversationRepo.UpdateLastSeen(ctx, id)
 }
 
+// SetNotifications wires the notification creator lazily because the realtime
+// hub (and thus the notification service) is constructed after the
+// conversation service in router.go.
+func (s *ConversationService) SetNotifications(n NotificationCreator) {
+	s.notifications = n
+}
+
 func (s *ConversationService) Assign(ctx context.Context, id, accountID int64, assigneeID, teamID *int64) (*model.Conversation, error) {
-	return s.conversationRepo.UpdateAssignment(ctx, id, accountID, assigneeID, teamID)
+	convo, err := s.conversationRepo.UpdateAssignment(ctx, id, accountID, assigneeID, teamID)
+	if err != nil {
+		return nil, err
+	}
+	if s.notifications != nil && assigneeID != nil {
+		_ = s.notifications.Create(ctx, accountID, *assigneeID, "conversation_assigned", map[string]any{
+			"conversation_id": convo.ID,
+			"inbox_id":        convo.InboxID,
+			"deep_link":       fmt.Sprintf("/conversations/%d", convo.DisplayID),
+		})
+	}
+	return convo, nil
 }

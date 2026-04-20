@@ -12,14 +12,14 @@ import (
 )
 
 type WhatsApp struct {
-	channelWhatsappRepo *repo.ChannelWhatsappRepo
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo
 	inboxRepo           *repo.InboxRepo
 	cipher              *crypto.Cipher
 	httpClient          *http.Client
 }
 
 func NewWhatsApp(
-	channelWhatsappRepo *repo.ChannelWhatsappRepo,
+	channelWhatsappRepo *repo.ChannelWhatsAppRepo,
 	inboxRepo *repo.InboxRepo,
 	cipher *crypto.Cipher,
 	httpClient *http.Client,
@@ -91,7 +91,7 @@ func (w *WhatsApp) SyncTemplates(ctx context.Context) ([]channel.Template, error
 	return nil, channel.ErrUnsupported
 }
 
-func (w *WhatsApp) GetProvider(ch *model.ChannelWhatsapp) (Provider, error) {
+func (w *WhatsApp) GetProvider(ch *model.ChannelWhatsApp) (Provider, error) {
 	return ProviderForType(ch.Provider, w.httpClient)
 }
 

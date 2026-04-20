@@ -15,7 +15,7 @@ import (
 	"backend/internal/service"
 )
 
-type SmsWebhookHandler struct {
+type SMSWebhookHandler struct {
 	channelSMSRepo *repo.ChannelSMSRepo
 	messageRepo    *repo.MessageRepo
 	registry       *sms.Registry
@@ -23,14 +23,14 @@ type SmsWebhookHandler struct {
 	realtimeSvc    *service.RealtimeService
 }
 
-func NewSmsWebhookHandler(
+func NewSMSWebhookHandler(
 	channelSMSRepo *repo.ChannelSMSRepo,
 	messageRepo *repo.MessageRepo,
 	registry *sms.Registry,
 	ingestSvc *sms.IngestService,
 	realtimeSvc *service.RealtimeService,
-) *SmsWebhookHandler {
-	return &SmsWebhookHandler{
+) *SMSWebhookHandler {
+	return &SMSWebhookHandler{
 		channelSMSRepo: channelSMSRepo,
 		messageRepo:    messageRepo,
 		registry:       registry,
@@ -39,7 +39,7 @@ func NewSmsWebhookHandler(
 	}
 }
 
-func (h *SmsWebhookHandler) Receive(c *fiber.Ctx) error {
+func (h *SMSWebhookHandler) Receive(c *fiber.Ctx) error {
 	provider := c.Params("provider")
 	identifier := c.Params("identifier")
 
@@ -86,7 +86,7 @@ func (h *SmsWebhookHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(200)
 }
 
-func (h *SmsWebhookHandler) Status(c *fiber.Ctx) error {
+func (h *SMSWebhookHandler) Status(c *fiber.Ctx) error {
 	provider := c.Params("provider")
 	identifier := c.Params("identifier")
 

@@ -77,6 +77,23 @@ func (s *ContactService) Search(ctx context.Context, accountID int64, query stri
 	return s.contactRepo.Search(ctx, filter)
 }
 
+func (s *ContactService) SearchWithLabels(ctx context.Context, accountID int64, query string, labels []string, page, perPage int) ([]model.Contact, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 25
+	}
+	filter := repo.ContactFilter{
+		AccountID: accountID,
+		Query:     query,
+		Labels:    labels,
+		Page:      page,
+		PerPage:   perPage,
+	}
+	return s.contactRepo.Search(ctx, filter)
+}
+
 func (s *ContactService) Update(ctx context.Context, id, accountID int64, name, email, phone *string) (*model.Contact, error) {
 	return s.contactRepo.Update(ctx, id, accountID, name, email, phone)
 }
@@ -115,4 +132,8 @@ func (s *ContactService) EnsureContactInbox(ctx context.Context, contactID, inbo
 		SourceID:  sourceID,
 	}
 	return s.contactInboxRepo.Create(ctx, ci)
+}
+
+func (s *ContactService) ImportBatch(ctx context.Context, accountID int64, batch []repo.ImportContact) (repo.ImportResult, error) {
+	return s.contactRepo.ImportBatch(ctx, accountID, batch)
 }
