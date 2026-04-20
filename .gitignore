@@ -19,11 +19,15 @@ backend/bin/
 .vscode/
 .idea/
 
-# personal claude settings
-.claude/settings.local.json
+# AI agent / tooling configs
+.claude/
+.factory/
+.forge/
+.opencode/
+.windsurf/
 
-# openspec archived changes
-openspec/changes/archive/
+# openspec
+openspec/
 
 # reference projects (study only)
 _refs/
