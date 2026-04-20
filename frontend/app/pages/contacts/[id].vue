@@ -71,7 +71,7 @@ onMounted(load)
       </div>
 
       <template v-else-if="contact">
-        <ContactHeader :contact="contact" />
+        <ContactsDetailContactHeader :contact="contact" />
 
         <UDashboardToolbar class="my-4">
           <UNavigationMenu

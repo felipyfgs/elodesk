@@ -96,6 +96,10 @@ func (s *ConversationService) ListByAccount(ctx context.Context, filter repo.Con
 	return s.conversationRepo.ListByAccount(ctx, filter)
 }
 
+func (s *ConversationService) CountMeta(ctx context.Context, accountID, currentUserID int64, inboxID *int64) (repo.ConversationMetaCounts, error) {
+	return s.conversationRepo.CountByStatusAndAssignee(ctx, accountID, currentUserID, inboxID)
+}
+
 func (s *ConversationService) GetByID(ctx context.Context, id, accountID int64) (*model.Conversation, error) {
 	return s.conversationRepo.FindByID(ctx, id, accountID)
 }

@@ -51,7 +51,7 @@ const { t } = useI18n()
             />
           </td>
           <td class="px-4 py-2 text-right">
-            <UButtonGroup size="xs">
+            <UFieldGroup size="xs">
               <UButton variant="ghost" icon="i-lucide-pencil" @click="emit('edit', h)" />
               <UButton
                 variant="ghost"
@@ -59,7 +59,7 @@ const { t } = useI18n()
                 icon="i-lucide-trash"
                 @click="emit('remove', h)"
               />
-            </UButtonGroup>
+            </UFieldGroup>
           </td>
         </tr>
       </tbody>

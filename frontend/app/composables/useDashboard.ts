@@ -21,6 +21,7 @@ const _useDashboard = () => {
         icon: 'i-lucide-inbox',
         to: '/conversations',
         kbds: ['G', 'C'],
+        active: route.path.startsWith('/conversations'),
         onSelect: () => { isSidebarOpen.value = false }
       },
       {

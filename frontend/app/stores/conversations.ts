@@ -52,14 +52,47 @@ export interface Conversation {
 
 export type ConversationTab = 'mine' | 'unassigned' | 'all' | 'mentions'
 
+export type ConversationSort
+  = | 'last_activity_desc'
+    | 'last_activity_asc'
+    | 'created_desc'
+    | 'created_asc'
+
+export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+
 export interface ConversationFilters {
   tab: ConversationTab
+  sortBy: ConversationSort
   inboxId?: string
   labelId?: string
   teamId?: string
-  status?: string
+  status?: ConversationStatusFilter
   from?: string
   to?: string
+}
+
+export interface ConversationMetaBucket {
+  all: number
+  mine: number
+  unassigned: number
+}
+
+export interface ConversationMeta {
+  open: ConversationMetaBucket
+  pending: ConversationMetaBucket
+  resolved: ConversationMetaBucket
+  snoozed: ConversationMetaBucket
+}
+
+const EMPTY_BUCKET: ConversationMetaBucket = { all: 0, mine: 0, unassigned: 0 }
+
+function emptyMeta(): ConversationMeta {
+  return {
+    open: { ...EMPTY_BUCKET },
+    pending: { ...EMPTY_BUCKET },
+    resolved: { ...EMPTY_BUCKET },
+    snoozed: { ...EMPTY_BUCKET }
+  }
 }
 
 export const useConversationsStore = defineStore('conversations', {
@@ -68,13 +101,16 @@ export const useConversationsStore = defineStore('conversations', {
     current: null as Conversation | null,
     loading: false,
     filters: {
-      tab: 'mine' as ConversationTab
+      tab: 'mine' as ConversationTab,
+      sortBy: 'last_activity_desc' as ConversationSort,
+      status: 'OPEN' as ConversationStatusFilter
     } as ConversationFilters,
+    meta: emptyMeta() as ConversationMeta,
     selection: [] as string[]
   }),
   getters: {
     filteredList(state): Conversation[] {
-      let result = state.list
+      let result: Conversation[] = Array.isArray(state.list) ? state.list : []
 
       // Tab filter — mine/unassigned need the auth store, imported lazily
       if (state.filters.tab === 'unassigned') {
@@ -112,7 +148,7 @@ export const useConversationsStore = defineStore('conversations', {
   },
   actions: {
     setAll(list: Conversation[]) {
-      this.list = list
+      this.list = Array.isArray(list) ? list : []
     },
     setCurrent(conv: Conversation | null) {
       this.current = conv
@@ -131,7 +167,10 @@ export const useConversationsStore = defineStore('conversations', {
       this.filters = { ...this.filters, ...filters }
     },
     resetFilters() {
-      this.filters = { tab: 'mine' }
+      this.filters = { tab: 'mine', sortBy: 'last_activity_desc', status: 'OPEN' }
+    },
+    setMeta(meta: ConversationMeta) {
+      this.meta = meta
     },
     toggleSelection(id: string) {
       const idx = this.selection.indexOf(id)

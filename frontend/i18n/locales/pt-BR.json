@@ -296,10 +296,12 @@
       "unassigned": "Sem agente",
       "all": "Todas",
       "mentions": "Menções",
+      "unattended": "Não atendidas",
       "status": "Status",
-      "inboxes": "Inboxes",
-      "labels": "Labels",
-      "teams": "Equipes"
+      "inboxes": "Caixas de entrada",
+      "labels": "Etiquetas",
+      "teams": "Equipes",
+      "clearFilters": "Limpar filtros"
     },
     "filters": {
       "all": "Todas",
@@ -307,6 +309,19 @@
       "resolved": "Resolvidas",
       "pending": "Pendentes",
       "snoozed": "Adiadas"
+    },
+    "status": {
+      "open": "Abertas",
+      "pending": "Pendentes",
+      "resolved": "Resolvidas",
+      "snoozed": "Adiadas"
+    },
+    "sort": {
+      "label": "Ordenar",
+      "lastActivityDesc": "Última atividade (mais recente)",
+      "lastActivityAsc": "Última atividade (mais antiga)",
+      "createdDesc": "Criadas (mais recentes)",
+      "createdAsc": "Criadas (mais antigas)"
     },
     "compose": {
       "placeholder": "Digite uma mensagem…",

@@ -21,12 +21,12 @@ onMounted(() => {
 
 async function load() {
   if (!auth.account?.id) return
-  const [inboxList, convList] = await Promise.all([
+  const [inboxList, convRes] = await Promise.all([
     api<Inbox[]>(`/accounts/${auth.account.id}/inboxes`).catch(() => [] as Inbox[]),
-    api<Conversation[]>(`/accounts/${auth.account.id}/conversations`).catch(() => [] as Conversation[])
+    api<{ payload: Conversation[] }>(`/accounts/${auth.account.id}/conversations`).catch(() => ({ payload: [] as Conversation[] }))
   ])
   inboxes.setAll(inboxList)
-  convs.setAll(convList)
+  convs.setAll(convRes.payload ?? [])
 }
 
 onMounted(load)

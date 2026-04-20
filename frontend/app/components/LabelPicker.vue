@@ -43,8 +43,9 @@ async function removeLabel(label: Label) {
 }
 
 async function ensureStoreLoaded() {
+  if (!auth.account?.id) return
   if (!store.list.length) {
-    const list = await api<Label[]>('/labels')
+    const list = await api<Label[]>(`/accounts/${auth.account.id}/labels`)
     store.setAll(list)
   }
 }

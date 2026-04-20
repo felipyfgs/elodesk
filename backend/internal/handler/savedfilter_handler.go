@@ -16,13 +16,14 @@ import (
 )
 
 type SavedFilterHandler struct {
-	svc     *service.SavedFilterService
-	defRepo *repo.CustomAttributeDefinitionRepo
-	pool    *pgxpool.Pool
+	svc          *service.SavedFilterService
+	defRepo      *repo.CustomAttributeDefinitionRepo
+	conversations *repo.ConversationRepo
+	pool         *pgxpool.Pool
 }
 
-func NewSavedFilterHandler(svc *service.SavedFilterService, defRepo *repo.CustomAttributeDefinitionRepo, pool *pgxpool.Pool) *SavedFilterHandler {
-	return &SavedFilterHandler{svc: svc, defRepo: defRepo, pool: pool}
+func NewSavedFilterHandler(svc *service.SavedFilterService, defRepo *repo.CustomAttributeDefinitionRepo, conversations *repo.ConversationRepo, pool *pgxpool.Pool) *SavedFilterHandler {
+	return &SavedFilterHandler{svc: svc, defRepo: defRepo, conversations: conversations, pool: pool}
 }
 
 func (h *SavedFilterHandler) List(c *fiber.Ctx) error {
@@ -144,12 +145,22 @@ func (h *SavedFilterHandler) FilterConversations(c *fiber.Ctx) error {
 
 	customKeys, _ := h.defRepo.ListKeysByModel(c.Context(), accountID, "conversation")
 
-	where, args, err := filterquery.BuildSQL(req.Query, "conversation", customKeys)
+	// startArgN=2 reserves $1 for account_id which is prepended in the repo.
+	where, args, err := filterquery.BuildSQL(req.Query, "conversation", customKeys, 2)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
 	}
 
-	return h.executeFilter(c, accountID, where, args, page, perPage, "conversations")
+	convos, total, err := h.conversations.ListByAccountFiltered(c.Context(), accountID, where, args, repo.ConversationSortLastActivityDesc, page, perPage)
+	if err != nil {
+		logger.Error().Str("component", "saved_filters").Err(err).Msg("failed to list filtered conversations")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to list conversations"))
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationListResp{
+		Meta:    dto.NewMetaResp(total, page, perPage),
+		Payload: dto.ConversationsToResp(convos),
+	}))
 }
 
 func (h *SavedFilterHandler) FilterContacts(c *fiber.Ctx) error {
@@ -174,7 +185,7 @@ func (h *SavedFilterHandler) FilterContacts(c *fiber.Ctx) error {
 
 	customKeys, _ := h.defRepo.ListKeysByModel(c.Context(), accountID, "contact")
 
-	where, args, err := filterquery.BuildSQL(req.Query, "contact", customKeys)
+	where, args, err := filterquery.BuildSQL(req.Query, "contact", customKeys, 2)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
 	}

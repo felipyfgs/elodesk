@@ -7,7 +7,7 @@ export const useApi = () => {
   const runtime = useRuntimeConfig()
   const auth = useAuthStore()
 
-  const api = $fetch.create({
+  const baseApi = $fetch.create({
     baseURL: runtime.public.apiUrl,
     onRequest({ options }) {
       const token = auth.accessToken
@@ -21,19 +21,6 @@ export const useApi = () => {
     onResponse({ response }) {
       if (response._data?.success && response._data?.data !== undefined) {
         response._data = response._data.data
-      }
-    },
-    async onResponseError({ response, request, options }) {
-      if (response.status === 401 && auth.refreshToken && !(options as { _retried?: boolean })._retried) {
-        try {
-          await refreshOnce()
-          ;(options as { _retried?: boolean })._retried = true
-          await $fetch(request as string, options as FetchOptions)
-          return
-        } catch {
-          auth.clear()
-          if (import.meta.client) await navigateTo('/login')
-        }
       }
     }
   })
@@ -57,6 +44,27 @@ export const useApi = () => {
       }
     })()
     return refreshPromise
+  }
+
+  const api = async <T = unknown>(request: string, options?: FetchOptions<'json'>): Promise<T> => {
+    try {
+      return await baseApi<T>(request, options)
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number } }
+      const status = e?.response?.status
+      const retried = (options as { _retried?: boolean } | undefined)?._retried
+      if (status === 401 && auth.refreshToken && !retried) {
+        try {
+          await refreshOnce()
+          return await baseApi<T>(request, { ...(options ?? {}), _retried: true } as FetchOptions<'json'>)
+        } catch {
+          auth.clear()
+          if (import.meta.client) await navigateTo('/login')
+          throw err
+        }
+      }
+      throw err
+    }
   }
 
   return api

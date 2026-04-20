@@ -46,7 +46,7 @@ func (h *AgentHandler) List(c *fiber.Ctx) error {
 			Role:       m.Role,
 			Status:     "active",
 			LastActive: m.LastActiveAt,
-			CreatedAt:  m.CreatedAt,
+			CreatedAt:  m.CreatedAt.Format(time.RFC3339),
 		})
 	}
 

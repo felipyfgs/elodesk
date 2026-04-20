@@ -296,10 +296,12 @@
       "unassigned": "Unassigned",
       "all": "All",
       "mentions": "Mentions",
+      "unattended": "Unattended",
       "status": "Status",
       "inboxes": "Inboxes",
       "labels": "Labels",
-      "teams": "Teams"
+      "teams": "Teams",
+      "clearFilters": "Clear filters"
     },
     "filters": {
       "all": "All",
@@ -307,6 +309,19 @@
       "resolved": "Resolved",
       "pending": "Pending",
       "snoozed": "Snoozed"
+    },
+    "status": {
+      "open": "Open",
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "snoozed": "Snoozed"
+    },
+    "sort": {
+      "label": "Sort",
+      "lastActivityDesc": "Last activity (newest)",
+      "lastActivityAsc": "Last activity (oldest)",
+      "createdDesc": "Created (newest)",
+      "createdAsc": "Created (oldest)"
     },
     "compose": {
       "placeholder": "Type a message…",

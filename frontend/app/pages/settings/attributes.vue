@@ -71,11 +71,13 @@ async function submit(event: FormSubmitEvent<CustomAttributeForm>) {
         ? (typeof event.data.attribute_values === 'string' ? event.data.attribute_values : null)
         : null
     }
+    if (!auth.account?.id) return
+    const base = `/accounts/${auth.account.id}/custom_attribute_definitions`
     if (editing.value) {
-      const updated = await api<CustomAttributeDefinition>(`/custom-attributes/${editing.value.id}`, { method: 'PUT', body })
+      const updated = await api<CustomAttributeDefinition>(`${base}/${editing.value.id}`, { method: 'PATCH', body })
       store.upsert(updated)
     } else {
-      const created = await api<CustomAttributeDefinition>('/custom-attributes', { method: 'POST', body })
+      const created = await api<CustomAttributeDefinition>(base, { method: 'POST', body })
       store.upsert(created)
     }
     saved.value = true
@@ -97,7 +99,8 @@ function openDelete(def: CustomAttributeDefinition) {
     itemName: def.attributeDisplayName
   }).then(async (ok) => {
     if (!ok) return
-    await api(`/custom-attributes/${def.id}`, { method: 'DELETE' })
+    if (!auth.account?.id) return
+    await api(`/accounts/${auth.account.id}/custom_attribute_definitions/${def.id}`, { method: 'DELETE' })
     store.remove(def.id, def.attributeModel)
   })
 }
@@ -107,7 +110,8 @@ function allDefinitions(): CustomAttributeDefinition[] {
 }
 
 async function fetchAttributes() {
-  const list = await api<CustomAttributeDefinition[]>('/custom-attributes')
+  if (!auth.account?.id) return
+  const list = await api<CustomAttributeDefinition[]>(`/accounts/${auth.account.id}/custom_attribute_definitions`)
   store.setAll(list)
 }
 

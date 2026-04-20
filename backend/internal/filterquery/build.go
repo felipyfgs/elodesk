@@ -37,7 +37,14 @@ var validOperators = map[string]bool{
 	"is_null": true, "is_not_null": true,
 }
 
-func BuildSQL(raw json.RawMessage, filterType string, customAttrs []string) (string, []any, error) {
+// BuildSQL compiles the user-supplied filter JSON into a parameterized SQL
+// fragment. startArgN lets callers reserve leading placeholders (e.g. $1 for
+// account_id) so the generated clause can be appended to an existing query
+// without colliding with caller-owned arguments.
+func BuildSQL(raw json.RawMessage, filterType string, customAttrs []string, startArgN int) (string, []any, error) {
+	if startArgN < 1 {
+		startArgN = 1
+	}
 	var q FilterQuery
 	if err := json.Unmarshal(raw, &q); err != nil {
 		return "", nil, fmt.Errorf("invalid query JSON: %w", err)
@@ -72,7 +79,7 @@ func BuildSQL(raw json.RawMessage, filterType string, customAttrs []string) (str
 
 	var clauses []string
 	var args []any
-	argN := 1
+	argN := startArgN
 
 	for _, cond := range q.Conditions {
 		if !whitelist[cond.AttributeKey] {

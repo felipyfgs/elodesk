@@ -142,7 +142,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	customAttrsHandler := handler.NewCustomAttributeHandler(customAttrsSvc)
 
 	savedFiltersSvc := service.NewSavedFilterService(customFilterRepo, customAttrDefRepo, contactRepo, conversationRepo)
-	savedFiltersHandler := handler.NewSavedFilterHandler(savedFiltersSvc, customAttrDefRepo, db.Pool)
+	savedFiltersHandler := handler.NewSavedFilterHandler(savedFiltersSvc, customAttrDefRepo, conversationRepo, db.Pool)
 
 	minioClient, err := media.New(cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket)
 	if err != nil {
@@ -188,9 +188,11 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Get("/inboxes/:id/agents", inboxHandler.ListAgents)
 	accounts.Put("/inboxes/:id/agents", agentPlus, inboxHandler.SetAgents)
 	accounts.Get("/contacts", contactHandler.Search)
+	accounts.Post("/contacts", agentPlus, contactHandler.Create)
 	accounts.Post("/contacts/import", ownerAdmin, contactHandler.Import)
 	accounts.Get("/contacts/:id", contactHandler.Get)
 	accounts.Get("/conversations", conversationHandler.List)
+	accounts.Get("/conversations/meta", conversationHandler.Meta)
 	accounts.Get("/conversations/:id", conversationHandler.Get)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)

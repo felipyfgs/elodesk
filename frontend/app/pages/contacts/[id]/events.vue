@@ -11,5 +11,5 @@ const events = ref<{ id: string, type: string, description: string, createdAt: s
 </script>
 
 <template>
-  <ContactEventsTimeline :events="events" />
+  <ContactsDetailContactEventsTimeline :events="events" />
 </template>

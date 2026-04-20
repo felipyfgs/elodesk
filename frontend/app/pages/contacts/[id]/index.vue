@@ -73,7 +73,7 @@ async function saveContact() {
       <LabelPicker :contact-id="contactId" />
     </UPageCard>
 
-    <ContactCustomAttributes
+    <ContactsDetailContactCustomAttributes
       :contact-id="contactId"
       :values="(contact.additionalAttributes ? JSON.parse(contact.additionalAttributes) : {}) as Record<string, unknown>"
     />

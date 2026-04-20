@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,7 +17,7 @@ type AgentMember struct {
 	InvitationID *int64
 	InvitedEmail *string
 	LastActiveAt *string
-	CreatedAt    string
+	CreatedAt    time.Time
 }
 
 type AgentRepo struct {

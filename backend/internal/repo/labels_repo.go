@@ -143,7 +143,7 @@ func (r *LabelRepo) RemoveLabel(ctx context.Context, accountID, labelID int64, t
 }
 
 func (r *LabelRepo) ListByTaggable(ctx context.Context, accountID int64, taggableType string, taggableID int64) ([]model.Label, error) {
-	query := `SELECT ` + labelSelectColumns + ` FROM labels l
+	query := `SELECT l.id, l.account_id, l.title, l.color, l.description, l.show_on_sidebar, l.created_at, l.updated_at FROM labels l
 		INNER JOIN label_taggings lt ON lt.label_id = l.id
 		WHERE lt.account_id = $1 AND lt.taggable_type = $2 AND lt.taggable_id = $3
 		ORDER BY l.title ASC`

@@ -116,6 +116,12 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		AccountID: accountID,
 		Page:      page,
 		PerPage:   perPage,
+		SortBy:    parseConversationSort(c.Query("sort_by")),
+	}
+
+	if u, ok := c.Locals("user").(*repo.AuthUser); ok && u != nil {
+		uid := u.ID
+		filter.CurrentUser = &uid
 	}
 
 	if inboxIDStr := c.Query("inbox_id"); inboxIDStr != "" {
@@ -133,10 +139,16 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		}
 	}
 
-	if assigneeIDStr := c.Query("assignee_id"); assigneeIDStr != "" {
-		assigneeID, err := strconv.ParseInt(assigneeIDStr, 10, 64)
-		if err == nil {
-			filter.AssigneeID = &assigneeID
+	filter.AssigneeType = parseAssigneeType(c.Query("assignee_type"))
+
+	// assignee_type takes precedence; assignee_id is only honored when no
+	// assignee_type filter is active to avoid double assignee constraints.
+	if filter.AssigneeType == "" {
+		if assigneeIDStr := c.Query("assignee_id"); assigneeIDStr != "" {
+			assigneeID, err := strconv.ParseInt(assigneeIDStr, 10, 64)
+			if err == nil {
+				filter.AssigneeID = &assigneeID
+			}
 		}
 	}
 
@@ -149,6 +161,54 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		Meta:    dto.NewMetaResp(total, page, perPage),
 		Payload: dto.ConversationsToResp(convos),
 	}))
+}
+
+func (h *ConversationHandler) Meta(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	u, ok := c.Locals("user").(*repo.AuthUser)
+	if !ok || u == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "user not found"))
+	}
+	userID := u.ID
+
+	var inboxID *int64
+	if inboxIDStr := c.Query("inbox_id"); inboxIDStr != "" {
+		if id, err := strconv.ParseInt(inboxIDStr, 10, 64); err == nil {
+			inboxID = &id
+		}
+	}
+
+	counts, err := h.svc.CountMeta(c.Context(), accountID, userID, inboxID)
+	if err != nil {
+		logger.Error().Str("component", "conversations").Err(err).Msg("failed to load conversation meta")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to load conversation meta"))
+	}
+
+	return c.JSON(dto.SuccessResp(fiber.Map{"payload": counts}))
+}
+
+func parseConversationSort(raw string) repo.ConversationSortKey {
+	switch repo.ConversationSortKey(raw) {
+	case repo.ConversationSortLastActivityAsc,
+		repo.ConversationSortLastActivityDesc,
+		repo.ConversationSortCreatedAsc,
+		repo.ConversationSortCreatedDesc:
+		return repo.ConversationSortKey(raw)
+	}
+	return repo.ConversationSortLastActivityDesc
+}
+
+func parseAssigneeType(raw string) repo.ConversationAssigneeType {
+	switch repo.ConversationAssigneeType(raw) {
+	case repo.ConversationAssigneeTypeMine,
+		repo.ConversationAssigneeTypeUnassigned,
+		repo.ConversationAssigneeTypeAll:
+		return repo.ConversationAssigneeType(raw)
+	}
+	return ""
 }
 
 func (h *ConversationHandler) Get(c *fiber.Ctx) error {

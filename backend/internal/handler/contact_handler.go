@@ -194,6 +194,42 @@ func (h *ContactHandler) Get(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
 }
 
+func (h *ContactHandler) Create(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	var req struct {
+		Name        string  `json:"name"`
+		Email       *string `json:"email,omitempty"`
+		PhoneNumber *string `json:"phone_number,omitempty"`
+		Identifier  *string `json:"identifier,omitempty"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "name is required"))
+	}
+
+	contact := &model.Contact{
+		AccountID:   accountID,
+		Name:        req.Name,
+		Email:       req.Email,
+		PhoneNumber: req.PhoneNumber,
+		Identifier:  req.Identifier,
+	}
+
+	created, err := h.svc.Create(c.Context(), accountID, contact)
+	if err != nil {
+		logger.Error().Str("component", "contacts").Err(err).Msg("failed to create contact")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to create contact"))
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(dto.ContactToResp(created)))
+}
+
 func (h *ContactHandler) UpdateContactByID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

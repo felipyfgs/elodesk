@@ -80,7 +80,7 @@ async function onDelete(m: Macro) {
               <UBadge :label="m.visibility" variant="soft" size="sm" />
             </td>
             <td class="px-4 py-2 text-right">
-              <UButtonGroup size="xs">
+              <UFieldGroup size="xs">
                 <UButton variant="ghost" icon="i-lucide-pencil" @click="onEdit(m)" />
                 <UButton
                   variant="ghost"
@@ -88,7 +88,7 @@ async function onDelete(m: Macro) {
                   icon="i-lucide-trash"
                   @click="onDelete(m)"
                 />
-              </UButtonGroup>
+              </UFieldGroup>
             </td>
           </tr>
         </tbody>

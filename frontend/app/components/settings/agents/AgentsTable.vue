@@ -53,7 +53,7 @@ function roleLabel(role: number) {
             <UBadge :label="roleLabel(agent.role)" variant="soft" />
           </td>
           <td class="px-4 py-2 text-right">
-            <UButtonGroup size="xs">
+            <UFieldGroup size="xs">
               <UButton variant="ghost" icon="i-lucide-pencil" @click="emit('edit', agent)" />
               <UButton
                 variant="ghost"
@@ -61,7 +61,7 @@ function roleLabel(role: number) {
                 icon="i-lucide-trash"
                 @click="emit('remove', agent)"
               />
-            </UButtonGroup>
+            </UFieldGroup>
           </td>
         </tr>
       </tbody>
