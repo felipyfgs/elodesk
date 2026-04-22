@@ -16,6 +16,10 @@ const (
 	KindFacebookPage Kind = "Channel::FacebookPage"
 	KindWebWidget    Kind = "Channel::WebWidget"
 	KindTelegram     Kind = "Channel::Telegram"
+	KindLine         Kind = "Channel::Line"
+	KindTiktok       Kind = "Channel::Tiktok"
+	KindTwilio       Kind = "Channel::Twilio"
+	KindTwitter      Kind = "Channel::Twitter"
 )
 
 var ErrUnsupported = errors.New("channel: operation not supported")

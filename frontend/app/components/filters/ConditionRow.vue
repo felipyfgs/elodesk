@@ -75,13 +75,13 @@ const valueType = computed(() => currentAttribute.value?.type)
 const valueOptions = computed(() => currentAttribute.value?.options ?? [])
 
 // Normalize the value depending on operator shape (single vs array)
-const singleValue = computed<string | number | null>({
+const singleValue = computed<string | number | undefined>({
   get: () => {
     const v = condition.value.value
-    if (Array.isArray(v)) return v[0] ?? null
-    return (v ?? null) as string | number | null
+    if (Array.isArray(v)) return (v[0] ?? undefined) as string | number | undefined
+    return (v ?? undefined) as string | number | undefined
   },
-  set: (v) => { condition.value = { ...condition.value, value: v } }
+  set: (v) => { condition.value = { ...condition.value, value: v ?? null } }
 })
 
 const multiValue = computed<(string | number)[]>({

@@ -43,10 +43,30 @@ type CustomAttributeService struct {
 	defRepo     *repo.CustomAttributeDefinitionRepo
 	contactRepo *repo.ContactRepo
 	convRepo    *repo.ConversationRepo
+	auditLogger *auditLoggerIface
+}
+
+// auditLoggerIface indirects the audit logger so customattr_service can keep
+// its existing package-level imports minimal; it is wired from router.go.
+type auditLoggerIface struct {
+	log func(ctx context.Context, accountID int64, action string, contactID int64, metadata any)
 }
 
 func NewCustomAttributeService(defRepo *repo.CustomAttributeDefinitionRepo, contactRepo *repo.ContactRepo, convRepo *repo.ConversationRepo) *CustomAttributeService {
 	return &CustomAttributeService{defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
+}
+
+// WithContactAuditFn wires a callback used to emit contact-level audit events.
+func (s *CustomAttributeService) WithContactAuditFn(fn func(ctx context.Context, accountID int64, action string, contactID int64, metadata any)) *CustomAttributeService {
+	s.auditLogger = &auditLoggerIface{log: fn}
+	return s
+}
+
+func (s *CustomAttributeService) emitContactAudit(ctx context.Context, accountID int64, action string, contactID int64, metadata any) {
+	if s.auditLogger == nil || s.auditLogger.log == nil {
+		return
+	}
+	s.auditLogger.log(ctx, accountID, action, contactID, metadata)
 }
 
 func (s *CustomAttributeService) ListDefinitions(ctx context.Context, accountID int64, attributeModel string) ([]model.CustomAttributeDefinition, error) {
@@ -136,11 +156,28 @@ func (s *CustomAttributeService) GetDefinitionByID(ctx context.Context, id, acco
 }
 
 func (s *CustomAttributeService) SetContactAttributes(ctx context.Context, contactID, accountID int64, values map[string]any) (*string, error) {
-	return s.setAttributes(ctx, "contact", contactID, accountID, values)
+	res, err := s.setAttributes(ctx, "contact", contactID, accountID, values)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range values {
+		s.emitContactAudit(ctx, accountID, "contact.custom_attribute_set", contactID, map[string]any{
+			"key":   key,
+			"value": value,
+		})
+	}
+	return res, nil
 }
 
 func (s *CustomAttributeService) RemoveContactAttributes(ctx context.Context, contactID, accountID int64, keys []string) (*string, error) {
-	return s.removeAttributes(ctx, "contact", contactID, accountID, keys)
+	res, err := s.removeAttributes(ctx, "contact", contactID, accountID, keys)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range keys {
+		s.emitContactAudit(ctx, accountID, "contact.custom_attribute_deleted", contactID, map[string]any{"key": key})
+	}
+	return res, nil
 }
 
 func (s *CustomAttributeService) SetConversationAttributes(ctx context.Context, conversationID, accountID int64, values map[string]any) (*string, error) {

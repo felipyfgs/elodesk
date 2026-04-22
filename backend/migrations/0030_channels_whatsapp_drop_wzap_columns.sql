@@ -1,0 +1,10 @@
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS base_url;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS session_id;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS webhook_secret_ciphertext;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS outbound_webhook_url;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS engine_phone;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS qr_state;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS connection_state;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS requires_reauth;
+ALTER TABLE channels_whatsapp DROP COLUMN IF EXISTS last_seen_at;
+ALTER TABLE channels_whatsapp DROP CONSTRAINT IF EXISTS channels_whatsapp_session_id_key;

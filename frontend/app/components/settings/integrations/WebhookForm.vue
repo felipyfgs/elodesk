@@ -5,7 +5,7 @@ const props = defineProps<{ open: boolean, webhook?: OutboundWebhook | null }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
 const { t } = useI18n()
-const toast = useToast()
+const errorHandler = useErrorHandler()
 const store = useWebhooksStore()
 
 const state = reactive({ url: '', subscriptionsText: '', secret: '' })
@@ -34,10 +34,13 @@ async function onSubmit() {
       subscriptions: subs,
       secret: state.secret || undefined
     })
-    toast.add({ title: t('common.save'), color: 'success' })
+    errorHandler.success(t('settings.integrations.webhookSaved'))
     emit('update:open', false)
-  } catch {
-    toast.add({ title: t('common.error'), color: 'error' })
+  } catch (error) {
+    errorHandler.handle(error, {
+      title: t('settings.integrations.webhookSaveFailed'),
+      onRetry: onSubmit
+    })
   } finally {
     loading.value = false
   }

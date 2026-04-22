@@ -148,6 +148,40 @@ func (h *WebWidgetInboxHandler) Create(c *fiber.Ctx) error {
 	}))
 }
 
+func (h *WebWidgetInboxHandler) GetByInboxID(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	widget, err := h.widgetRepo.FindByInboxID(c.Context(), int64(id))
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+	if widget.AccountID != accountID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "not found"))
+	}
+
+	return c.JSON(dto.SuccessResp(dto.WebWidgetChannelResp{
+		ID:             widget.ID,
+		WebsiteToken:   widget.WebsiteToken,
+		WebsiteURL:     widget.WebsiteURL,
+		WidgetColor:    widget.WidgetColor,
+		WelcomeTitle:   widget.WelcomeTitle,
+		WelcomeTagline: widget.WelcomeTagline,
+		ReplyTime:      widget.ReplyTime,
+		FeatureFlags:   widget.FeatureFlags,
+		EmbedScript:    h.generateEmbedScript(widget.WebsiteToken),
+		CreatedAt:      widget.CreatedAt,
+		UpdatedAt:      widget.UpdatedAt,
+	}))
+}
+
 // RotateHmac generates a new HMAC token for the widget channel.
 // @Summary Rotate HMAC token
 // @Description Generates a new HMAC token and returns it once

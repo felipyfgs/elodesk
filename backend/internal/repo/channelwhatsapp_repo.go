@@ -13,14 +13,21 @@ import (
 
 var ErrChannelWhatsAppNotFound = errors.New("channel whatsapp not found")
 
-const channelWhatsappSelectColumns = "id, account_id, provider, phone_number, phone_number_id, business_account_id, api_key_ciphertext, webhook_verify_token_ciphertext, message_templates, message_templates_synced_at, requires_reauth, created_at, updated_at"
+const channelWhatsappSelectColumns = `id, account_id, provider, phone_number, phone_number_id, business_account_id,
+	api_key_ciphertext, webhook_verify_token_ciphertext, message_templates,
+	message_templates_synced_at, created_at, updated_at`
 
 type channelWhatsappScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanChannelWhatsApp(scanner channelWhatsappScanner, m *model.ChannelWhatsApp) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.Provider, &m.PhoneNumber, &m.PhoneNumberID, &m.BusinessAccountID, &m.ApiKeyCiphertext, &m.WebhookVerifyTokenCiphertext, &m.MessageTemplates, &m.MessageTemplatesSyncedAt, &m.RequiresReauth, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(
+		&m.ID, &m.AccountID, &m.Provider, &m.PhoneNumber, &m.PhoneNumberID, &m.BusinessAccountID,
+		&m.ApiKeyCiphertext, &m.WebhookVerifyTokenCiphertext,
+		&m.MessageTemplates, &m.MessageTemplatesSyncedAt,
+		&m.CreatedAt, &m.UpdatedAt,
+	)
 }
 
 type ChannelWhatsAppRepo struct {
@@ -32,14 +39,19 @@ func NewChannelWhatsAppRepo(pool *pgxpool.Pool) *ChannelWhatsAppRepo {
 }
 
 func (r *ChannelWhatsAppRepo) Create(ctx context.Context, m *model.ChannelWhatsApp) error {
-	query := `INSERT INTO channels_whatsapp (account_id, provider, phone_number, phone_number_id, business_account_id, api_key_ciphertext, webhook_verify_token_ciphertext, message_templates)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	query := `INSERT INTO channels_whatsapp
+		(account_id, provider, phone_number, phone_number_id, business_account_id, api_key_ciphertext,
+		 webhook_verify_token_ciphertext, message_templates)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, '[]'::jsonb))
 		RETURNING id, created_at, updated_at`
 	err := r.pool.QueryRow(ctx, query,
 		m.AccountID, m.Provider, m.PhoneNumber, m.PhoneNumberID, m.BusinessAccountID,
 		m.ApiKeyCiphertext, m.WebhookVerifyTokenCiphertext, m.MessageTemplates,
 	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("channel whatsapp already exists: %w", err)
+		}
 		return fmt.Errorf("failed to create channel whatsapp: %w", err)
 	}
 	return nil
@@ -91,17 +103,6 @@ func (r *ChannelWhatsAppRepo) UpdateTemplates(ctx context.Context, id int64, tem
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update whatsapp templates: %w", err)
-	}
-	return nil
-}
-
-func (r *ChannelWhatsAppRepo) SetRequiresReauth(ctx context.Context, id int64, requires bool) error {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE channels_whatsapp SET requires_reauth = $1, updated_at = NOW() WHERE id = $2`,
-		requires, id,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to set requires_reauth: %w", err)
 	}
 	return nil
 }

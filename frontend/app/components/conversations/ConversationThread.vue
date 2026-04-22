@@ -2,7 +2,7 @@
 import { format } from 'date-fns'
 import { useAuthStore } from '~/stores/auth'
 import { useMessagesStore, type Message } from '~/stores/messages'
-import type { Conversation } from '~/stores/conversations'
+import { STATUS_MAP, type Conversation } from '~/stores/conversations'
 
 const props = defineProps<{
   conversation: Conversation
@@ -36,23 +36,23 @@ function contactIdentifier(c: Conversation): string {
 }
 
 function messageRole(m: Message): 'user' | 'assistant' | 'system' {
-  if (m.messageType === 'ACTIVITY' || m.messageType === 'TEMPLATE') return 'system'
-  if (m.messageType === 'OUTGOING') return 'user'
-  return 'assistant'
+  if (m.messageType === 2 || m.messageType === 3) return 'system' // Activity / Template
+  if (m.messageType === 1) return 'user' // Outgoing
+  return 'assistant' // Incoming
 }
 
 const statusItems = computed(() => {
   const items: { label: string, icon: string, status: string }[] = []
-  if (props.conversation.status !== 'OPEN') {
+  if (props.conversation.status !== STATUS_MAP.OPEN) {
     items.push({ label: t('conversations.actions.open'), icon: 'i-lucide-message-circle', status: 'OPEN' })
   }
-  if (props.conversation.status !== 'PENDING') {
+  if (props.conversation.status !== STATUS_MAP.PENDING) {
     items.push({ label: t('conversations.actions.pending'), icon: 'i-lucide-clock', status: 'PENDING' })
   }
-  if (props.conversation.status !== 'RESOLVED') {
+  if (props.conversation.status !== STATUS_MAP.RESOLVED) {
     items.push({ label: t('conversations.actions.resolve'), icon: 'i-lucide-check-circle', status: 'RESOLVED' })
   }
-  if (props.conversation.status !== 'SNOOZED') {
+  if (props.conversation.status !== STATUS_MAP.SNOOZED) {
     items.push({ label: t('conversations.actions.snooze'), icon: 'i-lucide-clock', status: 'SNOOZED' })
   }
   return [[...items]]
@@ -60,10 +60,10 @@ const statusItems = computed(() => {
 
 const statusColor = computed(() => {
   switch (props.conversation.status) {
-    case 'OPEN': return 'success' as const
-    case 'PENDING': return 'warning' as const
-    case 'RESOLVED': return 'info' as const
-    case 'SNOOZED': return 'neutral' as const
+    case STATUS_MAP.OPEN: return 'success' as const
+    case STATUS_MAP.PENDING: return 'warning' as const
+    case STATUS_MAP.RESOLVED: return 'info' as const
+    case STATUS_MAP.SNOOZED: return 'neutral' as const
     default: return 'neutral' as const
   }
 })
@@ -84,7 +84,7 @@ const statusColor = computed(() => {
 
       <template #trailing>
         <UBadge
-          :label="t(`conversations.filters.${conversation.status.toLowerCase()}`)"
+          :label="t(`conversations.filters.${['open', 'resolved', 'pending', 'snoozed'][conversation.status]}`)"
           :color="statusColor"
           variant="subtle"
           size="xs"
@@ -172,7 +172,7 @@ const statusColor = computed(() => {
             <span class="text-[10px] opacity-60">
               {{ format(new Date(m.createdAt), 'HH:mm') }}
             </span>
-            <span v-if="m.messageType === 'OUTGOING'" class="text-[10px] opacity-60">
+            <span v-if="m.messageType === 1" class="text-[10px] opacity-60">
               {{ t(`conversations.message.status.${m.status}`) }}
             </span>
           </div>

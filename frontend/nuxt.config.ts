@@ -32,7 +32,9 @@ export default defineNuxtConfig({
         'zod/v4',
         'date-fns',
         'pinia',
-        'reka-ui'
+        'reka-ui',
+        '@unovis/vue',
+        '@unovis/ts'
       ]
     }
   },

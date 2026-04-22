@@ -6,3 +6,7 @@ export { facebookPageInboxSchema, type FacebookPageInboxForm } from './facebookP
 export { telegramInboxSchema, type TelegramInboxForm } from './telegram'
 export { webWidgetInboxSchema, type WebWidgetInboxForm } from './webWidget'
 export { emailInboxSchema, type EmailInboxForm } from './email'
+export { lineInboxSchema, type LineInboxForm } from './line'
+export { tiktokInboxSchema, type TiktokInboxForm } from './tiktok'
+export { twilioInboxSchema, type TwilioInboxForm } from './twilio'
+export { twitterInboxSchema, type TwitterInboxForm } from './twitter'

@@ -29,6 +29,11 @@ const stepperItems: StepperItem[] = [
 const setupFormRef = ref()
 const credentialsFormRef = ref()
 
+const providerOptions = [
+  { value: 'whatsapp_cloud', label: 'WhatsApp Cloud API' },
+  { value: 'default_360dialog', label: '360dialog' }
+]
+
 async function validateCurrentStep(): Promise<boolean> {
   if (step.value === 0) {
     const { error } = await whatsappStepSetupSchema.safeParseAsync({
@@ -47,6 +52,7 @@ async function validateCurrentStep(): Promise<boolean> {
 
   if (step.value === 1) {
     const { error } = await whatsappStepCredentialsSchema.safeParseAsync({
+      provider: state.provider,
       phoneNumberId: state.phoneNumberId,
       businessAccountId: state.businessAccountId,
       apiKey: state.apiKey
@@ -75,10 +81,17 @@ async function submit() {
   try {
     const res = await api<{ inboxId: number }>(`/accounts/${auth.account.id}/inboxes/whatsapp`, {
       method: 'POST',
-      body: state
+      body: {
+        name: state.name,
+        provider: state.provider,
+        phoneNumber: state.phoneNumber,
+        phoneNumberId: state.phoneNumberId,
+        businessAccountId: state.businessAccountId,
+        apiKey: state.apiKey
+      }
     })
     toast.add({ title: t('common.success'), color: 'success' })
-    router.push(`/inboxes/${res.inboxId}`)
+    router.push(`/accounts/${auth.account?.id}/inboxes/${res.inboxId}`)
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
@@ -92,21 +105,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-arrow-left"
-        variant="ghost"
-        color="neutral"
-        to="/inboxes/new"
-      />
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('inboxes.channels.whatsapp') }}
-        </h2>
-        <p class="text-sm text-muted">
-          {{ t('inboxes.wizards.whatsapp.description') }}
-        </p>
-      </div>
+    <div>
+      <h2 class="text-lg font-semibold">
+        {{ t('inboxes.channels.whatsapp') }}
+      </h2>
+      <p class="text-sm text-muted">
+        {{ t('inboxes.wizards.whatsapp.description') }}
+      </p>
     </div>
 
     <UStepper v-model="step" :items="stepperItems" :linear="true">
@@ -125,12 +130,9 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
             <UFormField :label="t('inboxes.wizards.whatsapp.provider')" name="provider" required>
               <USelect
                 v-model="state.provider"
-                :options="[
-                  { value: 'whatsapp_cloud', label: 'WhatsApp Cloud API' },
-                  { value: 'default_360dialog', label: '360dialog' }
-                ]"
+                :items="providerOptions"
                 value-key="value"
-                option-attribute="label"
+                label-key="label"
               />
             </UFormField>
 
@@ -166,7 +168,7 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
     </UStepper>
 
     <div class="flex justify-end gap-2">
-      <UButton to="/inboxes/new" variant="ghost" color="neutral">
+      <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
       <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">

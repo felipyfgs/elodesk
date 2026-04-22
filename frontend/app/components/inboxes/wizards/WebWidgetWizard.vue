@@ -78,7 +78,7 @@ async function submit() {
       body: state
     })
     toast.add({ title: t('common.success'), color: 'success' })
-    router.push(`/inboxes/${res.id}`)
+    router.push(`/accounts/${auth.account?.id}/inboxes/${res.id}`)
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
@@ -92,21 +92,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-arrow-left"
-        variant="ghost"
-        color="neutral"
-        to="/inboxes/new"
-      />
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('inboxes.channels.web_widget') }}
-        </h2>
-        <p class="text-sm text-muted">
-          {{ t('inboxes.wizards.webWidget.description') }}
-        </p>
-      </div>
+    <div>
+      <h2 class="text-lg font-semibold">
+        {{ t('inboxes.channels.web_widget') }}
+      </h2>
+      <p class="text-sm text-muted">
+        {{ t('inboxes.wizards.webWidget.description') }}
+      </p>
     </div>
 
     <UStepper v-model="step" :items="stepperItems" :linear="true">
@@ -152,13 +144,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
             <UFormField :label="t('inboxes.wizards.webWidget.replyTime')" name="replyTime">
               <USelect
                 v-model="state.replyTime"
-                :options="[
+                :items="[
                   { value: 'in_a_few_minutes', label: t('inboxes.wizards.webWidget.replyTimes.in_a_few_minutes') },
                   { value: 'in_a_few_hours', label: t('inboxes.wizards.webWidget.replyTimes.in_a_few_hours') },
                   { value: 'in_a_day', label: t('inboxes.wizards.webWidget.replyTimes.in_a_day') }
                 ]"
                 value-key="value"
-                option-attribute="label"
+                label-key="label"
               />
             </UFormField>
           </UForm>
@@ -167,7 +159,7 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
     </UStepper>
 
     <div class="flex justify-end gap-2">
-      <UButton to="/inboxes/new" variant="ghost" color="neutral">
+      <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
       <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">

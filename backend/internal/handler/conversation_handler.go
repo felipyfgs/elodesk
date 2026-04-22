@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -15,23 +16,135 @@ import (
 
 type ConversationHandler struct {
 	svc              *service.ConversationService
+	messageSvc       *service.MessageService
 	inboxRepo        *repo.InboxRepo
 	contactInboxRepo *repo.ContactInboxRepo
+	conversationRepo *repo.ConversationRepo
+	agentRepo        *repo.AgentRepo
+	teamRepo         *repo.TeamRepo
 	auditLogger      *audit.Logger
 }
 
 func NewConversationHandler(
 	svc *service.ConversationService,
+	messageSvc *service.MessageService,
 	inboxRepo *repo.InboxRepo,
 	contactInboxRepo *repo.ContactInboxRepo,
+	conversationRepo *repo.ConversationRepo,
+	agentRepo *repo.AgentRepo,
+	teamRepo *repo.TeamRepo,
 	auditLogger *audit.Logger,
 ) *ConversationHandler {
 	return &ConversationHandler{
 		svc:              svc,
+		messageSvc:       messageSvc,
 		inboxRepo:        inboxRepo,
 		contactInboxRepo: contactInboxRepo,
+		conversationRepo: conversationRepo,
+		agentRepo:        agentRepo,
+		teamRepo:         teamRepo,
 		auditLogger:      auditLogger,
 	}
+}
+
+// CreateAuthenticated lets an authenticated agent start a new conversation with
+// an existing contact from the dashboard. Optionally sends a first outgoing
+// message within the same request. Mirrors Chatwoot's
+// POST /api/v1/accounts/:account_id/conversations.
+func (h *ConversationHandler) CreateAuthenticated(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	var req dto.CreateAuthenticatedConversationReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+	if req.ContactID == 0 || req.InboxID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "contact_id and inbox_id are required"))
+	}
+
+	inbox, err := h.inboxRepo.FindByID(c.Context(), req.InboxID, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	// Validate assignee is a member of the account
+	if req.AssigneeID != nil && h.agentRepo != nil {
+		ok, err := h.agentRepo.IsMember(c.Context(), accountID, *req.AssigneeID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to verify assignee"))
+		}
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "assignee does not belong to this account"))
+		}
+	}
+
+	// Validate team is scoped to the account
+	if req.TeamID != nil && h.teamRepo != nil {
+		if _, err := h.teamRepo.FindByID(c.Context(), *req.TeamID, accountID); err != nil {
+			return handleNotFound(c, err)
+		}
+	}
+
+	opts := service.ConversationCreateOpts{
+		AssigneeID:           req.AssigneeID,
+		TeamID:               req.TeamID,
+		AdditionalAttributes: req.AdditionalAttributes,
+		CustomAttributes:     req.CustomAttributes,
+	}
+	if req.Status != nil {
+		switch strings.ToLower(*req.Status) {
+		case "resolved":
+			s := model.ConversationResolved
+			opts.Status = &s
+		case "open":
+			s := model.ConversationOpen
+			opts.Status = &s
+		case "pending":
+			s := model.ConversationPending
+			opts.Status = &s
+		case "snoozed":
+			s := model.ConversationSnoozed
+			opts.Status = &s
+		}
+	}
+
+	convo, err := h.svc.CreateWithOpts(c.Context(), accountID, inbox.ID, req.ContactID, opts)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if req.Message != nil && strings.TrimSpace(req.Message.Content) != "" && h.messageSvc != nil {
+		content := req.Message.Content
+		msg := &model.Message{
+			Content:     &content,
+			Private:     req.Message.Private,
+			MessageType: model.MessageOutgoing,
+			ContentType: model.ContentTypeText,
+		}
+		if u, ok := c.Locals("user").(*repo.AuthUser); ok && u != nil {
+			senderType := "User"
+			uid := u.ID
+			msg.SenderType = &senderType
+			msg.SenderID = &uid
+		}
+		if _, err := h.messageSvc.Create(c.Context(), accountID, inbox.ID, convo.ID, msg); err != nil {
+			logger.Error().Str("component", "conversations").Err(err).Int64("conversation_id", convo.ID).Msg("failed to create initial message")
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "conversation created but failed to send initial message"))
+		}
+	}
+
+	if h.auditLogger != nil {
+		convID := convo.ID
+		h.auditLogger.LogFromCtx(c, "conversation.created", "conversation", &convID, fiber.Map{
+			"inbox_id":   convo.InboxID,
+			"contact_id": convo.ContactID,
+		})
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
 }
 
 func (h *ConversationHandler) Create(c *fiber.Ctx) error {
@@ -57,50 +170,41 @@ func (h *ConversationHandler) Create(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	convo, err := h.svc.Create(c.Context(), accountID, inbox.ID, ci.ContactID)
+	var req dto.CreateConversationReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
+	opts := service.ConversationCreateOpts{
+		CustomAttributes:     req.CustomAttributes,
+		AdditionalAttributes: req.AdditionalAttributes,
+		AssigneeID:           req.AssigneeID,
+		TeamID:               req.TeamID,
+	}
+
+	if req.Status != nil {
+		switch strings.ToLower(*req.Status) {
+		case "resolved":
+			s := model.ConversationResolved
+			opts.Status = &s
+		case "open":
+			s := model.ConversationOpen
+			opts.Status = &s
+		case "pending":
+			s := model.ConversationPending
+			opts.Status = &s
+		case "snoozed":
+			s := model.ConversationSnoozed
+			opts.Status = &s
+		}
+	}
+
+	convo, err := h.svc.CreateWithOpts(c.Context(), accountID, inbox.ID, ci.ContactID, opts)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
-}
-
-func (h *ConversationHandler) UpdateLastSeen(c *fiber.Ctx) error {
-	// Ownership check: conversation must belong to the inbox that owns the
-	// authenticated channel API token. Prevents enumeration across tenants.
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
-	}
-	accountID, ok := c.Locals("accountId").(int64)
-	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
-	}
-
-	cid, err := strconv.ParseInt(c.Params("cid"), 10, 64)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
-	}
-
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
-	if err != nil {
-		return handleNotFound(c, err)
-	}
-
-	convo, err := h.svc.GetByID(c.Context(), cid, accountID)
-	if err != nil {
-		return handleNotFound(c, err)
-	}
-	if convo.InboxID != inbox.ID {
-		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
-	}
-
-	if err := h.svc.UpdateLastSeen(c.Context(), cid); err != nil {
-		logger.Error().Str("component", "conversations").Err(err).Msg("failed to update last seen")
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to update last seen"))
-	}
-
-	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
 func (h *ConversationHandler) List(c *fiber.Ctx) error {
@@ -296,4 +400,240 @@ func (h *ConversationHandler) ToggleStatus(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+}
+
+func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	sourceID := c.Params("sourceId")
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	perPage, _ := strconv.Atoi(c.Query("per_page", "25"))
+
+	var convos []model.Conversation
+	var total int
+
+	if ci.HmacVerified {
+		convos, total, err = h.conversationRepo.ListByContactID(c.Context(), ci.ContactID, accountID, page, perPage)
+	} else {
+		convos, total, err = h.conversationRepo.ListByContactInboxID(c.Context(), ci.ID, accountID, page, perPage)
+	}
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationListResp{
+		Meta:    dto.NewMetaResp(total, page, perPage),
+		Payload: dto.ConversationsToResp(convos),
+	}))
+}
+
+func (h *ConversationHandler) ShowPublic(c *fiber.Ctx) error {
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if convo.InboxID != inbox.ID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+}
+
+func (h *ConversationHandler) TogglePublicStatus(c *fiber.Ctx) error {
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
+	var status model.ConversationStatus
+	switch strings.ToLower(req.Status) {
+	case "resolved":
+		status = model.ConversationResolved
+	case "open":
+		status = model.ConversationOpen
+	case "pending":
+		status = model.ConversationPending
+	case "snoozed":
+		status = model.ConversationSnoozed
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid status value"))
+	}
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if convo.InboxID != inbox.ID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
+	}
+
+	if convo.Status == status {
+		return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+	}
+
+	convo, err = h.svc.ToggleStatus(c.Context(), id, accountID, status)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+}
+
+func (h *ConversationHandler) ToggleTyping(c *fiber.Ctx) error {
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	var req struct {
+		TypingStatus string `json:"typing_status"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
+	if req.TypingStatus != "on" && req.TypingStatus != "off" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "typing_status must be 'on' or 'off'"))
+	}
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if convo.InboxID != inbox.ID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
+	}
+
+	eventName := "conversation.typing_on"
+	if req.TypingStatus == "off" {
+		eventName = "conversation.typing_off"
+	}
+
+	logger.Info().Str("component", "conversations").Str("event", eventName).Int64("conversation_id", id).Msg("typing event")
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (h *ConversationHandler) UpdateLastSeenPublic(c *fiber.Ctx) error {
+	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
+	}
+
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	sourceID := c.Params("sourceId")
+
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if convo.InboxID != inbox.ID || convo.ContactInboxID == nil || *convo.ContactInboxID != ci.ID {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "conversation not found"))
+	}
+
+	if err := h.svc.UpdateLastSeen(c.Context(), id); err != nil {
+		logger.Error().Str("component", "conversations").Err(err).Msg("failed to update last seen")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to update last seen"))
+	}
+
+	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }

@@ -24,31 +24,34 @@ var (
 )
 
 type AuthService struct {
-	userRepo         *repo.UserRepo
-	accountRepo      *repo.AccountRepo
-	refreshTokenRepo *repo.RefreshTokenRepo
-	mfaService       *MfaService
-	jwtSecret        string
-	accessTTL        time.Duration
-	refreshTTL       time.Duration
+	userRepo            *repo.UserRepo
+	accountRepo         *repo.AccountRepo
+	refreshTokenRepo    *repo.RefreshTokenRepo
+	userAccessTokenRepo *repo.UserAccessTokenRepo
+	mfaService          *MfaService
+	jwtSecret           string
+	accessTTL           time.Duration
+	refreshTTL          time.Duration
 }
 
 func NewAuthService(
 	userRepo *repo.UserRepo,
 	accountRepo *repo.AccountRepo,
 	refreshTokenRepo *repo.RefreshTokenRepo,
+	userAccessTokenRepo *repo.UserAccessTokenRepo,
 	mfaService *MfaService,
 	jwtSecret string,
 	accessTTL, refreshTTL time.Duration,
 ) *AuthService {
 	return &AuthService{
-		userRepo:         userRepo,
-		accountRepo:      accountRepo,
-		refreshTokenRepo: refreshTokenRepo,
-		mfaService:       mfaService,
-		jwtSecret:        jwtSecret,
-		accessTTL:        accessTTL,
-		refreshTTL:       refreshTTL,
+		userRepo:            userRepo,
+		accountRepo:         accountRepo,
+		refreshTokenRepo:    refreshTokenRepo,
+		userAccessTokenRepo: userAccessTokenRepo,
+		mfaService:          mfaService,
+		jwtSecret:           jwtSecret,
+		accessTTL:           accessTTL,
+		refreshTTL:          refreshTTL,
 	}
 }
 
@@ -107,6 +110,12 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, accou
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit registration: %w", err)
+	}
+
+	// Auto-generate persistent user access token for API authentication
+	if _, err := s.userAccessTokenRepo.Create(ctx, "User", user.ID); err != nil {
+		logger.Error().Str("component", "auth").Err(err).Int64("userId", user.ID).Msg("failed to create user access token")
+		// Non-fatal: don't fail registration if token creation fails
 	}
 
 	accessToken, err := s.generateAccessToken(user)
@@ -360,4 +369,33 @@ func generateSlug(email string) string {
 	b := make([]byte, 3)
 	_, _ = rand.Read(b)
 	return email + "-" + base64.RawURLEncoding.EncodeToString(b)
+}
+
+// BackfillUserAccessTokens creates access tokens for all existing users who don't have one.
+// This should be called once on application startup after migrations.
+func (s *AuthService) BackfillUserAccessTokens(ctx context.Context) error {
+	userIDs, err := s.userAccessTokenRepo.ListUsersWithoutToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list users without token: %w", err)
+	}
+
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	logger.Info().Str("component", "auth").Int("count", len(userIDs)).Msg("backfilling user access tokens")
+
+	var failed int
+	for _, userID := range userIDs {
+		if _, err := s.userAccessTokenRepo.Create(ctx, "User", userID); err != nil {
+			logger.Error().Str("component", "auth").Err(err).Int64("userId", userID).Msg("failed to backfill user access token")
+			failed++
+		}
+	}
+
+	if failed > 0 {
+		logger.Warn().Str("component", "auth").Int("failed", failed).Msg("some user access tokens failed to backfill")
+	}
+
+	return nil
 }

@@ -12,7 +12,7 @@ import (
 
 var ErrInboxAgentNotFound = errors.New("inbox agent not found")
 
-const inboxAgentSelectColumns = "id, inbox_id, user_id, created_at"
+const inboxAgentSelectColumns = "ia.id, ia.inbox_id, ia.user_id, ia.created_at"
 
 type inboxAgentScanner interface {
 	Scan(dest ...any) error
@@ -31,7 +31,7 @@ func NewInboxAgentRepo(pool *pgxpool.Pool) *InboxAgentRepo {
 }
 
 func (r *InboxAgentRepo) ListByInbox(ctx context.Context, inboxID, accountID int64) ([]model.InboxAgent, error) {
-	query := `SELECT ia.` + inboxAgentSelectColumns + ` FROM inbox_agents ia
+	query := `SELECT ` + inboxAgentSelectColumns + ` FROM inbox_agents ia
 		JOIN inboxes i ON i.id = ia.inbox_id
 		WHERE ia.inbox_id = $1 AND i.account_id = $2
 		ORDER BY ia.created_at ASC`

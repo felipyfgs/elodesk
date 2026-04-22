@@ -2,16 +2,30 @@
 import type { EntityMetric } from '~/types/reports'
 
 defineProps<{ items: EntityMetric[] }>()
-const { t: _t } = useI18n()
+const { t } = useI18n()
 </script>
 
 <template>
-  <UPageCard title="Top agents" variant="subtle">
-    <ul class="divide-y divide-default">
+  <UCard :ui="{ header: 'flex items-center justify-between' }">
+    <template #header>
+      <h3 class="font-semibold">
+        {{ t('reports.topAgents') }}
+      </h3>
+    </template>
+
+    <UEmpty
+      v-if="!items.length"
+      icon="i-lucide-users"
+      :title="t('reports.noAgentsData')"
+      variant="subtle"
+      size="sm"
+    />
+
+    <ul v-else class="divide-y divide-default">
       <li v-for="a in items.slice(0, 5)" :key="a.entityId" class="flex items-center justify-between py-2">
-        <span class="text-sm">{{ a.entityName }}</span>
+        <UUser :name="a.entityName" size="sm" />
         <UBadge :label="String(a.total)" variant="soft" size="sm" />
       </li>
     </ul>
-  </UPageCard>
+  </UCard>
 </template>

@@ -25,9 +25,18 @@ const items = computed<DropdownMenuItem[][]>(() => [
     avatar: user.value.avatar
   }],
   [{
-    label: t('nav.settingsGeneral'),
+    label: t('nav.profileSettings'),
+    icon: 'i-lucide-user',
+    to: auth.account?.id ? `/accounts/${auth.account.id}/settings/profile` : '/settings/profile'
+  }, {
+    label: t('nav.settingsAccount'),
     icon: 'i-lucide-settings',
-    to: '/settings'
+    to: auth.account?.id ? `/accounts/${auth.account.id}/settings/account` : '/settings/account'
+  }, {
+    label: t('nav.keyboardShortcuts'),
+    icon: 'i-lucide-keyboard',
+    kbds: ['?'],
+    onSelect: () => { window.dispatchEvent(new CustomEvent('open-shortcuts')) }
   }],
   [{
     label: t('nav.theme'),
@@ -87,6 +96,17 @@ const items = computed<DropdownMenuItem[][]>(() => [
         colorMode.preference = 'dark'
       }
     }]
+  }],
+  [{
+    label: t('nav.readDocs'),
+    icon: 'i-lucide-book-open',
+    to: '/docs',
+    target: '_blank'
+  }, {
+    label: t('nav.changelog'),
+    icon: 'i-lucide-scroll-text',
+    to: 'https://github.com/elodesk/elodesk/releases',
+    target: '_blank'
   }],
   [{
     label: t('auth.logout'),

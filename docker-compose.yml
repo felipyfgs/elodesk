@@ -1,14 +1,14 @@
 services:
   postgres:
     image: postgres:16
-    container_name: wzap-postgres
+    container_name: elodesk-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: wzap
       POSTGRES_PASSWORD: wzap
       POSTGRES_DB: wzap
     ports:
-      - "5432:5432"
+      - "${POSTGRES_BIND_ADDR:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,10 +19,10 @@ services:
 
   redis:
     image: redis:7
-    container_name: wzap-redis
+    container_name: elodesk-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_BIND_ADDR:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -33,15 +33,15 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: wzap-minio
+    container_name: elodesk-minio
     restart: unless-stopped
     command: server /data --console-address ":9011"
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio12345
     ports:
-      - "9010:9000"
-      - "9011:9001"
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:${MINIO_PORT:-9010}:9000"
+      - "${MINIO_CONSOLE_BIND_ADDR:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9011}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -54,7 +54,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    container_name: wzap-backend
+    container_name: elodesk-backend
     restart: unless-stopped
     ports:
       - "3001:3001"
@@ -83,6 +83,37 @@ services:
       API_URL: http://localhost:3001
       CORS_ORIGINS: "*"
       META_ALLOW_UNSIGNED: "true"
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-dev-stub}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-dev-stub}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: elodesk-worker
+    restart: unless-stopped
+    command: ["air", "-c", ".air.worker.toml"]
+    volumes:
+      - ./backend:/app
+      - backend_gomod:/go/pkg/mod
+      - backend_gocache:/root/.cache/go-build
+      - /app/tmp
+    environment:
+      GO_ENV: development
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://wzap:wzap@postgres:5432/wzap?sslmode=disable
+      REDIS_URL: redis:6379
+      JWT_SECRET: dev-jwt-secret-at-least-32-characters-long
+      BACKEND_KEK: ${BACKEND_KEK:-ZGV2LWtlay1mb3ItbG9jYWwtZGV2ZWxvcG1lbnQtMzI=}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,7 +124,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: wzap-frontend
+    container_name: elodesk-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"

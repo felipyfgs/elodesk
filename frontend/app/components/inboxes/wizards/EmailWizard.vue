@@ -134,7 +134,7 @@ async function submit() {
       window.location.href = res.authorizeUrl
     } else {
       toast.add({ title: t('common.success'), color: 'success' })
-      router.push(`/inboxes/${res.inboxId}`)
+      router.push(`/accounts/${auth.account?.id}/inboxes/${res.inboxId}`)
     }
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
@@ -149,21 +149,13 @@ const isLastStep = computed(() => step.value >= stepperItems.value.length - 1)
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-arrow-left"
-        variant="ghost"
-        color="neutral"
-        to="/inboxes/new"
-      />
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('inboxes.channels.email') }}
-        </h2>
-        <p class="text-sm text-muted">
-          {{ t('inboxes.wizards.email.description') }}
-        </p>
-      </div>
+    <div>
+      <h2 class="text-lg font-semibold">
+        {{ t('inboxes.channels.email') }}
+      </h2>
+      <p class="text-sm text-muted">
+        {{ t('inboxes.wizards.email.description') }}
+      </p>
     </div>
 
     <UStepper v-model="step" :items="stepperItems" :linear="true">
@@ -182,13 +174,13 @@ const isLastStep = computed(() => step.value >= stepperItems.value.length - 1)
             <UFormField :label="t('inboxes.wizards.email.provider')" name="provider" required>
               <USelect
                 v-model="state.provider"
-                :options="[
+                :items="[
                   { value: 'generic', label: 'IMAP/SMTP' },
                   { value: 'google', label: 'Google' },
                   { value: 'microsoft', label: 'Microsoft' }
                 ]"
                 value-key="value"
-                option-attribute="label"
+                label-key="label"
               />
             </UFormField>
 
@@ -263,7 +255,7 @@ const isLastStep = computed(() => step.value >= stepperItems.value.length - 1)
     </UStepper>
 
     <div class="flex justify-end gap-2">
-      <UButton to="/inboxes/new" variant="ghost" color="neutral">
+      <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
       <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">

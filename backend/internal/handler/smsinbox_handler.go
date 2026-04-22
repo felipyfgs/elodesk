@@ -51,6 +51,13 @@ func (h *SMSInboxHandler) Provision(c *fiber.Ctx) error {
 		return nil
 	}
 
+	if req.Provider == "twilio" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp(
+			"unsupported_provider",
+			"provider 'twilio' is no longer accepted on /inboxes/sms; use POST /api/v1/accounts/:aid/inboxes/twilio with medium=\"sms\" instead",
+		))
+	}
+
 	providerConfig, err := h.buildProviderConfig(req.Provider, req.ProviderConfig)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp(err.Error(), "invalid provider config"))

@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/audit"
@@ -39,8 +42,16 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 		return nil
 	}
 
-	creds, err := h.svc.Provision(c.Context(), accountID, req.Name)
+	creds, err := h.svc.ProvisionAPI(c.Context(), accountID, service.ProvisionAPIInput{
+		Name:                 req.Name,
+		WebhookURL:           req.WebhookURL,
+		HmacMandatory:        req.HmacMandatory,
+		AdditionalAttributes: req.AdditionalAttributes,
+	})
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidAgentReplyTimeWindow) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid_agent_reply_time_window"))
+		}
 		return handleNotFound(c, err)
 	}
 
@@ -64,9 +75,126 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 		Identifier: creds.ChannelAPI.Identifier,
 		ApiToken:   creds.ApiToken,
 		HmacToken:  creds.HmacToken,
+		Secret:     creds.Secret,
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(resp))
+}
+
+// UpdateChannelAPI handles PUT /inboxes/:id when the inbox is Channel::Api.
+// Accepts the whitelist in UpdateChannelAPIReq. Other channel kinds have
+// their own handlers — this one rejects non-Api inboxes to avoid stepping on
+// per-kind update logic.
+func (h *InboxHandler) UpdateChannelAPI(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	var req dto.UpdateChannelAPIReq
+	if err := parseAndValidate(c, &req); err != nil {
+		return nil
+	}
+
+	if req.Name != "" {
+		if err := h.svc.UpdateName(c.Context(), int64(id), accountID, req.Name); err != nil {
+			return handleNotFound(c, err)
+		}
+	}
+
+	ch, err := h.svc.UpdateChannelAPIEditable(c.Context(), int64(id), accountID, service.UpdateAPIInput{
+		WebhookURL:           req.WebhookURL,
+		HmacMandatory:        req.HmacMandatory,
+		AdditionalAttributes: req.AdditionalAttributes,
+	})
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidAgentReplyTimeWindow) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid_agent_reply_time_window"))
+		}
+		return handleNotFound(c, err)
+	}
+
+	if h.auditLogger != nil {
+		inboxID := int64(id)
+		h.auditLogger.LogFromCtx(c, "inbox.updated", "inbox", &inboxID, fiber.Map{
+			"channel_type": "Channel::Api",
+		})
+	}
+
+	return c.JSON(dto.SuccessResp(channelAPIModelToResp(ch)))
+}
+
+// GetChannelAPI returns the editable, non-secret Channel::Api metadata for an
+// inbox. Plaintext API/HMAC tokens are intentionally never returned here.
+func (h *InboxHandler) GetChannelAPI(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	ch, err := h.svc.GetChannelAPIEditable(c.Context(), int64(id), accountID)
+	if err != nil {
+		if errors.Is(err, repo.ErrChannelAPINotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "channel_api_not_found"))
+		}
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(channelAPIModelToResp(ch)))
+}
+
+// RotateAPIToken issues a new identifier + api_token for the inbox. The
+// previous credentials are invalidated on success. RBAC: caller must be
+// Owner/Admin on the account (enforced by the RequireAdmin middleware in
+// router.go).
+func (h *InboxHandler) RotateAPIToken(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	ch, apiToken, secret, err := h.svc.RotateAPIToken(c.Context(), int64(id), accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if h.auditLogger != nil {
+		inboxID := int64(id)
+		h.auditLogger.LogFromCtx(c, "inbox.api_token_rotated", "inbox", &inboxID, nil)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.RotateAPITokenResp{
+		Identifier: ch.Identifier,
+		ApiToken:   apiToken,
+		Secret:     secret,
+	}))
+}
+
+func channelAPIModelToResp(ch *model.ChannelAPI) dto.ChannelAPIResp {
+	return dto.ChannelAPIResp{
+		ID:                   ch.ID,
+		Identifier:           ch.Identifier,
+		WebhookURL:           ch.WebhookURL,
+		HmacMandatory:        ch.HmacMandatory,
+		AdditionalAttributes: ch.AdditionalAttributes,
+		CreatedAt:            ch.CreatedAt,
+		UpdatedAt:            ch.UpdatedAt,
+	}
 }
 
 func (h *InboxHandler) List(c *fiber.Ctx) error {
@@ -116,6 +244,105 @@ func inboxModelToResp(i *model.Inbox) dto.InboxResp {
 		ChannelType: i.ChannelType,
 		CreatedAt:   i.CreatedAt,
 	}
+}
+
+func businessHoursModelToResp(m *model.InboxBusinessHours) dto.InboxBusinessHoursResp {
+	var createdAt *time.Time
+	var updatedAt *time.Time
+	if !m.CreatedAt.IsZero() {
+		createdAt = &m.CreatedAt
+	}
+	if !m.UpdatedAt.IsZero() {
+		updatedAt = &m.UpdatedAt
+	}
+	return dto.InboxBusinessHoursResp{
+		InboxID:   m.InboxID,
+		Timezone:  m.Timezone,
+		Schedule:  businessHoursScheduleToDTO(m.Schedule),
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+}
+
+func businessHoursScheduleToDTO(schedule map[string]model.BusinessHoursSlot) map[string]dto.BusinessHoursSlot {
+	out := make(map[string]dto.BusinessHoursSlot, len(schedule))
+	for day, slot := range schedule {
+		out[day] = dto.BusinessHoursSlot{
+			Enabled:     slot.Enabled,
+			OpenHour:    slot.OpenHour,
+			OpenMinute:  slot.OpenMinute,
+			CloseHour:   slot.CloseHour,
+			CloseMinute: slot.CloseMinute,
+		}
+	}
+	return out
+}
+
+func businessHoursScheduleToModel(schedule map[string]dto.BusinessHoursSlot) map[string]model.BusinessHoursSlot {
+	out := make(map[string]model.BusinessHoursSlot, len(schedule))
+	for day, slot := range schedule {
+		out[day] = model.BusinessHoursSlot{
+			Enabled:     slot.Enabled,
+			OpenHour:    slot.OpenHour,
+			OpenMinute:  slot.OpenMinute,
+			CloseHour:   slot.CloseHour,
+			CloseMinute: slot.CloseMinute,
+		}
+	}
+	return out
+}
+
+func (h *InboxHandler) GetBusinessHours(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	hours, err := h.svc.GetBusinessHours(c.Context(), int64(id), accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(businessHoursModelToResp(hours)))
+}
+
+func (h *InboxHandler) UpdateBusinessHours(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	var req dto.UpdateInboxBusinessHoursReq
+	if err := parseAndValidate(c, &req); err != nil {
+		return nil
+	}
+
+	hours, err := h.svc.UpdateBusinessHours(c.Context(), int64(id), accountID, req.Timezone, businessHoursScheduleToModel(req.Schedule))
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidBusinessHours) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid_business_hours"))
+		}
+		return handleNotFound(c, err)
+	}
+
+	if h.auditLogger != nil {
+		inboxID := int64(id)
+		h.auditLogger.LogFromCtx(c, "inbox.business_hours_updated", "inbox", &inboxID, fiber.Map{
+			"timezone": hours.Timezone,
+		})
+	}
+
+	return c.JSON(dto.SuccessResp(businessHoursModelToResp(hours)))
 }
 
 func (h *InboxHandler) ListAgents(c *fiber.Ctx) error {

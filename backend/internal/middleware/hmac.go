@@ -13,6 +13,24 @@ import (
 	"backend/internal/model"
 )
 
+func ValidIdentifierHash(channelApi *model.ChannelAPI, cipher *crypto.Cipher, identifier, providedHash string) bool {
+	if providedHash == "" {
+		return !channelApi.HmacMandatory
+	}
+
+	hmacKey, err := cipher.Decrypt(channelApi.HmacToken)
+	if err != nil {
+		logger.Error().Str("component", "hmac").Err(err).Msg("failed to decrypt hmac token for identifier_hash")
+		return false
+	}
+
+	mac := hmac.New(sha256.New, []byte(hmacKey))
+	mac.Write([]byte(identifier))
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	return hmac.Equal([]byte(providedHash), []byte(expected))
+}
+
 // HmacOptional validates the X-Chatwoot-Hmac-Sha256 header ONLY when the
 // channel has `hmac_mandatory=true`. The signing key is decrypted on the fly
 // from the channel row (AES-GCM ciphertext in hmac_token).

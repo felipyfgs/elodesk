@@ -15,9 +15,9 @@ const { t } = useI18n()
   <UFormField :label="t('inboxes.agentsSelect')">
     <USelectMenu
       :model-value="props.modelValue"
-      :options="props.agents"
+      :items="props.agents"
       value-key="id"
-      option-attribute="name"
+      label-key="name"
       multiple
       searchable
       class="w-full"

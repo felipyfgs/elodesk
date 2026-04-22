@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { useAuthStore } from '~/stores/auth'
 
 const { t } = useI18n()
 const { links, isSidebarOpen } = useDashboard()
+const auth = useAuthStore()
 
 function flattenNav(menu: NavigationMenuItem[]): Array<{ id: string, label: string, icon?: string, to?: string }> {
   const out: Array<{ id: string, label: string, icon?: string, to?: string }> = []
@@ -14,6 +16,8 @@ function flattenNav(menu: NavigationMenuItem[]): Array<{ id: string, label: stri
   return out
 }
 
+const aid = computed(() => auth.account?.id ?? '')
+
 const groups = computed(() => [
   {
     id: 'navigate',
@@ -24,8 +28,8 @@ const groups = computed(() => [
     id: 'create',
     label: t('nav.create'),
     items: [
-      { id: 'new-inbox', label: t('inboxes.new'), icon: 'i-lucide-store', to: '/inboxes/new' },
-      { id: 'new-contact', label: t('contacts.new'), icon: 'i-lucide-user-plus', to: '/contacts/new' }
+      { id: 'new-inbox', label: t('inboxes.new'), icon: 'i-lucide-store', to: aid.value ? `/accounts/${aid.value}/inboxes/new` : '/inboxes/new' },
+      { id: 'new-contact', label: t('contacts.new'), icon: 'i-lucide-user-plus', to: aid.value ? `/accounts/${aid.value}/contacts` : '/contacts' }
     ]
   }
 ])
@@ -42,7 +46,7 @@ const groups = computed(() => [
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
-        <TeamsMenu :collapsed="collapsed" />
+        <AccountMenu :collapsed="collapsed" />
       </template>
 
       <template #default="{ collapsed }">

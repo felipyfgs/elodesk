@@ -7,7 +7,31 @@ import (
 )
 
 type CreateConversationReq struct {
-	CustomAttributes string `json:"custom_attributes,omitempty"`
+	CustomAttributes     map[string]any  `json:"custom_attributes,omitempty"`
+	AdditionalAttributes map[string]any  `json:"additional_attributes,omitempty"`
+	Status               *string         `json:"status,omitempty"`
+	SnoozedUntil         *time.Time      `json:"snoozed_until,omitempty"`
+	AssigneeID           *int64          `json:"assignee_id,omitempty"`
+	TeamID               *int64          `json:"team_id,omitempty"`
+}
+
+// CreateAuthenticatedConversationReq is the payload for agents starting a
+// new conversation with a contact from the dashboard. The optional `Message`
+// field creates the first outgoing message within the same request.
+type CreateAuthenticatedConversationReq struct {
+	ContactID            int64                      `json:"contact_id"`
+	InboxID              int64                      `json:"inbox_id"`
+	Message              *CreateConversationMessage `json:"message,omitempty"`
+	AssigneeID           *int64                     `json:"assignee_id,omitempty"`
+	TeamID               *int64                     `json:"team_id,omitempty"`
+	Status               *string                    `json:"status,omitempty"`
+	AdditionalAttributes map[string]any             `json:"additional_attributes,omitempty"`
+	CustomAttributes     map[string]any             `json:"custom_attributes,omitempty"`
+}
+
+type CreateConversationMessage struct {
+	Content string `json:"content"`
+	Private bool   `json:"private,omitempty"`
 }
 
 type ConversationResp struct {

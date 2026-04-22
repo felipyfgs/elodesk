@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -50,6 +51,7 @@ type OutboundPayload struct {
 	AccountID              int64           `json:"accountId"`
 	InboxID                int64           `json:"inboxId"`
 	WebhookURL             string          `json:"webhookUrl"`
+	Secret                 string          `json:"secret"`
 	HmacCiphertext         string          `json:"hmacCiphertext"`
 	DeliveryID             string          `json:"deliveryId"`
 	Conversation           json.RawMessage `json:"conversation,omitempty"`
@@ -130,7 +132,24 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 		return fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Delivery-Id", payload.DeliveryID)
+
+	if payload.Secret != "" {
+		ts := strconv.FormatInt(time.Now().Unix(), 10)
+		signedBody := ts + "." + string(body)
+		sig := computeHmacSha256([]byte(signedBody), payload.Secret)
+		upstreamSig := "sha256=" + sig
+
+		req.Header.Set("X-Chatwoot-Delivery", payload.DeliveryID)
+		req.Header.Set("X-Chatwoot-Timestamp", ts)
+		req.Header.Set("X-Chatwoot-Signature", upstreamSig)
+		req.Header.Set("X-Elodesk-Signature", upstreamSig)
+	} else {
+		logger.Error().Str("component", "outbound-webhook").
+			Str("eventType", payload.EventType).
+			Int64("accountId", payload.AccountID).
+			Msg("secret is empty, skip retry")
+		return fmt.Errorf("outbound webhook: channel.secret is empty")
+	}
 
 	if payload.HmacCiphertext != "" {
 		key, err := p.cipher.Decrypt(payload.HmacCiphertext)
@@ -138,6 +157,7 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 			logger.Error().Str("component", "outbound-webhook").Err(err).Msg("decrypt hmac key")
 			return fmt.Errorf("decrypt hmac key: %w", err)
 		}
+		req.Header.Set("X-Delivery-Id", payload.DeliveryID)
 		req.Header.Set("X-Chatwoot-Hmac-Sha256", computeHmacSha256(body, key))
 	}
 

@@ -112,6 +112,60 @@ func (r *AuditLogRepo) List(ctx context.Context, accountID int64, from, to, acti
 	return result, total, rows.Err()
 }
 
+// AuditEventRow is an audit_logs row joined with the author's user record.
+type AuditEventRow struct {
+	ID        int64
+	Action    string
+	Metadata  *string
+	UserID    *int64
+	UserName  *string
+	CreatedAt time.Time
+}
+
+// ListByEntity returns audit events for a single entity scoped by account, joined to users.
+func (r *AuditLogRepo) ListByEntity(ctx context.Context, accountID int64, entityType string, entityID int64, page, pageSize int) ([]AuditEventRow, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 25
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var total int
+	countQuery := `SELECT COUNT(*) FROM audit_logs WHERE account_id = $1 AND entity_type = $2 AND entity_id = $3`
+	if err := r.pool.QueryRow(ctx, countQuery, accountID, entityType, entityID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count entity audit logs: %w", err)
+	}
+	if total == 0 {
+		return []AuditEventRow{}, 0, nil
+	}
+
+	offset := (page - 1) * pageSize
+	dataQuery := `SELECT a.id, a.action, a.metadata, a.user_id, u.name, a.created_at
+		FROM audit_logs a
+		LEFT JOIN users u ON u.id = a.user_id
+		WHERE a.account_id = $1 AND a.entity_type = $2 AND a.entity_id = $3
+		ORDER BY a.created_at DESC LIMIT $4 OFFSET $5`
+	rows, err := r.pool.Query(ctx, dataQuery, accountID, entityType, entityID, pageSize, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list entity audit logs: %w", err)
+	}
+	defer rows.Close()
+
+	var result []AuditEventRow
+	for rows.Next() {
+		var e AuditEventRow
+		if err := rows.Scan(&e.ID, &e.Action, &e.Metadata, &e.UserID, &e.UserName, &e.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan entity audit log: %w", err)
+		}
+		result = append(result, e)
+	}
+	return result, total, rows.Err()
+}
+
 func (r *AuditLogRepo) DeleteOlderThan(ctx context.Context, days int) (int64, error) {
 	res, err := r.pool.Exec(ctx, `DELETE FROM audit_logs WHERE created_at < NOW() - ($1 || ' days')::INTERVAL`, days)
 	if err != nil {

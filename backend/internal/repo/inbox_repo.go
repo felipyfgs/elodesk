@@ -105,6 +105,19 @@ func (r *InboxRepo) FindByChannelID(ctx context.Context, channelID int64) (*mode
 	return &m, nil
 }
 
+func (r *InboxRepo) FindByChannel(ctx context.Context, channelType string, channelID int64) (*model.Inbox, error) {
+	query := `SELECT ` + inboxSelectColumns + ` FROM inboxes WHERE channel_type = $1 AND channel_id = $2`
+	row := r.pool.QueryRow(ctx, query, channelType, channelID)
+	var m model.Inbox
+	if err := scanInbox(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrInboxNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find inbox by channel: %w", err)
+	}
+	return &m, nil
+}
+
 func (r *InboxRepo) UpdateName(ctx context.Context, id, accountID int64, name string) error {
 	query := `UPDATE inboxes SET name = $1, updated_at = now() WHERE id = $2 AND account_id = $3`
 	tag, err := r.pool.Exec(ctx, query, name, id, accountID)

@@ -1,14 +1,17 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
+	"backend/internal/crypto"
 	"backend/internal/dto"
 	"backend/internal/logger"
+	"backend/internal/middleware"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -18,6 +21,7 @@ type ContactHandler struct {
 	svc              *service.ContactService
 	inboxRepo        *repo.InboxRepo
 	contactInboxRepo *repo.ContactInboxRepo
+	cipher           *crypto.Cipher
 }
 
 func NewContactHandler(
@@ -30,6 +34,150 @@ func NewContactHandler(
 		inboxRepo:        inboxRepo,
 		contactInboxRepo: contactInboxRepo,
 	}
+}
+
+func (h *ContactHandler) SetCipher(c *crypto.Cipher) {
+	h.cipher = c
+}
+
+func currentUserID(c *fiber.Ctx) *int64 {
+	if u, ok := c.Locals("user").(*repo.AuthUser); ok && u != nil {
+		id := u.ID
+		return &id
+	}
+	return nil
+}
+
+func (h *ContactHandler) Delete(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	if err := h.svc.Delete(c.Context(), accountID, int64(id), currentUserID(c)); err != nil {
+		return handleNotFound(c, err)
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *ContactHandler) Merge(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	childID, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	var req dto.ContactMergeReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+	if req.PrimaryContactID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "primary_contact_id is required"))
+	}
+	primary, err := h.svc.Merge(c.Context(), accountID, int64(childID), req.PrimaryContactID, currentUserID(c))
+	if err != nil {
+		if errors.Is(err, service.ErrSameContactMerge) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResp("Unprocessable", "same_contact_merge"))
+		}
+		return handleNotFound(c, err)
+	}
+	return c.JSON(dto.SuccessResp(dto.ContactToResp(primary)))
+}
+
+func (h *ContactHandler) Block(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	var req dto.ContactBlockReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+	if err := h.svc.SetBlocked(c.Context(), accountID, int64(id), currentUserID(c), req.Blocked); err != nil {
+		return handleNotFound(c, err)
+	}
+	contact, err := h.svc.FindByID(c.Context(), int64(id), accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
+}
+
+func (h *ContactHandler) SetAvatar(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	var req dto.ContactAvatarReq
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+	if req.ObjectKey == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "object_key is required"))
+	}
+	contact, err := h.svc.SetAvatar(c.Context(), accountID, int64(id), currentUserID(c), req.ObjectKey)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidAvatarObject) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResp("Unprocessable", "invalid_object_key"))
+		}
+		return handleNotFound(c, err)
+	}
+	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
+}
+
+func (h *ContactHandler) DeleteAvatar(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	if err := h.svc.DeleteAvatar(c.Context(), accountID, int64(id), currentUserID(c)); err != nil {
+		return handleNotFound(c, err)
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *ContactHandler) Events(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid contact id"))
+	}
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(c.Query("pageSize", "25"))
+	events, total, err := h.svc.ListEvents(c.Context(), accountID, int64(id), page, pageSize)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 25
+	}
+	return c.JSON(dto.SuccessResp(dto.AuditEventListResp{
+		Meta:    dto.NewMetaResp(total, page, pageSize),
+		Payload: events,
+	}))
 }
 
 func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
@@ -48,36 +196,46 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 		return nil
 	}
 
-	var additionalAttrs *string
-	if len(req.CustomAttributes) > 0 {
-		s := string(req.CustomAttributes)
-		additionalAttrs = &s
-	}
-
-	contact := &model.Contact{
-		AccountID:       accountID,
-		Name:            req.Name,
-		Email:           req.Email,
-		PhoneNumber:     req.Phone,
-		Identifier:      req.Identifier,
-		AdditionalAttrs: additionalAttrs,
-	}
-
-	created, err := h.svc.Create(c.Context(), accountID, contact)
-	if err != nil {
-		return handleNotFound(c, err)
-	}
-
 	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
 
-	if err := h.svc.EnsureContactInbox(c.Context(), created.ID, inbox.ID, req.SourceID); err != nil {
+	hmacVerified := false
+	if req.IdentifierHash != nil && *req.IdentifierHash != "" {
+		if h.cipher != nil {
+			identifier := ""
+			if req.Identifier != nil {
+				identifier = *req.Identifier
+			}
+			if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, *req.IdentifierHash) {
+				hmacVerified = true
+			} else if channelApi.HmacMandatory {
+				return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
+			}
+		}
+	} else if channelApi.HmacMandatory {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
+	}
+
+	attrs := service.ContactCreateAttrs{
+		Name:        req.Name,
+		Email:       req.Email,
+		PhoneNumber: req.Phone,
+		Identifier:  req.Identifier,
+	}
+
+	ci, err := h.svc.CreateOrReuseContactInbox(c.Context(), inbox, attrs, req.SourceID, hmacVerified)
+	if err != nil {
 		return handleNotFound(c, err)
 	}
 
-	return c.JSON(dto.SuccessResp(dto.ContactToResp(created)))
+	contact, err := h.svc.FindByID(c.Context(), ci.ContactID, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
 }
 
 func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
@@ -101,6 +259,20 @@ func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
 	contact, err := h.svc.FindBySourceID(c.Context(), sourceID, inbox.ID, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
+	}
+
+	identifierHash := c.Get("X-Contact-Identifier-Hash")
+	if identifierHash != "" && h.cipher != nil {
+		identifier := ""
+		if contact.Identifier != nil {
+			identifier = *contact.Identifier
+		}
+		if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, identifierHash) {
+			ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
+			if err == nil {
+				_ = h.contactInboxRepo.UpdateHmacVerified(c.Context(), ci.ID, true)
+			}
+		}
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ContactToResp(contact)))
@@ -134,7 +306,37 @@ func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	updated, err := h.svc.Update(c.Context(), contact.ID, accountID, req.Name, req.Email, req.Phone)
+	identifierHash := c.Get("X-Contact-Identifier-Hash")
+	if identifierHash == "" {
+		var bodyReq struct {
+			IdentifierHash *string `json:"identifier_hash"`
+		}
+		if err := c.BodyParser(&bodyReq); err == nil && bodyReq.IdentifierHash != nil {
+			identifierHash = *bodyReq.IdentifierHash
+		}
+	}
+
+	if identifierHash != "" && h.cipher != nil {
+		identifier := ""
+		if contact.Identifier != nil {
+			identifier = *contact.Identifier
+		}
+		if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, identifierHash) {
+			ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
+			if err == nil {
+				_ = h.contactInboxRepo.UpdateHmacVerified(c.Context(), ci.ID, true)
+			}
+		} else if channelApi.HmacMandatory {
+			return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
+		}
+	}
+
+	params := service.ContactIdentifyParams{
+		Email:       req.Email,
+		PhoneNumber: req.Phone,
+	}
+
+	updated, err := h.svc.Identify(c.Context(), accountID, contact, params)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -201,10 +403,11 @@ func (h *ContactHandler) Create(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name        string  `json:"name"`
-		Email       *string `json:"email,omitempty"`
-		PhoneNumber *string `json:"phone_number,omitempty"`
-		Identifier  *string `json:"identifier,omitempty"`
+		Name                 string          `json:"name"`
+		Email                *string         `json:"email,omitempty"`
+		PhoneNumber          *string         `json:"phone_number,omitempty"`
+		Identifier           *string         `json:"identifier,omitempty"`
+		AdditionalAttributes json.RawMessage `json:"additional_attributes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
@@ -213,12 +416,22 @@ func (h *ContactHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "name is required"))
 	}
 
+	var additionalAttrs *string
+	if len(req.AdditionalAttributes) > 0 && string(req.AdditionalAttributes) != "null" {
+		if !json.Valid(req.AdditionalAttributes) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "additional_attributes must be valid JSON"))
+		}
+		s := string(req.AdditionalAttributes)
+		additionalAttrs = &s
+	}
+
 	contact := &model.Contact{
-		AccountID:   accountID,
-		Name:        req.Name,
-		Email:       req.Email,
-		PhoneNumber: req.PhoneNumber,
-		Identifier:  req.Identifier,
+		AccountID:       accountID,
+		Name:            req.Name,
+		Email:           req.Email,
+		PhoneNumber:     req.PhoneNumber,
+		Identifier:      req.Identifier,
+		AdditionalAttrs: additionalAttrs,
 	}
 
 	created, err := h.svc.Create(c.Context(), accountID, contact)
@@ -242,16 +455,24 @@ func (h *ContactHandler) UpdateContactByID(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name        *string `json:"name,omitempty"`
-		Email       *string `json:"email,omitempty"`
-		PhoneNumber *string `json:"phone_number,omitempty"`
-		Identifier  *string `json:"identifier,omitempty"`
+		Name                 *string         `json:"name,omitempty"`
+		Email                *string         `json:"email,omitempty"`
+		PhoneNumber          *string         `json:"phone_number,omitempty"`
+		Identifier           *string         `json:"identifier,omitempty"`
+		AdditionalAttributes json.RawMessage `json:"additional_attributes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
 	}
 
-	updated, err := h.svc.Update(c.Context(), int64(id), accountID, req.Name, req.Email, req.PhoneNumber)
+	var additionalAttrs map[string]any
+	if len(req.AdditionalAttributes) > 0 && string(req.AdditionalAttributes) != "null" {
+		if err := json.Unmarshal(req.AdditionalAttributes, &additionalAttrs); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "additional_attributes must be a JSON object"))
+		}
+	}
+
+	updated, err := h.svc.UpdateDetails(c.Context(), int64(id), accountID, req.Name, req.Email, req.PhoneNumber, additionalAttrs)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

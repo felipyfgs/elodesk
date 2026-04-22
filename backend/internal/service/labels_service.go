@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"backend/internal/audit"
 	"backend/internal/model"
 	"backend/internal/repo"
 )
@@ -17,12 +18,18 @@ var ErrInvalidLabelColor = errors.New("invalid hex color")
 var hexColorRegex = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 type LabelService struct {
-	labelRepo *repo.LabelRepo
-	rt        *RealtimeService
+	labelRepo   *repo.LabelRepo
+	rt          *RealtimeService
+	auditLogger *audit.Logger
 }
 
 func NewLabelService(labelRepo *repo.LabelRepo, rt *RealtimeService) *LabelService {
 	return &LabelService{labelRepo: labelRepo, rt: rt}
+}
+
+func (s *LabelService) WithAudit(l *audit.Logger) *LabelService {
+	s.auditLogger = l
+	return s
 }
 
 func (s *LabelService) List(ctx context.Context, accountID int64) ([]model.Label, error) {
@@ -98,7 +105,8 @@ func (s *LabelService) Delete(ctx context.Context, id, accountID int64) error {
 }
 
 func (s *LabelService) ApplyLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
-	if _, err := s.labelRepo.FindByID(ctx, labelID, accountID); err != nil {
+	label, err := s.labelRepo.FindByID(ctx, labelID, accountID)
+	if err != nil {
 		return err
 	}
 	if err := s.labelRepo.ApplyLabel(ctx, accountID, labelID, taggableType, taggableID); err != nil {
@@ -114,12 +122,22 @@ func (s *LabelService) ApplyLabel(ctx context.Context, accountID, labelID int64,
 		payload["conversation_id"] = taggableID
 	} else {
 		payload["contact_id"] = taggableID
+		s.emitContactAudit(ctx, accountID, "contact.label_added", taggableID, map[string]any{
+			"label_id":    labelID,
+			"label_title": label.Title,
+		})
 	}
 	s.rt.BroadcastAccountEvent(accountID, "label.added", payload)
 	return nil
 }
 
 func (s *LabelService) RemoveLabel(ctx context.Context, accountID, labelID int64, taggableType string, taggableID int64) error {
+	var labelTitle string
+	if taggableType == "contact" {
+		if label, err := s.labelRepo.FindByID(ctx, labelID, accountID); err == nil {
+			labelTitle = label.Title
+		}
+	}
 	if err := s.labelRepo.RemoveLabel(ctx, accountID, labelID, taggableType, taggableID); err != nil {
 		return err
 	}
@@ -133,9 +151,21 @@ func (s *LabelService) RemoveLabel(ctx context.Context, accountID, labelID int64
 		payload["conversation_id"] = taggableID
 	} else {
 		payload["contact_id"] = taggableID
+		s.emitContactAudit(ctx, accountID, "contact.label_removed", taggableID, map[string]any{
+			"label_id":    labelID,
+			"label_title": labelTitle,
+		})
 	}
 	s.rt.BroadcastAccountEvent(accountID, "label.removed", payload)
 	return nil
+}
+
+func (s *LabelService) emitContactAudit(ctx context.Context, accountID int64, action string, contactID int64, metadata any) {
+	if s.auditLogger == nil {
+		return
+	}
+	cid := contactID
+	s.auditLogger.Log(ctx, accountID, nil, action, "contact", &cid, metadata, "", "")
 }
 
 func (s *LabelService) ListByTaggable(ctx context.Context, accountID int64, taggableType string, taggableID int64) ([]model.Label, error) {

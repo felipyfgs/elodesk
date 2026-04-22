@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -46,8 +47,13 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
 	}
+	if err := validateCreateWhatsAppInboxReq(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Validation Error", err.Error()))
+	}
 
-	apiKeyCiphertext, err := h.cipher.Encrypt(req.ApiKey)
+	secretToEncrypt := req.ApiKey
+
+	apiKeyCiphertext, err := h.cipher.Encrypt(secretToEncrypt)
 	if err != nil {
 		logger.Error().Str("component", "whatsapp-inbox").Err(err).Msg("failed to encrypt api key")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to encrypt api key"))
@@ -60,7 +66,8 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		ApiKeyCiphertext: apiKeyCiphertext,
 	}
 
-	if req.Provider == "whatsapp_cloud" {
+	switch req.Provider {
+	case "whatsapp_cloud":
 		verifyToken := generateWebhookVerifyToken()
 		vtCiphertext, err := h.cipher.Encrypt(verifyToken)
 		if err != nil {
@@ -98,9 +105,10 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		PhoneNumber:       ch.PhoneNumber,
 		PhoneNumberID:     req.PhoneNumberID,
 		BusinessAccountID: req.BusinessAccountID,
-		ApiKey:            req.ApiKey,
 		CreatedAt:         inbox.CreatedAt,
 	}
+
+	resp.ApiKey = req.ApiKey
 
 	if ch.WebhookVerifyTokenCiphertext != nil {
 		vt, _ := h.cipher.Decrypt(*ch.WebhookVerifyTokenCiphertext)
@@ -194,11 +202,20 @@ func (h *WhatsAppInboxHandler) GetByID(c *fiber.Ctx) error {
 		PhoneNumberID:            ch.PhoneNumberID,
 		BusinessAccountID:        ch.BusinessAccountID,
 		MessageTemplatesSyncedAt: ch.MessageTemplatesSyncedAt,
-		RequiresReauth:           ch.RequiresReauth,
 		CreatedAt:                inbox.CreatedAt,
 	}
 
 	return c.JSON(dto.SuccessResp(resp))
+}
+
+func validateCreateWhatsAppInboxReq(req dto.CreateWhatsAppInboxReq) error {
+	if req.PhoneNumber == "" {
+		return errors.New("phoneNumber is required")
+	}
+	if req.ApiKey == "" {
+		return errors.New("apiKey is required")
+	}
+	return nil
 }
 
 func generateWebhookVerifyToken() string {

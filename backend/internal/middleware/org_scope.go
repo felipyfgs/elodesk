@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/model"
 	"backend/internal/repo"
 )
 
@@ -35,6 +36,10 @@ func OrgScope(accountRepo *repo.AccountRepo) fiber.Handler {
 				return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "account not found"))
 			}
 			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
+		}
+
+		if account.Status == model.AccountStatusSuspended {
+			return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("Forbidden", "account is suspended"))
 		}
 
 		au, err := accountRepo.FindAccountUser(c.Context(), accountID, authUser.ID)

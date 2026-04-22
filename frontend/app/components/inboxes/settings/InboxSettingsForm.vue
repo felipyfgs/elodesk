@@ -53,7 +53,7 @@ function closeModal() {
 <template>
   <div>
     <UButton
-      v-if="inbox.channelType === 'web_widget'"
+      v-if="inbox.channelType === 'Channel::WebWidget'"
       icon="i-lucide-refresh-cw"
       variant="outline"
       color="warning"

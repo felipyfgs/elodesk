@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -10,15 +11,21 @@ import (
 
 	"backend/internal/audit"
 	appchannel "backend/internal/channel"
+	apichan "backend/internal/channel/api"
 	fbchan "backend/internal/channel/facebook"
 	igchan "backend/internal/channel/instagram"
+	linechan "backend/internal/channel/line"
 	"backend/internal/channel/reauth"
 	smschan "backend/internal/channel/sms"
 	bandwidth "backend/internal/channel/sms/bandwidth"
-	twilio "backend/internal/channel/sms/twilio"
+	smstwilio "backend/internal/channel/sms/twilio"
 	zenvia "backend/internal/channel/sms/zenvia"
 	tgchan "backend/internal/channel/telegram"
+	tiktokchan "backend/internal/channel/tiktok"
+	twiliochan "backend/internal/channel/twilio"
+	twitterchan "backend/internal/channel/twitter"
 	"backend/internal/channel/webwidget"
+	whatsappchan "backend/internal/channel/whatsapp"
 	"backend/internal/config"
 	appcrypto "backend/internal/crypto"
 	"backend/internal/database"
@@ -41,9 +48,12 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	userRepo := repo.NewUserRepo(db.Pool)
 	accountRepo := repo.NewAccountRepo(db.Pool)
 	refreshTokenRepo := repo.NewRefreshTokenRepo(db.Pool)
+	userAccessTokenRepo := repo.NewUserAccessTokenRepo(db.Pool)
 	inboxRepo := repo.NewInboxRepo(db.Pool)
 	channelApiRepo := repo.NewChannelAPIRepo(db.Pool)
+	channelWhatsAppRepo := repo.NewChannelWhatsAppRepo(db.Pool)
 	inboxAgentRepo := repo.NewInboxAgentRepo(db.Pool)
+	inboxBusinessHoursRepo := repo.NewInboxBusinessHoursRepo(db.Pool)
 	contactRepo := repo.NewContactRepo(db.Pool)
 	contactInboxRepo := repo.NewContactInboxRepo(db.Pool)
 	conversationRepo := repo.NewConversationRepo(db.Pool)
@@ -67,8 +77,9 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	mfaTokenStore := service.NewInMemoryMfaTokenStore()
 	mfaSvc := service.NewMfaService(userRepo, mfaRecoveryCodeRepo, refreshTokenRepo, cipher, mfaTokenStore)
 
-	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, mfaSvc, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, userAccessTokenRepo, mfaSvc, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	authHandler := handler.NewAuthHandler(authSvc)
+	accountHandler := handler.NewAccountHandler(accountRepo)
 
 	passwordRecoverySvc := service.NewPasswordRecoveryService(userRepo, passwordResetTokenRepo, refreshTokenRepo)
 	passwordRecoveryHandler := handler.NewPasswordRecoveryHandler(passwordRecoverySvc)
@@ -82,6 +93,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	userProfileSvc := service.NewUserProfileService(userRepo, refreshTokenRepo, auditLogRepo)
 	userProfileHandler := handler.NewUserProfileHandler(userProfileSvc)
+
+	userAccessTokenHandler := handler.NewUserAccessTokenHandler(userAccessTokenRepo)
 
 	macroRepo := repo.NewMacroRepo(db.Pool)
 	macroSvc := service.NewMacroService(macroRepo, db.Pool)
@@ -99,20 +112,28 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	reportsRepo := repo.NewReportsRepo(db.Pool)
 	reportsHandler := handler.NewReportHandler(reportsRepo, slaRepo)
 
-	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, inboxAgentRepo, cipher)
+	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, inboxAgentRepo, inboxBusinessHoursRepo, cipher)
 	inboxHandler := handler.NewInboxHandler(inboxSvc, auditLogger)
 
-	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo)
+	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo).
+		WithAudit(auditLogger, auditLogRepo)
 	contactHandler := handler.NewContactHandler(contactSvc, inboxRepo, contactInboxRepo)
+	contactHandler.SetCipher(cipher)
 
 	conversationSvc := service.NewConversationService(conversationRepo, contactInboxRepo, contactRepo, slaRepo, nil)
-	conversationHandler := handler.NewConversationHandler(conversationSvc, inboxRepo, contactInboxRepo, auditLogger)
 
 	messageSvc := service.NewMessageService(messageRepo)
-	messageHandler := handler.NewMessageHandler(messageSvc, inboxRepo, contactInboxRepo)
+	messageHandler := handler.NewMessageHandler(messageSvc, inboxRepo, contactInboxRepo, messageRepo)
+	messageHandler.SetAttachmentRepo(attachmentRepo)
+
+	conversationHandler := handler.NewConversationHandler(conversationSvc, messageSvc, inboxRepo, contactInboxRepo, conversationRepo, agentRepo, teamRepo, auditLogger)
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisURL})
 	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient)
+
+	outboundNotifier := service.NewOutboundWebhookNotifier(outboundWebhookSvc, channelApiRepo, inboxRepo, conversationRepo)
+	messageSvc.SetOnOutboundHandler(outboundNotifier)
+	conversationSvc.SetNotifier(outboundNotifier)
 
 	hub := realtime.NewHub()
 	go hub.Run()
@@ -126,7 +147,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	s.slaBreachJob = service.NewSLABreachJob(slaRepo, notificationSvc, realtimeSvc, auditLogger, 60*time.Second)
 	s.auditRetentionJob = service.NewAuditRetentionJob(auditLogRepo, 90, 24*time.Hour)
 
-	labelsSvc := service.NewLabelService(labelRepo, realtimeSvc)
+	labelsSvc := service.NewLabelService(labelRepo, realtimeSvc).WithAudit(auditLogger)
 	labelsHandler := handler.NewLabelHandler(labelsSvc)
 
 	teamsSvc := service.NewTeamService(teamRepo, teamMemberRepo, accountRepo)
@@ -135,10 +156,14 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	cannedSvc := service.NewCannedResponseService(cannedResponseRepo)
 	cannedHandler := handler.NewCannedResponseHandler(cannedSvc)
 
-	notesSvc := service.NewNoteService(noteRepo, realtimeSvc)
+	notesSvc := service.NewNoteService(noteRepo, realtimeSvc).WithAudit(auditLogger)
 	notesHandler := handler.NewNoteHandler(notesSvc)
 
-	customAttrsSvc := service.NewCustomAttributeService(customAttrDefRepo, contactRepo, conversationRepo)
+	customAttrsSvc := service.NewCustomAttributeService(customAttrDefRepo, contactRepo, conversationRepo).
+		WithContactAuditFn(func(ctx context.Context, accountID int64, action string, contactID int64, metadata any) {
+			cid := contactID
+			auditLogger.Log(ctx, accountID, nil, action, "contact", &cid, metadata, "", "")
+		})
 	customAttrsHandler := handler.NewCustomAttributeHandler(customAttrsSvc)
 
 	savedFiltersSvc := service.NewSavedFilterService(customFilterRepo, customAttrDefRepo, contactRepo, conversationRepo)
@@ -149,6 +174,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		return nil, err
 	}
 	uploadHandler := handler.NewUploadHandler(minioClient, attachmentRepo)
+	contactSvc.WithMinio(minioClient)
 
 	healthHandler := handler.NewHealthHandler(db, redisClient)
 
@@ -175,28 +201,46 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	auth.Post("/invitations/:token/accept", agentsHandler.AcceptInvitation)
 
 	jwtAuth := middleware.JwtAuth(authSvc)
+	userAccessTokenAuth := middleware.UserAccessTokenAuth(userAccessTokenRepo, userRepo)
 	orgScope := middleware.OrgScope(accountRepo)
 	ownerAdmin := middleware.RolesRequired(model.RoleOwner, model.RoleAdmin)
 	agentPlus := middleware.RolesRequired(model.RoleOwner, model.RoleAdmin, model.RoleAgent)
 
-	accounts := api.Group("/accounts/:aid", jwtAuth, orgScope)
+	accounts := api.Group("/accounts/:aid", jwtAuth, userAccessTokenAuth, orgScope)
+
+	accounts.Get("", accountHandler.Get)
+	accounts.Patch("", ownerAdmin, accountHandler.Update)
 
 	accounts.Post("/inboxes", ownerAdmin, inboxHandler.Create)
+	accounts.Post("/inboxes/api", ownerAdmin, inboxHandler.Create)
+	accounts.Get("/inboxes/api/:id", agentPlus, inboxHandler.GetChannelAPI)
+	accounts.Put("/inboxes/api/:id", ownerAdmin, inboxHandler.UpdateChannelAPI)
+	accounts.Post("/inboxes/:id/rotate_token", ownerAdmin, inboxHandler.RotateAPIToken)
 	accounts.Get("/inboxes", inboxHandler.List)
 	accounts.Get("/inboxes/:id", inboxHandler.GetByID)
 	accounts.Put("/inboxes/:id", ownerAdmin, inboxHandler.Update)
+	accounts.Get("/inboxes/:id/business_hours", agentPlus, inboxHandler.GetBusinessHours)
+	accounts.Put("/inboxes/:id/business_hours", ownerAdmin, inboxHandler.UpdateBusinessHours)
 	accounts.Get("/inboxes/:id/agents", inboxHandler.ListAgents)
 	accounts.Put("/inboxes/:id/agents", agentPlus, inboxHandler.SetAgents)
 	accounts.Get("/contacts", contactHandler.Search)
 	accounts.Post("/contacts", agentPlus, contactHandler.Create)
 	accounts.Post("/contacts/import", ownerAdmin, contactHandler.Import)
 	accounts.Get("/contacts/:id", contactHandler.Get)
+	accounts.Delete("/contacts/:id", ownerAdmin, contactHandler.Delete)
+	accounts.Post("/contacts/:id/merge", ownerAdmin, contactHandler.Merge)
+	accounts.Patch("/contacts/:id/block", ownerAdmin, contactHandler.Block)
+	accounts.Post("/contacts/:id/avatar", agentPlus, contactHandler.SetAvatar)
+	accounts.Delete("/contacts/:id/avatar", agentPlus, contactHandler.DeleteAvatar)
+	accounts.Get("/contacts/:id/events", agentPlus, contactHandler.Events)
 	accounts.Get("/conversations", conversationHandler.List)
 	accounts.Get("/conversations/meta", conversationHandler.Meta)
+	accounts.Post("/conversations", agentPlus, conversationHandler.CreateAuthenticated)
 	accounts.Get("/conversations/:id", conversationHandler.Get)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
 	accounts.Post("/uploads/signed-url", uploadHandler.SignedUploadURL)
+	accounts.Get("/uploads/signed-url", uploadHandler.SignedObjectDownloadURL)
 	accounts.Get("/attachments/:id/signed-url", uploadHandler.SignedDownloadURL)
 
 	accounts.Post("/contacts/:id", contactHandler.UpdateContactByID)
@@ -259,6 +303,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Delete("/agents/:userId", ownerAdmin, agentsHandler.Remove)
 
 	api.Put("/users/:id", jwtAuth, userProfileHandler.UpdateProfile)
+	accounts.Get("/profile/access_token", userAccessTokenHandler.GetAccessToken)
+	accounts.Post("/profile/access_token/reset", userAccessTokenHandler.ResetAccessToken)
 
 	accounts.Get("/macros", agentPlus, macrosHandler.List)
 	accounts.Post("/macros", ownerAdmin, macrosHandler.Create)
@@ -298,18 +344,46 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	publicInbox.Post("/contacts", contactHandler.CreateContact)
 	publicInbox.Get("/contacts/:sourceId", contactHandler.GetContact)
 	publicInbox.Put("/contacts/:sourceId", contactHandler.UpdateContact)
+	publicInbox.Get("/contacts/:sourceId/conversations", conversationHandler.ListByContact)
 	publicInbox.Post("/contacts/:sourceId/conversations", conversationHandler.Create)
-	publicInbox.Post("/contact_inboxes/conversations/:cid/update_last_seen", conversationHandler.UpdateLastSeen)
+	publicInbox.Get("/contacts/:sourceId/conversations/:id", conversationHandler.ShowPublic)
+	publicInbox.Post("/contacts/:sourceId/conversations/:id/toggle_status", conversationHandler.TogglePublicStatus)
+	publicInbox.Post("/contacts/:sourceId/conversations/:id/toggle_typing", conversationHandler.ToggleTyping)
+	publicInbox.Post("/contacts/:sourceId/conversations/:id/update_last_seen", conversationHandler.UpdateLastSeenPublic)
 	publicInbox.Get("/contacts/:sourceId/conversations/:conversationId/messages", messageHandler.ListPublic)
 	publicInbox.Post("/contacts/:sourceId/conversations/:conversationId/messages", messageHandler.Create)
+	publicInbox.Put("/contacts/:sourceId/conversations/:convId/messages/:id", messageHandler.UpdatePublic)
 
 	channelInstagramRepo := repo.NewChannelInstagramRepo(db.Pool)
 	channelFacebookRepo := repo.NewChannelFacebookRepo(db.Pool)
 	channelTelegramRepo := repo.NewChannelTelegramRepo(db.Pool)
+	channelLineRepo := repo.NewChannelLineRepo(db.Pool)
+	channelTiktokRepo := repo.NewChannelTiktokRepo(db.Pool)
+	channelTwitterRepo := repo.NewChannelTwitterRepo(db.Pool)
+	channelTwilioRepo := repo.NewChannelTwilioRepo(db.Pool)
 	channelSMSRepo := repo.NewChannelSMSRepo(db.Pool)
 
 	channelRegistry := appchannel.NewRegistry()
+	channelRegistry.Register(appchannel.KindApi, apichan.NewChannel())
 	dedupLock := appchannel.NewDedupLock(redisClient)
+	defaultHTTPClient := &http.Client{}
+
+	waReauthTracker := reauth.NewTracker(redisClient)
+	waSvc := whatsappchan.NewService(
+		channelWhatsAppRepo, inboxRepo, messageRepo, conversationRepo,
+		contactSvc, realtimeSvc, cipher, dedupLock, waReauthTracker,
+		asynqClient, defaultHTTPClient,
+	)
+	waChannel := whatsappchan.NewWhatsApp(channelWhatsAppRepo, inboxRepo, cipher, defaultHTTPClient)
+	channelRegistry.Register(appchannel.KindWhatsapp, waChannel)
+
+	whatsAppInboxHandler := handler.NewWhatsAppInboxHandler(inboxRepo, channelWhatsAppRepo, cipher, waSvc)
+	whatsAppWebhookHandler := handler.NewWhatsAppWebhookHandler(waSvc, inboxRepo, channelWhatsAppRepo)
+	accounts.Post("/inboxes/whatsapp", ownerAdmin, whatsAppInboxHandler.Create)
+	accounts.Get("/inboxes/:id/whatsapp", agentPlus, whatsAppInboxHandler.GetByID)
+	accounts.Post("/inboxes/:id/whatsapp/sync_templates", ownerAdmin, whatsAppInboxHandler.SyncTemplates)
+	s.App.Get("/webhooks/whatsapp/:identifier", whatsAppWebhookHandler.HandleHandshake)
+	s.App.Post("/webhooks/whatsapp/:identifier", whatsAppWebhookHandler.HandleDelivery)
 
 	igChannel := igchan.NewChannel(
 		channelInstagramRepo, inboxRepo, contactRepo, contactInboxRepo,
@@ -355,9 +429,67 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	)
 	uploadHandler.SetMediaResolver(tgMediaResolver.ResolveMedia)
 
+	lineChannel := linechan.NewChannel(
+		channelLineRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, redisClient, asynqClient,
+	)
+	channelRegistry.Register(appchannel.KindLine, lineChannel)
+
+	lineAPI := linechan.NewAPIClient()
+	lineWebhookHandler := handler.NewLineWebhookHandler(
+		channelLineRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, dedupLock, asynqClient, lineAPI,
+	)
+
+	tiktokReauthTracker := reauth.NewTracker(redisClient)
+	tiktokRedirectURL := cfg.APIURL + "/api/v1/accounts/tiktok/oauth/callback"
+	tiktokOAuth := tiktokchan.NewOAuthClient(cfg.TiktokClientKey, cfg.TiktokClientSecret, tiktokRedirectURL)
+	tiktokTokens := tiktokchan.NewTokenService(tiktokOAuth, channelTiktokRepo, cipher, tiktokReauthTracker)
+	if cfg.FeatureChannelTiktok {
+		tiktokChannel := tiktokchan.NewChannel(
+			channelTiktokRepo, inboxRepo, contactRepo, contactInboxRepo,
+			conversationRepo, messageRepo, cipher, redisClient, asynqClient,
+			tiktokTokens, cfg.TiktokClientSecret,
+		)
+		channelRegistry.Register(appchannel.KindTiktok, tiktokChannel)
+	}
+	tiktokHandler := handler.NewTiktokHandler(
+		channelTiktokRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, dedupLock, asynqClient,
+		tiktokOAuth, cfg.TiktokClientSecret, redisClient, cfg.FeatureChannelTiktok,
+	)
+
+	twitterCallbackURL := cfg.APIURL + "/api/v1/accounts/twitter/oauth/callback"
+	twitterOAuth := twitterchan.NewOAuthClient(cfg.TwitterConsumerKey, cfg.TwitterConsumerSecret, twitterCallbackURL)
+	if cfg.FeatureChannelTwitter {
+		twitterChannel := twitterchan.NewChannel(
+			channelTwitterRepo, inboxRepo, contactRepo, contactInboxRepo,
+			conversationRepo, messageRepo, cipher, redisClient,
+			cfg.TwitterConsumerKey, cfg.TwitterConsumerSecret,
+		)
+		channelRegistry.Register(appchannel.KindTwitter, twitterChannel)
+	}
+	twitterHandler := handler.NewTwitterHandler(
+		channelTwitterRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, dedupLock,
+		twitterOAuth, cfg.TwitterConsumerSecret, redisClient, cfg.FeatureChannelTwitter,
+	)
+
+	twilioHTTP := &http.Client{}
+	twilioClient := twiliochan.NewClient(twilioHTTP)
+	twilioChannel := twiliochan.NewChannel(
+		channelTwilioRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, redisClient, twilioClient,
+	)
+	channelRegistry.Register(appchannel.KindTwilio, twilioChannel)
+	twilioWebhookHandler := handler.NewTwilioWebhookHandler(
+		channelTwilioRepo, inboxRepo, contactRepo, contactInboxRepo,
+		conversationRepo, messageRepo, cipher, dedupLock, twilioClient, twilioChannel, cfg,
+	)
+	s.twilioTemplatesJob = twiliochan.NewTemplatesJob(channelTwilioRepo, twilioChannel, 24*time.Hour, 24*time.Hour)
+
 	smsRegistry := smschan.NewRegistry()
-	defaultHTTPClient := &http.Client{}
-	smsRegistry.Register("twilio", twilio.New(defaultHTTPClient, cipher))
+	smsRegistry.Register("twilio", smstwilio.New(defaultHTTPClient, cipher))
 	smsRegistry.Register("bandwidth", bandwidth.New(defaultHTTPClient, cipher))
 	smsRegistry.Register("zenvia", zenvia.New(defaultHTTPClient, cipher))
 
@@ -394,6 +526,12 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	s.App.Get("/webhooks/facebook/:identifier", fbWebhookHandler.Verify)
 	s.App.Post("/webhooks/facebook/:identifier", fbWebhookHandler.Receive)
 	s.App.Post("/webhooks/telegram/:identifier", tgWebhookHandler.Receive)
+	s.App.Post("/webhooks/line/:line_channel_id", lineWebhookHandler.Receive)
+	s.App.Post("/webhooks/tiktok/:business_id", tiktokHandler.Receive)
+	s.App.Post("/webhooks/twilio/:identifier", twilioWebhookHandler.Receive)
+	s.App.Post("/webhooks/twilio/:identifier/status", twilioWebhookHandler.Status)
+	s.App.Get("/webhooks/twitter/:profile_id", twitterHandler.CRC)
+	s.App.Post("/webhooks/twitter/:profile_id", twitterHandler.Receive)
 
 	accounts.Post("/inboxes/instagram", ownerAdmin, igWebhookHandler.Provision)
 	accounts.Post("/inboxes/facebook_page", ownerAdmin, fbWebhookHandler.Provision)
@@ -423,14 +561,39 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	widgetInboxHandler := handler.NewWebWidgetInboxHandler(channelWebWidgetRepo, inboxRepo, cipher, cfg)
 	accounts.Post("/inboxes/web_widget", ownerAdmin, widgetInboxHandler.Create)
+	accounts.Get("/inboxes/web_widget/:id", agentPlus, widgetInboxHandler.GetByInboxID)
 	accounts.Post("/inboxes/:id/rotate_hmac", ownerAdmin, widgetInboxHandler.RotateHmac)
 	accounts.Post("/inboxes/telegram", ownerAdmin, tgWebhookHandler.Provision)
 	accounts.Delete("/inboxes/:id/telegram", ownerAdmin, tgWebhookHandler.Delete)
+	accounts.Post("/inboxes/line", ownerAdmin, lineWebhookHandler.Provision)
+	accounts.Get("/inboxes/:id/line", agentPlus, lineWebhookHandler.GetByInboxID)
+	accounts.Put("/inboxes/:id/line", ownerAdmin, lineWebhookHandler.Update)
+	accounts.Delete("/inboxes/:id/line", ownerAdmin, lineWebhookHandler.Delete)
+	api.Get("/accounts/tiktok/oauth/callback", tiktokHandler.Callback)
+	api.Get("/accounts/twitter/oauth/callback", twitterHandler.Callback)
+	accounts.Post("/inboxes/tiktok/authorize", ownerAdmin, tiktokHandler.Authorize)
+	accounts.Get("/inboxes/:id/tiktok", agentPlus, tiktokHandler.GetByInboxID)
+	accounts.Delete("/inboxes/:id/tiktok", ownerAdmin, tiktokHandler.Delete)
+	accounts.Post("/inboxes/twilio", ownerAdmin, twilioWebhookHandler.Provision)
+	accounts.Get("/inboxes/:id/twilio", agentPlus, twilioWebhookHandler.GetByInboxID)
+	accounts.Put("/inboxes/:id/twilio", ownerAdmin, twilioWebhookHandler.Update)
+	accounts.Post("/inboxes/:id/twilio_templates", ownerAdmin, twilioWebhookHandler.SyncTemplates)
+	accounts.Delete("/inboxes/:id/twilio", ownerAdmin, twilioWebhookHandler.Delete)
+	accounts.Post("/inboxes/twitter/authorize", ownerAdmin, twitterHandler.Authorize)
+	accounts.Get("/inboxes/:id/twitter", agentPlus, twitterHandler.GetByInboxID)
+	accounts.Put("/inboxes/:id/twitter", ownerAdmin, twitterHandler.Update)
+	accounts.Delete("/inboxes/:id/twitter", ownerAdmin, twitterHandler.Delete)
 
 	s.App.Use(NotFoundHandler)
 
-	_ = outboundWebhookSvc
 	_ = channelRegistry
+
+	// Backfill user access tokens for existing users (one-time migration)
+	go func() {
+		if err := authSvc.BackfillUserAccessTokens(context.Background()); err != nil {
+			logger.Error().Str("component", "server").Err(err).Msg("failed to backfill user access tokens")
+		}
+	}()
 
 	logger.Info().Str("component", "server").Msg("Routes registered")
 	return asynqClient, nil

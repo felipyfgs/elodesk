@@ -13,6 +13,7 @@ coverage/
 
 # go
 backend/bin/
+backend/docs/
 
 # editors / OS
 .DS_Store

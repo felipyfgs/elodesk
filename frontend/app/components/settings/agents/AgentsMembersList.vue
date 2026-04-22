@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import type { Agent } from '~/stores/agents'
-
-defineProps<{ members: Agent[] }>()
+// Renamed to AgentsBadgeList.vue — this file can be deleted
 </script>
 
 <template>
-  <ul class="flex flex-wrap gap-2">
-    <li v-for="m in members" :key="m.id">
-      <UBadge :label="m.name" variant="soft" />
-    </li>
-  </ul>
+  <span />
 </template>

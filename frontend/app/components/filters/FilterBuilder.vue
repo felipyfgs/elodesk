@@ -146,7 +146,9 @@ async function saveAndApply() {
   }
 }
 
-onMounted(() => { if (isOpen.value) hydrateFromInitial() })
+onMounted(() => {
+  if (isOpen.value) hydrateFromInitial()
+})
 </script>
 
 <template>

@@ -147,6 +147,11 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 		return fmt.Errorf("upsert contact: %w", err)
 	}
 
+	if contact.Blocked {
+		logger.Warn().Str("component", "whatsapp.service").Int64("contact_id", contact.ID).Msg("contact_blocked_inbound_dropped")
+		return nil
+	}
+
 	convo, err := s.ensureConversation(ctx, ch.AccountID, inbox.ID, contact.ID)
 	if err != nil {
 		return fmt.Errorf("ensure conversation: %w", err)
@@ -279,7 +284,6 @@ func (s *Service) SendOutbound(ctx context.Context, ch *model.ChannelWhatsApp, t
 				logger.Error().Str("component", "channel.whatsapp").Err(trackerErr).Msg("reauth tracker error")
 			}
 			if prompt {
-				_ = s.channelWhatsappRepo.SetRequiresReauth(ctx, ch.ID, true)
 				s.realtimeSvc.BroadcastAccountEvent(ch.AccountID, "channel.reauth_required", map[string]interface{}{
 					"channelId":   ch.ID,
 					"channelType": "whatsapp",

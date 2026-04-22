@@ -7,7 +7,15 @@ export interface LoginMfaRequired {
 
 export interface LoginSuccess {
   user: { id: number, email: string, name: string }
-  account: { id: number, name: string, slug: string }
+  account: {
+    id: number
+    name: string
+    slug: string
+    locale: string
+    status: number
+    customAttributes?: Record<string, unknown>
+    settings?: Record<string, unknown>
+  }
   accessToken: string
   refreshToken: string
 }
@@ -30,7 +38,7 @@ export const useAuth = () => {
     const data = res as LoginSuccess
     auth.setSession({
       user: { id: String(data.user.id), email: data.user.email, name: data.user.name },
-      account: { id: String(data.account.id), name: data.account.name, slug: data.account.slug },
+      account: { ...data.account, id: String(data.account.id) },
       accessToken: data.accessToken,
       refreshToken: data.refreshToken
     })
@@ -45,7 +53,7 @@ export const useAuth = () => {
     )
     auth.setSession({
       user: { id: String(res.user.id), email: res.user.email, name: res.user.name },
-      account: { id: String(res.account.id), name: res.account.name, slug: res.account.slug },
+      account: { ...res.account, id: String(res.account.id) },
       accessToken: res.accessToken,
       refreshToken: res.refreshToken
     })
@@ -56,7 +64,15 @@ export const useAuth = () => {
   async function register(payload: { email: string, password: string, name: string, accountName?: string }) {
     type RegisterData = {
       user: { id: number, email: string, name: string }
-      account: { id: number, name: string, slug: string }
+      account: {
+        id: number
+        name: string
+        slug: string
+        locale: string
+        status: number
+        customAttributes?: Record<string, unknown>
+        settings?: Record<string, unknown>
+      }
       accessToken: string
       refreshToken: string
     }
@@ -66,7 +82,7 @@ export const useAuth = () => {
     const res = raw.data ?? raw as unknown as RegisterData
     auth.setSession({
       user: { id: String(res.user.id), email: res.user.email, name: res.user.name },
-      account: { id: String(res.account.id), name: res.account.name, slug: res.account.slug },
+      account: { ...res.account, id: String(res.account.id) },
       accessToken: res.accessToken,
       refreshToken: res.refreshToken
     })

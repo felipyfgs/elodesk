@@ -3,12 +3,13 @@ import type { Period } from '~/types/reports'
 
 const props = defineProps<{ modelValue: Period }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Period] }>()
+const { t } = useI18n()
 
-const options = [
-  { label: 'Daily', value: 'daily' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' }
-]
+const options = computed(() => [
+  { label: t('reports.daily'), value: 'daily' },
+  { label: t('reports.weekly'), value: 'weekly' },
+  { label: t('reports.monthly'), value: 'monthly' }
+])
 
 const model = computed({
   get: () => props.modelValue,

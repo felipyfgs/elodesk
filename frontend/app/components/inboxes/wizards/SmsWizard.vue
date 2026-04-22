@@ -11,9 +11,8 @@ const router = useRouter()
 
 const state = reactive<SmsInboxForm>({
   name: '',
-  provider: 'twilio',
+  provider: 'bandwidth',
   phoneNumber: '',
-  twilio: { accountSid: '', authToken: '' },
   bandwidth: { accountId: '', applicationId: '', basicAuthUser: '', basicAuthPass: '' },
   zenvia: { apiToken: '' }
 })
@@ -47,7 +46,6 @@ async function validateCurrentStep(): Promise<boolean> {
 
   if (step.value === 1) {
     const { error } = await smsStepProviderSchema.safeParseAsync({
-      twilio: state.twilio,
       bandwidth: state.bandwidth,
       zenvia: state.zenvia
     })
@@ -71,8 +69,7 @@ async function nextStep() {
 function getPayload() {
   const { provider, name, phoneNumber } = state
   const providerConfig: Record<string, Record<string, string>> = {}
-  if (provider === 'twilio' && state.twilio) providerConfig.twilio = state.twilio
-  else if (provider === 'bandwidth' && state.bandwidth) providerConfig.bandwidth = state.bandwidth
+  if (provider === 'bandwidth' && state.bandwidth) providerConfig.bandwidth = state.bandwidth
   else if (provider === 'zenvia' && state.zenvia) providerConfig.zenvia = state.zenvia
   return { name, provider, phoneNumber, providerConfig }
 }
@@ -87,7 +84,7 @@ async function submit() {
       body: getPayload()
     })
     toast.add({ title: t('common.success'), color: 'success' })
-    router.push(`/inboxes/${res.id}`)
+    router.push(`/accounts/${auth.account?.id}/inboxes/${res.id}`)
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
@@ -101,21 +98,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-arrow-left"
-        variant="ghost"
-        color="neutral"
-        to="/inboxes/new"
-      />
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('inboxes.channels.sms') }}
-        </h2>
-        <p class="text-sm text-muted">
-          {{ t('inboxes.wizards.sms.description') }}
-        </p>
-      </div>
+    <div>
+      <h2 class="text-lg font-semibold">
+        {{ t('inboxes.channels.sms') }}
+      </h2>
+      <p class="text-sm text-muted">
+        {{ t('inboxes.wizards.sms.description') }}
+      </p>
     </div>
 
     <UStepper v-model="step" :items="stepperItems" :linear="true">
@@ -134,15 +123,21 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
             <UFormField :label="t('inboxes.wizards.sms.provider')" name="provider" required>
               <USelect
                 v-model="state.provider"
-                :options="[
-                  { value: 'twilio', label: 'Twilio' },
+                :items="[
                   { value: 'bandwidth', label: 'Bandwidth' },
                   { value: 'zenvia', label: 'Zenvia' }
                 ]"
                 value-key="value"
-                option-attribute="label"
+                label-key="label"
               />
             </UFormField>
+
+            <UAlert
+              icon="i-lucide-info"
+              color="info"
+              variant="subtle"
+              :description="t('inboxes.wizards.sms.twilioMovedDescription')"
+            />
 
             <UFormField :label="t('inboxes.wizards.sms.phoneNumber')" name="phoneNumber" required>
               <UInput v-model="state.phoneNumber" />
@@ -159,18 +154,6 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
             :state="state"
             class="flex flex-col gap-4"
           >
-            <template v-if="state.provider === 'twilio'">
-              <UFormField :label="t('inboxes.wizards.sms.twilio.accountSid')" name="twilio.accountSid" required>
-                <UInput v-model="state.twilio!.accountSid" />
-              </UFormField>
-              <UFormField :label="t('inboxes.wizards.sms.twilio.authToken')" name="twilio.authToken" required>
-                <UTextarea v-model="state.twilio!.authToken" :rows="2" />
-              </UFormField>
-              <UFormField :label="t('inboxes.wizards.sms.twilio.messagingServiceSid')" name="twilio.messagingServiceSid">
-                <UInput v-model="state.twilio!.messagingServiceSid" />
-              </UFormField>
-            </template>
-
             <template v-if="state.provider === 'bandwidth'">
               <UFormField :label="t('inboxes.wizards.sms.bandwidth.accountId')" name="bandwidth.accountId" required>
                 <UInput v-model="state.bandwidth!.accountId" />
@@ -197,7 +180,7 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
     </UStepper>
 
     <div class="flex justify-end gap-2">
-      <UButton to="/inboxes/new" variant="ghost" color="neutral">
+      <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
       <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">

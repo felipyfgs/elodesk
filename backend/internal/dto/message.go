@@ -11,6 +11,7 @@ type CreateMessageReq struct {
 	Content           string          `json:"message" validate:"required"`
 	ContentType       *int            `json:"content_type,omitempty"`
 	SourceID          *string         `json:"source_id,omitempty"`
+	EchoID            *string         `json:"echo_id,omitempty"`
 	Private           bool            `json:"private,omitempty"`
 	ContentAttributes json.RawMessage `json:"content_attributes,omitempty"`
 }
@@ -27,8 +28,37 @@ type MessageResp struct {
 	Private        bool                     `json:"private"`
 	Status         model.MessageStatus      `json:"status"`
 	ContentAttrs   *string                  `json:"contentAttributes,omitempty"`
+	Attachments    []AttachmentResp         `json:"attachments,omitempty"`
 	CreatedAt      time.Time                `json:"createdAt"`
 	UpdatedAt      time.Time                `json:"updatedAt"`
+}
+
+type AttachmentResp struct {
+	ID          int64                    `json:"id"`
+	MessageID   int64                    `json:"messageId"`
+	FileType    model.AttachmentFileType `json:"fileType"`
+	FileKey     *string                  `json:"fileKey,omitempty"`
+	ContentType *string                  `json:"contentType,omitempty"`
+	Size        int64                    `json:"size"`
+	CreatedAt   time.Time                `json:"createdAt"`
+}
+
+func AttachmentToResp(a *model.Attachment) AttachmentResp {
+	return AttachmentResp{
+		ID:        a.ID,
+		MessageID: a.MessageID,
+		FileType:  a.FileType,
+		FileKey:   a.FileKey,
+		CreatedAt: a.CreatedAt,
+	}
+}
+
+func AttachmentsToResp(atts []model.Attachment) []AttachmentResp {
+	result := make([]AttachmentResp, len(atts))
+	for i := range atts {
+		result[i] = AttachmentToResp(&atts[i])
+	}
+	return result
 }
 
 type MessageListResp struct {

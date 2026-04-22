@@ -1,7 +1,15 @@
 {
   "app": {
-    "name": "wzap",
-    "tagline": "Multi-tenant WhatsApp support"
+    "name": "Elodesk",
+    "tagline": "Multi-channel messaging hub"
+  },
+  "phoneInput": {
+    "placeholder": "Phone number",
+    "searchPlaceholder": "Search country...",
+    "required": "Phone number is required",
+    "invalid": "Invalid phone number",
+    "tooShort": "Number is too short",
+    "tooLong": "Number is too long"
   },
   "auth": {
     "login": {
@@ -105,18 +113,23 @@
     "inboxes": "Inboxes",
     "settings": "Settings",
     "settingsGeneral": "General Settings",
+    "settingsAccount": "Account",
     "settingsProfile": "Profile",
     "settingsAgents": "Agents",
     "settingsMacros": "Macros",
     "settingsSla": "SLA",
     "settingsIntegrations": "Integrations",
     "settingsAuditLogs": "Audit Logs",
-    "settingsNotifications": "Notifications",
+    "settingsNotifications": "Notification preferences",
     "settingsTeams": "Teams",
     "settingsLabels": "Labels",
     "settingsCanned": "Canned Responses",
     "settingsAttributes": "Attributes",
     "settingsMembers": "Members",
+    "settingsGroupWorkspace": "Workspace",
+    "settingsGroupTeam": "Team",
+    "settingsGroupProductivity": "Productivity",
+    "settingsGroupAdministration": "Administration",
     "reports": "Reports",
     "docs": "API docs",
     "goTo": "Go to",
@@ -130,7 +143,11 @@
     "neutral": "Neutral",
     "appearance": "Appearance",
     "light": "Light",
-    "dark": "Dark"
+    "dark": "Dark",
+    "profileSettings": "Profile settings",
+    "keyboardShortcuts": "Keyboard shortcuts",
+    "readDocs": "Read documentation",
+    "changelog": "Release notes"
   },
   "home": {
     "title": "Home",
@@ -165,7 +182,12 @@
       "reconnect": "Reconnect",
       "delete": "Delete"
     },
-    "name": "Session name"
+    "name": "Session name",
+    "createFailed": "Failed to create session",
+    "credentials": {
+      "title": "Connection credentials",
+      "warning": "Copy these credentials now. They will not be shown again."
+    }
   },
   "inboxes": {
     "title": "Inboxes",
@@ -177,6 +199,40 @@
     "webhooks": "Webhooks",
     "businessHours": "Business hours",
     "general": "General",
+    "channel": "Channel",
+    "summary": "Summary",
+    "security": "Security",
+    "open": "Open",
+    "timezone": "Timezone",
+    "agentsDescription": "Define who can handle conversations arriving through this inbox.",
+    "noAgents": "No agents selected",
+    "apiSettings": {
+      "title": "API delivery",
+      "description": "Configure the webhook called when events from this API inbox are dispatched."
+    },
+    "webhooksDetail": {
+      "apiDescription": "Set the delivery URL for outbound events from this API inbox.",
+      "inboundTitle": "Inbound",
+      "inboundDescription": "Use these values to configure integrations that send messages to Elodesk.",
+      "publicApiBase": "Public API base",
+      "widgetScript": "Widget script",
+      "providerManaged": "Provider-managed webhook",
+      "providerManagedDescription": "This channel uses the public callback configured during creation or in the provider dashboard."
+    },
+    "channelDetail": {
+      "provider": "Provider",
+      "phoneNumber": "Phone number",
+      "webhookUrl": "Webhook URL",
+      "templatesSyncedAt": "Templates synced at",
+      "identifier": "Identifier",
+      "hmacMandatory": "HMAC mandatory",
+      "publicApiBase": "Public API base",
+      "websiteUrl": "Website URL",
+      "websiteToken": "Website token",
+      "widgetColor": "Widget color",
+      "embedScript": "Install script",
+      "noData": "Channel data not available."
+    },
     "rotateHmac": "Rotate HMAC",
     "rotateHmacConfirm": "Rotating the HMAC token will invalidate old tokens. Continue?",
     "channels": {
@@ -188,13 +244,41 @@
       "facebook_page": "Facebook Page",
       "telegram": "Telegram",
       "web_widget": "Web Widget",
-      "email": "Email"
+      "email": "Email",
+      "line": "LINE",
+      "tiktok": "TikTok",
+      "twilio": "Twilio",
+      "twitter": "Twitter / X"
     },
     "notFound": "Inbox not found.",
+    "openConversations": "{count} open",
+    "fields": {
+      "name": "Name",
+      "channelType": "Channel",
+      "agents": "Agents",
+      "status": "Status",
+      "lastActivityAt": "Last Activity",
+      "actions": "Actions"
+    },
+    "delete": {
+      "title": "Delete inbox",
+      "description": "This action is permanent. Type the inbox name to confirm.",
+      "nameLabel": "Type inbox name",
+      "namePlaceholder": "Exact inbox name",
+      "nameMismatch": "The typed name does not match.",
+      "success": "Inbox \"{name}\" deleted successfully.",
+      "error": "Failed to delete inbox."
+    },
     "wizards": {
       "name": "Inbox name",
       "invalidChannel": "Invalid channel.",
-      "api": { "description": "Create a REST API inbox for custom integrations." },
+      "setup": "Setup",
+      "credentials": "Credentials",
+      "providerConfig": "Provider config",
+      "appearance": "Appearance",
+      "api": {
+        "description": "Create a REST API inbox for custom integrations."
+      },
       "whatsapp": {
         "description": "Connect via WhatsApp Cloud API or 360dialog.",
         "provider": "Provider",
@@ -204,12 +288,20 @@
         "apiKey": "API Key"
       },
       "sms": {
-        "description": "Send and receive SMS via Twilio, Bandwidth, or Zenvia.",
+        "description": "Send and receive SMS via Bandwidth or Zenvia.",
         "provider": "Provider",
         "phoneNumber": "Phone number",
-        "twilio": { "accountSid": "Account SID", "authToken": "Auth Token", "messagingServiceSid": "Messaging Service SID" },
-        "bandwidth": { "accountId": "Account ID", "applicationId": "Application ID", "username": "Username", "password": "Password" },
-        "zenvia": { "apiToken": "API Token" }
+        "bandwidth": {
+          "accountId": "Account ID",
+          "applicationId": "Application ID",
+          "username": "Username",
+          "password": "Password"
+        },
+        "zenvia": {
+          "apiToken": "API Token"
+        },
+        "twilioMovedTitle": "Twilio has moved",
+        "twilioMovedDescription": "Twilio SMS now lives under the Twilio channel. Use the Twilio tile on the channel list."
       },
       "instagram": {
         "description": "Connect your Instagram Business via Direct Messages.",
@@ -240,6 +332,35 @@
           "in_a_day": "In a day"
         }
       },
+      "line": {
+        "description": "Connect a LINE Official Account via Messaging API.",
+        "lineChannelId": "Channel ID",
+        "lineChannelSecret": "Channel Secret",
+        "lineChannelToken": "Channel Access Token"
+      },
+      "tiktok": {
+        "description": "Connect a TikTok Business account for Business Messaging.",
+        "connect": "Connect with TikTok",
+        "requiresApproval": "Requires an approved TikTok Business account",
+        "requiresApprovalDescription": "TikTok Business Messaging is gated. Make sure your app has been approved before connecting."
+      },
+      "twilio": {
+        "description": "Connect Twilio for WhatsApp or SMS.",
+        "medium": "Medium",
+        "accountSid": "Account SID",
+        "authToken": "Auth Token",
+        "apiKeySid": "API Key SID (optional)",
+        "sender": "Sender",
+        "phoneNumber": "Phone number",
+        "messagingServiceSid": "Messaging Service SID",
+        "senderXorHint": "Provide EITHER a phone number OR a Messaging Service SID — not both."
+      },
+      "twitter": {
+        "description": "Connect Twitter / X for direct messages.",
+        "connect": "Connect with Twitter / X",
+        "costWarning": "Twitter API v2 requires a paid subscription",
+        "costWarningDescription": "Make sure your Twitter developer app has Account Activity access enabled before connecting."
+      },
       "email": {
         "description": "Connect an email account via IMAP/SMTP or OAuth.",
         "provider": "Provider",
@@ -258,7 +379,8 @@
         "smtpEnableSsl": "Enable SMTP SSL",
         "enableSsl": "Enable SSL",
         "redirecting": "Redirecting to OAuth authorization...",
-        "authorize": "Authorize"
+        "authorize": "Authorize",
+        "setup": "Setup"
       }
     },
     "settingsPlaceholder": "Channel-specific settings for {channel} — coming soon.",
@@ -269,7 +391,11 @@
     "rotateHmacSuccess": "HMAC token rotated successfully. Copy the token now.",
     "rotateHmacWarning": "New HMAC Token",
     "rotateHmacCopyWarning": "Copy this token now — it will not be shown again.",
-    "secret": { "hide": "Hide", "reveal": "Reveal", "copy": "Copy" },
+    "secret": {
+      "hide": "Hide",
+      "reveal": "Reveal",
+      "copy": "Copy"
+    },
     "webhookDescription": "Configure URLs to receive event notifications.",
     "webhookAdd": "Add webhook",
     "webhookUrl": "Webhook URL",
@@ -378,9 +504,99 @@
       "resolved": "{count} conversation(s) resolved."
     }
   },
+  "contactsSendMessage": {
+    "title": "New conversation",
+    "toLabel": "To",
+    "toPlaceholder": "Select a contact",
+    "searchContactPlaceholder": "Search or type email / phone…",
+    "viaLabel": "Via",
+    "viaPlaceholder": "Choose an inbox",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Write your message here…",
+    "discard": "Discard",
+    "send": "Send",
+    "success": "Conversation started successfully",
+    "failed": "Failed to start conversation",
+    "createFailed": "Failed to create contact",
+    "createWith": "Create contact \"{value}\"",
+    "createWithEmail": "Create contact with email {value}",
+    "createWithPhone": "Create contact with phone {value}",
+    "noMatch": "No contacts found",
+    "typeToSearch": "Type to search",
+    "emojiAria": "Insert emoji",
+    "emoji": {
+      "searchPlaceholder": "Search emoji",
+      "groups": {
+        "smileysPeople": "Smileys & People",
+        "animalsNature": "Animals & Nature",
+        "foodDrink": "Food & Drink",
+        "activities": "Activities",
+        "travelPlaces": "Travel & Places",
+        "objects": "Objects",
+        "symbols": "Symbols",
+        "flags": "Flags",
+        "recent": "Recently used"
+      }
+    }
+  },
   "contacts": {
     "title": "Contacts",
     "empty": "No contacts yet — new conversations create contacts automatically.",
+    "add": "Add contact",
+    "sendMessage": "Send message",
+    "create": {
+      "success": "Contact created",
+      "successDescription": "{name} added successfully",
+      "failed": "Failed to create contact"
+    },
+    "import": {
+      "success": "Import complete",
+      "successDescription": "{inserted} inserted, {updated} updated",
+      "failed": "Import failed",
+      "failedDescription": "Could not process the CSV file"
+    },
+    "delete": {
+      "success": "Contact deleted",
+      "one": {
+        "title": "Delete contact",
+        "description": "Are you sure you want to delete {name}? This action cannot be undone."
+      },
+      "bulk": {
+        "success": "{count} contact(s) deleted",
+        "partial": "Partial deletion: {success} succeeded, {failure} failed",
+        "partialDescription": "Some contacts could not be deleted",
+        "title": "Delete contacts",
+        "description": "Delete {count} selected contact(s)? This action cannot be undone."
+      }
+    },
+    "actions": {
+      "title": "Actions",
+      "block": "Block contact",
+      "unblock": "Unblock contact",
+      "blocked": "Contact blocked",
+      "unblocked": "Contact unblocked",
+      "merge": "Merge",
+      "delete": "Delete contact"
+    },
+    "avatar": {
+      "upload": "Upload avatar",
+      "delete": "Remove avatar",
+      "uploaded": "Avatar updated",
+      "removed": "Avatar removed",
+      "invalidType": "Please select an image file",
+      "tooLarge": "Image must be under 2 MB"
+    },
+    "merge": {
+      "title": "Merge contact",
+      "description": "Merging moves conversations and data into the primary contact and deletes this one.",
+      "child": "Source",
+      "primary": "Primary",
+      "searchLabel": "Primary contact",
+      "searchPlaceholder": "Search by name, email or phone…",
+      "selectPrimary": "Select primary contact",
+      "submit": "Merge contacts",
+      "success": "Contacts merged"
+    },
     "columns": {
       "name": "Name",
       "phone": "Phone",
@@ -390,19 +606,98 @@
     },
     "search": "Search by name or phone…",
     "new": "New contact",
-    "import": "Import CSV",
+    "importCsv": "Import CSV",
+    "export": "Export CSV",
+    "actionsLabel": "Actions",
     "importDrop": "Drop a CSV file here or click to select",
+    "card": {
+      "noName": "No name",
+      "viewDetails": "View details",
+      "updateButton": "Update",
+      "cancelButton": "Cancel",
+      "deleteButton": "Delete contact",
+      "dangerZone": "Danger Zone",
+      "dangerZoneDescription": "This action cannot be undone.",
+      "updateSuccess": "Contact updated successfully",
+      "updateError": "Error updating contact",
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "Contact name",
+        "nameRequired": "Name is required",
+        "email": "Email",
+        "emailPlaceholder": "email{'@'}example.com",
+        "emailInvalid": "Invalid email",
+        "phone": "Phone",
+        "phonePlaceholder": "+1 555 123-4567"
+      },
+      "confirmDeleteButton": "Confirm delete"
+    },
     "bulk": {
       "addLabel": "Add label",
       "removeLabel": "Remove label",
       "delete": "Delete",
-      "export": "Export"
+      "export": "Export",
+      "selected": "{count} of {total} contacts selected",
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection"
+    },
+    "pagination": {
+      "showing": "Showing {start}-{end} of {total} contacts"
     },
     "tabs": {
       "overview": "Overview",
       "conversations": "Conversations",
       "notes": "Notes",
       "events": "Events"
+    },
+    "filters": {
+      "button": "Filters",
+      "activeCount": "{count} active filters",
+      "clear": "Clear filters"
+    },
+    "form": {
+      "save": "Save contact",
+      "sections": {
+        "personal": "Personal information",
+        "address": "Address",
+        "professional": "Professional"
+      },
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "city": "City",
+      "country": "Country",
+      "bio": "Bio",
+      "company": "Company",
+      "firstNameRequired": "First name is required",
+      "emailInvalid": "Invalid email",
+      "urlInvalid": "Invalid URL",
+      "firstNamePlaceholder": "Enter first name",
+      "lastNamePlaceholder": "Enter last name",
+      "emailPlaceholder": "Enter email address",
+      "phonePlaceholder": "Enter phone number",
+      "cityPlaceholder": "Enter city name",
+      "countryPlaceholder": "Select country",
+      "bioPlaceholder": "Enter a bio",
+      "companyPlaceholder": "Enter company name",
+      "socialProfiles": "Social profiles",
+      "linkedinPlaceholder": "LinkedIn URL",
+      "facebookPlaceholder": "Facebook URL",
+      "instagramPlaceholder": "Instagram URL",
+      "twitterPlaceholder": "Twitter/X URL",
+      "githubPlaceholder": "GitHub URL"
+    },
+    "loadMore": "Load more",
+    "deleteError": "Failed to delete contact",
+    "deleteSuccess": "Contact deleted",
+    "segments": {
+      "name": "Filter name",
+      "namePlaceholder": "E.g.: Priority customers",
+      "nameRequired": "Filter name is required",
+      "saveTitle": "Save segment",
+      "saveDescription": "Save the current filters as a reusable segment.",
+      "saved": "Segment saved"
     }
   },
   "settings": {
@@ -412,6 +707,20 @@
       "name": "Name",
       "email": "Email",
       "organization": "Organization"
+    },
+    "account": {
+      "title": "Account settings",
+      "description": "Manage the organization's basic details and defaults.",
+      "name": "Organization name",
+      "locale": "Default language",
+      "timezone": "Timezone",
+      "metadata": "Account details",
+      "slug": "Slug",
+      "status": "Status",
+      "active": "Active",
+      "suspended": "Suspended",
+      "saved": "Account settings saved",
+      "saveFailed": "Could not save account settings"
     },
     "members": {
       "title": "Members",
@@ -428,7 +737,15 @@
       "changePassword": "Change password",
       "currentPassword": "Current password",
       "newPassword": "New password",
-      "confirmPassword": "Confirm password"
+      "confirmPassword": "Confirm password",
+      "accessToken": "Access Token",
+      "accessTokenDesc": "Use this token to authenticate API requests from external integrations.",
+      "copyToken": "Copy",
+      "resetToken": "Reset",
+      "tokenCopied": "Token copied to clipboard",
+      "resetTokenConfirm": "Reset access token?",
+      "resetTokenConfirmDesc": "This will invalidate the current token. Any integrations using it will need to be updated.",
+      "resetTokenSuccess": "Access token reset successfully"
     },
     "agents": {
       "title": "Agents",
@@ -460,7 +777,9 @@
       "webhooks": "Webhooks",
       "newWebhook": "New webhook",
       "testSend": "Test send",
-      "empty": "No integrations configured."
+      "empty": "No integrations configured.",
+      "webhookSaved": "Webhook saved successfully",
+      "webhookSaveFailed": "Failed to save webhook"
     },
     "auditLogs": {
       "title": "Audit Logs",
@@ -473,12 +792,18 @@
     },
     "notifications": {
       "title": "Notification preferences",
+      "description": "Choose how and when you want to be notified.",
+      "inApp": "In-app notifications",
+      "alwaysOn": "Always on",
       "email": "Receive by email",
       "push": "Receive push",
       "mentions": "Mentions",
       "assignments": "Assignments",
       "newConversation": "New conversation",
-      "slaBreach": "SLA breach"
+      "unreadMessage": "Unread messages",
+      "slaBreach": "SLA breach",
+      "saved": "Notification preferences saved",
+      "saveFailed": "Could not save notification preferences"
     }
   },
   "labels": {
@@ -558,10 +883,60 @@
     "create": "New filter",
     "edit": "Edit filter",
     "delete": "Delete filter",
+    "remove": "Remove condition",
     "name": "Name",
     "save": "Save current filter",
-    "apply": "Apply",
-    "empty": "No saved filters."
+    "saveOption": "Save as filter",
+    "saveAndApply": "Save and apply",
+    "saved": "Filter saved",
+    "apply": "Apply filter",
+    "empty": "No saved filters.",
+    "advancedFilter": "Advanced filter",
+    "advancedFilterActive": "Advanced filter · {count} conditions",
+    "clearFilter": "Clear filter",
+    "addCondition": "Add condition",
+    "noValueNeeded": "No value needed",
+    "connector": {
+      "and": "AND",
+      "or": "OR"
+    },
+    "attributes": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "team": "Team",
+      "inbox": "Inbox",
+      "contact": "Contact",
+      "labels": "Labels",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at",
+      "lastActivity": "Last activity",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "identifier": "Identifier",
+      "blocked": "Blocked"
+    },
+    "operators": {
+      "equal_to": "Equal to",
+      "not_equal_to": "Not equal to",
+      "contains": "Contains",
+      "starts_with": "Starts with",
+      "greater_than": "Greater than",
+      "less_than": "Less than",
+      "in": "Is in",
+      "between": "Between",
+      "is_null": "Is empty",
+      "is_not_null": "Is not empty"
+    },
+    "placeholders": {
+      "attribute": "Select an attribute",
+      "value": "Enter a value",
+      "multiValue": "Comma separated",
+      "from": "From",
+      "to": "To",
+      "name": "E.g.: Open with no reply"
+    }
   },
   "contactDetail": {
     "title": "Contact Details",
@@ -575,7 +950,27 @@
     "notes": "Notes",
     "attributes": "Attributes",
     "conversations": "Conversations",
-    "viewContact": "View contact"
+    "viewContact": "View contact",
+    "sendMessage": "Send message",
+    "sections": {
+      "details": "Edit details"
+    },
+    "meta": {
+      "createdAt": "Created {date}",
+      "lastActivity": "last seen {date}"
+    },
+    "sidebar": {
+      "attributes": "Attributes",
+      "history": "History",
+      "notes": "Notes",
+      "merge": "Merge",
+      "noAttributes": "No custom attributes defined."
+    },
+    "delete": {
+      "title": "Delete contact",
+      "description": "Deleting this contact will remove all associated conversations and data.",
+      "action": "Delete contact"
+    }
   },
   "assignment": {
     "assignee": "Agent",
@@ -601,7 +996,11 @@
     "copied": "Copied!",
     "createdAt": "Created at",
     "apply": "Apply",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "yes": "Yes",
+    "no": "No",
+    "retry": "Retry",
+    "next": "Next"
   },
   "reports": {
     "title": "Reports",
@@ -614,6 +1013,20 @@
     "csat": "CSAT",
     "sla": "SLA",
     "dateRange": "Date range",
+    "open": "Open",
+    "resolved": "Resolved",
+    "firstResponse": "First response",
+    "resolution": "Resolution",
+    "topAgents": "Top agents",
+    "noAgentsData": "No agent data available",
+    "statusBreakdown": "Status breakdown",
+    "volume": "Volume",
+    "noVolumeData": "No volume data available",
+    "from": "From",
+    "to": "To",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
     "kpi": {
       "totalConversations": "Total conversations",
       "avgFirstResponse": "Avg first response time",

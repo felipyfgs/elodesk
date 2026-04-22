@@ -143,7 +143,6 @@ func (f ConversationFilter) whereClause() (string, []any) {
 		if f.CurrentUser != nil {
 			clause += fmt.Sprintf(" AND assignee_id = $%d", argN)
 			args = append(args, *f.CurrentUser)
-			argN++
 		} else {
 			// fail-closed: 'mine' without an authenticated user must return
 			// no rows rather than degrading to 'all' (would leak tenant data).
@@ -441,6 +440,93 @@ func (r *ConversationRepo) UpdatePubsubToken(ctx context.Context, id int64, toke
 		return fmt.Errorf("failed to update pubsub_token: %w", err)
 	}
 	return nil
+}
+
+func (r *ConversationRepo) ListByContactID(ctx context.Context, contactID, accountID int64, page, perPage int) ([]model.Conversation, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 25
+	}
+
+	countQuery := `SELECT COUNT(*) FROM conversations WHERE contact_id = $1 AND account_id = $2`
+	var total int
+	if err := r.pool.QueryRow(ctx, countQuery, contactID, accountID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count conversations by contact: %w", err)
+	}
+	if total == 0 {
+		return []model.Conversation{}, 0, nil
+	}
+
+	offset := (page - 1) * perPage
+	dataQuery := `SELECT ` + conversationSelectColumns + ` FROM conversations WHERE contact_id = $1 AND account_id = $2 ORDER BY last_activity_at DESC LIMIT $3 OFFSET $4`
+	rows, err := r.pool.Query(ctx, dataQuery, contactID, accountID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list conversations by contact: %w", err)
+	}
+	defer rows.Close()
+
+	var convos []model.Conversation
+	for rows.Next() {
+		var m model.Conversation
+		if err := scanConversation(rows, &m); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan conversation: %w", err)
+		}
+		convos = append(convos, m)
+	}
+	return convos, total, rows.Err()
+}
+
+func (r *ConversationRepo) ListByContactInboxID(ctx context.Context, ciID, accountID int64, page, perPage int) ([]model.Conversation, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 25
+	}
+
+	countQuery := `SELECT COUNT(*) FROM conversations WHERE contact_inbox_id = $1 AND account_id = $2`
+	var total int
+	if err := r.pool.QueryRow(ctx, countQuery, ciID, accountID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count conversations by contact_inbox: %w", err)
+	}
+	if total == 0 {
+		return []model.Conversation{}, 0, nil
+	}
+
+	offset := (page - 1) * perPage
+	dataQuery := `SELECT ` + conversationSelectColumns + ` FROM conversations WHERE contact_inbox_id = $1 AND account_id = $2 ORDER BY last_activity_at DESC LIMIT $3 OFFSET $4`
+	rows, err := r.pool.Query(ctx, dataQuery, ciID, accountID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list conversations by contact_inbox: %w", err)
+	}
+	defer rows.Close()
+
+	var convos []model.Conversation
+	for rows.Next() {
+		var m model.Conversation
+		if err := scanConversation(rows, &m); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan conversation: %w", err)
+		}
+		convos = append(convos, m)
+	}
+	return convos, total, rows.Err()
+}
+
+func (r *ConversationRepo) FindLatestByContactInbox(ctx context.Context, ciID, accountID int64) (*model.Conversation, error) {
+	query := `SELECT ` + conversationSelectColumns + ` FROM conversations
+		WHERE contact_inbox_id = $1 AND account_id = $2 AND status IN (0, 2, 3)
+		ORDER BY last_activity_at DESC LIMIT 1`
+	row := r.pool.QueryRow(ctx, query, ciID, accountID)
+	var m model.Conversation
+	if err := scanConversation(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to find latest conversation by contact_inbox: %w", err)
+	}
+	return &m, nil
 }
 
 func (r *ConversationRepo) UpdateContactID(ctx context.Context, id, accountID, contactID int64) (*model.Conversation, error) {

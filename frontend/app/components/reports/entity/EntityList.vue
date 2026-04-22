@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { EntityMetric } from '~/types/reports'
+import { useAuthStore } from '~/stores/auth'
+
+const auth = useAuthStore()
+const aid = computed(() => auth.account?.id ?? '')
 
 defineProps<{ items: EntityMetric[], entity: string }>()
 </script>
@@ -26,7 +30,7 @@ defineProps<{ items: EntityMetric[], entity: string }>()
       <tbody>
         <tr v-for="m in items" :key="m.entityId" class="border-t border-default">
           <td class="px-4 py-2">
-            <NuxtLink :to="`/reports/${entity}/${m.entityId}`" class="hover:underline">
+            <NuxtLink :to="aid ? `/accounts/${aid}/reports/${entity}/${m.entityId}` : `/reports/${entity}/${m.entityId}`" class="hover:underline">
               {{ m.entityName }}
             </NuxtLink>
           </td>

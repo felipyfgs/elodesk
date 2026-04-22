@@ -71,6 +71,11 @@ func (s *IngestService) IngestInbound(ctx context.Context, channel *model.Channe
 		return fmt.Errorf("sms ingest: upsert contact: %w", err)
 	}
 
+	if contact.Blocked {
+		logger.Warn().Str("component", "sms.ingest").Int64("contact_id", contact.ID).Str("sourceId", inbound.SourceID).Msg("contact_blocked_inbound_dropped")
+		return nil
+	}
+
 	convo, err := s.conversationRepo.EnsureOpen(ctx, channel.AccountID, inboxID, contact.ID)
 	if err != nil {
 		return fmt.Errorf("sms ingest: ensure conversation: %w", err)

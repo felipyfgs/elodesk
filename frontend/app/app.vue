@@ -24,8 +24,8 @@ useHead({
   }
 })
 
-const title = 'wzap'
-const description = 'Atendimento WhatsApp multi-tenant sobre o engine wzap.'
+const title = 'Elodesk'
+const description = 'Multi-channel messaging hub.'
 
 useSeoMeta({
   title,

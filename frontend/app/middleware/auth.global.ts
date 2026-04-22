@@ -2,39 +2,57 @@ import { useAuthStore } from '~/stores/auth'
 
 const publicRoutes = new Set(['/login', '/register', '/forgot-password', '/reset-password'])
 
-let setupChecked = false
-let systemHasUsers = true
+function useSetupState() {
+  return useState('auth-setup', () => ({ checked: false, hasUsers: true }))
+}
 
 export function markSystemSetup() {
-  systemHasUsers = true
-  setupChecked = true
+  if (import.meta.client) {
+    const state = useSetupState()
+    state.value.hasUsers = true
+    state.value.checked = true
+  }
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const auth = useAuthStore()
-  if (!auth.user && auth.accessToken === null) auth.hydrate()
+  if (import.meta.client) auth.hydrate()
 
-  if (!setupChecked) {
+  const setup = useSetupState()
+
+  if (!setup.value.checked) {
     try {
       const runtime = useRuntimeConfig()
       const res = await $fetch<{ hasUsers: boolean }>('/auth/setup', { baseURL: runtime.public.apiUrl })
-      systemHasUsers = res.hasUsers
-      setupChecked = true
+      setup.value.hasUsers = res.hasUsers
+      setup.value.checked = true
     } catch {
-      setupChecked = true
+      setup.value.checked = true
     }
   }
 
-  if (!systemHasUsers && to.path !== '/register') {
+  if (!setup.value.hasUsers && to.path !== '/register') {
     return navigateTo('/register')
   }
 
   if (publicRoutes.has(to.path)) {
-    if (auth.isAuthenticated && to.path !== '/') return navigateTo('/sessions')
+    if (auth.isAuthenticated) {
+      const primaryId = auth.accounts[0]?.id
+      if (primaryId) {
+        return navigateTo(`/accounts/${primaryId}`)
+      }
+    }
     return
   }
 
   if (!auth.isAuthenticated) {
     return navigateTo({ path: '/login', query: { redirect: to.fullPath } })
+  }
+
+  if (to.path === '/') {
+    const primaryId = auth.accounts[0]?.id
+    if (primaryId) {
+      return navigateTo(`/accounts/${primaryId}`, { redirectCode: 302 })
+    }
   }
 })

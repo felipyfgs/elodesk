@@ -1,5 +1,6 @@
 export default defineNuxtRouteMiddleware((to) => {
-  if (to.path === '/settings' || to.path === '/settings/') {
-    return navigateTo('/settings/profile')
+  const match = to.path.match(/^\/accounts\/([^/]+)\/settings\/?$/)
+  if (match) {
+    return navigateTo(`/accounts/${match[1]}/settings/account`)
   }
 })

@@ -33,5 +33,11 @@ func IsErrNotFound(err error) bool {
 		errors.Is(err, ErrChannelWebWidgetNotFound) ||
 		errors.Is(err, ErrMacroNotFound) ||
 		errors.Is(err, ErrSLANotFound) ||
-		errors.Is(err, ErrWebhookNotFound)
+		errors.Is(err, ErrWebhookNotFound) ||
+		errors.Is(err, ErrInboxBusinessHoursNotFound) ||
+		errors.Is(err, ErrChannelLineNotFound) ||
+		errors.Is(err, ErrChannelTiktokNotFound) ||
+		errors.Is(err, ErrChannelTwilioNotFound) ||
+		errors.Is(err, ErrChannelTwitterNotFound) ||
+		errors.Is(err, ErrUserAccessTokenNotFound)
 }

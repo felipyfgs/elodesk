@@ -8,18 +8,32 @@ import (
 )
 
 type CreateContactReq struct {
-	Name             string          `json:"name" validate:"required"`
-	Email            *string         `json:"email,omitempty"`
-	Phone            *string         `json:"phone_number,omitempty"`
-	Identifier       *string         `json:"identifier,omitempty"`
-	SourceID         string          `json:"source_id" validate:"required"`
-	CustomAttributes json.RawMessage `json:"custom_attributes,omitempty"`
+	Name               string          `json:"name" validate:"required"`
+	Email              *string         `json:"email,omitempty"`
+	Phone              *string         `json:"phone_number,omitempty"`
+	Identifier         *string         `json:"identifier,omitempty"`
+	SourceID           string          `json:"source_id,omitempty"`
+	IdentifierHash     *string         `json:"identifier_hash,omitempty"`
+	CustomAttributes   json.RawMessage `json:"custom_attributes,omitempty"`
+	AdditionalAttributes json.RawMessage `json:"additional_attributes,omitempty"`
 }
 
 type UpdateContactReq struct {
 	Name  *string `json:"name,omitempty"`
 	Email *string `json:"email,omitempty"`
 	Phone *string `json:"phone_number,omitempty"`
+}
+
+type ContactMergeReq struct {
+	PrimaryContactID int64 `json:"primary_contact_id" validate:"required"`
+}
+
+type ContactBlockReq struct {
+	Blocked bool `json:"blocked"`
+}
+
+type ContactAvatarReq struct {
+	ObjectKey string `json:"object_key" validate:"required"`
 }
 
 type ContactResp struct {
@@ -30,6 +44,8 @@ type ContactResp struct {
 	PhoneNumber     *string    `json:"phoneNumber,omitempty"`
 	Identifier      *string    `json:"identifier,omitempty"`
 	AdditionalAttrs *string    `json:"additionalAttributes,omitempty"`
+	AvatarURL       *string    `json:"avatarUrl,omitempty"`
+	Blocked         bool       `json:"blocked"`
 	LastActivityAt  *time.Time `json:"lastActivityAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
@@ -49,6 +65,8 @@ func ContactToResp(c *model.Contact) ContactResp {
 		PhoneNumber:     c.PhoneNumber,
 		Identifier:      c.Identifier,
 		AdditionalAttrs: c.AdditionalAttrs,
+		AvatarURL:       c.AvatarURL,
+		Blocked:         c.Blocked,
 		LastActivityAt:  c.LastActivityAt,
 		CreatedAt:       c.CreatedAt,
 		UpdatedAt:       c.UpdatedAt,
@@ -73,4 +91,22 @@ type ContactImportResp struct {
 type ImportError struct {
 	Row    int    `json:"row"`
 	Reason string `json:"reason"`
+}
+
+type AuditEventUserResp struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type AuditEventResp struct {
+	ID        int64               `json:"id"`
+	Action    string              `json:"action"`
+	Metadata  json.RawMessage     `json:"metadata,omitempty"`
+	User      *AuditEventUserResp `json:"user,omitempty"`
+	CreatedAt time.Time           `json:"createdAt"`
+}
+
+type AuditEventListResp struct {
+	Meta    MetaResp         `json:"meta"`
+	Payload []AuditEventResp `json:"payload"`
 }

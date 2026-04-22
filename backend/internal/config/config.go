@@ -46,6 +46,16 @@ type Config struct {
 	WidgetPublicBaseURL string
 	WidgetJWTSecret     string
 	WidgetSessionTTL    int
+
+	FeatureChannelTiktok         bool
+	FeatureChannelTwitter        bool
+	FeatureChannelTwilioWhatsapp bool
+	FeatureTwilioSmsMedium       bool
+
+	TiktokClientKey       string
+	TiktokClientSecret    string
+	TwitterConsumerKey    string
+	TwitterConsumerSecret string
 }
 
 func Load() *Config {
@@ -86,6 +96,16 @@ func Load() *Config {
 		WidgetPublicBaseURL: getEnv("WIDGET_PUBLIC_BASE_URL", "http://localhost:3001"),
 		WidgetJWTSecret:     getEnv("WIDGET_JWT_SECRET", ""),
 		WidgetSessionTTL:    getEnvAsInt("WIDGET_SESSION_TTL_DAYS", 30),
+
+		FeatureChannelTiktok:         getEnvAsBool("FEATURE_CHANNEL_TIKTOK", false),
+		FeatureChannelTwitter:        getEnvAsBool("FEATURE_CHANNEL_TWITTER", false),
+		FeatureChannelTwilioWhatsapp: getEnvAsBool("FEATURE_CHANNEL_TWILIO_WHATSAPP", true),
+		FeatureTwilioSmsMedium:       getEnvAsBool("FEATURE_TWILIO_SMS_MEDIUM", false),
+
+		TiktokClientKey:       getEnv("TIKTOK_CLIENT_KEY", ""),
+		TiktokClientSecret:    getEnv("TIKTOK_CLIENT_SECRET", ""),
+		TwitterConsumerKey:    getEnv("TWITTER_CONSUMER_KEY", ""),
+		TwitterConsumerSecret: getEnv("TWITTER_CONSUMER_SECRET", ""),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -119,6 +139,24 @@ func (c *Config) validate() error {
 		}
 		if len(kekBytes) < 32 {
 			return fmt.Errorf("BACKEND_KEK must decode to at least 32 bytes (got %d)", len(kekBytes))
+		}
+	}
+
+	if c.FeatureChannelTiktok {
+		if c.TiktokClientKey == "" {
+			missing = append(missing, "TIKTOK_CLIENT_KEY (required when FEATURE_CHANNEL_TIKTOK=true)")
+		}
+		if c.TiktokClientSecret == "" {
+			missing = append(missing, "TIKTOK_CLIENT_SECRET (required when FEATURE_CHANNEL_TIKTOK=true)")
+		}
+	}
+
+	if c.FeatureChannelTwitter {
+		if c.TwitterConsumerKey == "" {
+			missing = append(missing, "TWITTER_CONSUMER_KEY (required when FEATURE_CHANNEL_TWITTER=true)")
+		}
+		if c.TwitterConsumerSecret == "" {
+			missing = append(missing, "TWITTER_CONSUMER_SECRET (required when FEATURE_CHANNEL_TWITTER=true)")
 		}
 	}
 

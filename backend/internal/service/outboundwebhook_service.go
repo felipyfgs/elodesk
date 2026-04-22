@@ -18,6 +18,9 @@ const (
 	EventTypeMessageUpdated            = "message_updated"
 	EventTypeConversationStatusChanged = "conversation_status_changed"
 	EventTypeConversationUpdated       = "conversation_updated"
+	EventTypeConversationCreated       = "conversation_created"
+	EventTypeConversationTypingOn       = "conversation_typing_on"
+	EventTypeConversationTypingOff      = "conversation_typing_off"
 )
 
 type OutboundWebhookService struct {
@@ -44,6 +47,14 @@ func (s *OutboundWebhookService) DispatchConversationUpdated(ctx context.Context
 	return s.dispatch(ctx, ch, inboxID, EventTypeConversationUpdated, conv, nil, attributes)
 }
 
+func (s *OutboundWebhookService) DispatchConversationCreated(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation) error {
+	return s.dispatch(ctx, ch, inboxID, EventTypeConversationCreated, conv, nil, nil)
+}
+
+func (s *OutboundWebhookService) DispatchTypingEvent(ctx context.Context, ch *model.ChannelAPI, inboxID int64, conv *model.Conversation, eventName string) error {
+	return s.dispatch(ctx, ch, inboxID, eventName, conv, nil, nil)
+}
+
 func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.ChannelAPI, inboxID int64, eventType string, conv *model.Conversation, msg *model.Message, convAttrs json.RawMessage) error {
 	// DeliveryID is generated HERE (once per delivery) and stored in the task
 	// payload so it survives retries. The processor never regenerates it.
@@ -52,6 +63,7 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 		AccountID:              ch.AccountID,
 		InboxID:                inboxID,
 		WebhookURL:             ch.WebhookURL,
+		Secret:                 ch.Secret,
 		HmacCiphertext:         ch.HmacToken,
 		DeliveryID:             uuid.NewString(),
 		ConversationAttributes: convAttrs,

@@ -4,10 +4,10 @@ import "time"
 
 type CreateWhatsAppInboxReq struct {
 	Provider          string `json:"provider" validate:"required,oneof=whatsapp_cloud default_360dialog"`
-	PhoneNumber       string `json:"phoneNumber" validate:"required"`
+	PhoneNumber       string `json:"phoneNumber,omitempty"`
 	PhoneNumberID     string `json:"phoneNumberId,omitempty"`
 	BusinessAccountID string `json:"businessAccountId,omitempty"`
-	ApiKey            string `json:"apiKey" validate:"required"`
+	ApiKey            string `json:"apiKey,omitempty"`
 	Name              string `json:"name" validate:"required"`
 }
 
@@ -21,7 +21,7 @@ type CreateWhatsAppInboxResp struct {
 	PhoneNumber        string    `json:"phoneNumber"`
 	PhoneNumberID      string    `json:"phoneNumberId,omitempty"`
 	BusinessAccountID  string    `json:"businessAccountId,omitempty"`
-	ApiKey             string    `json:"apiKey"`
+	ApiKey             string    `json:"apiKey,omitempty"`
 	WebhookVerifyToken string    `json:"webhookVerifyToken,omitempty"`
 	CreatedAt          time.Time `json:"createdAt"`
 }
@@ -37,7 +37,6 @@ type WhatsAppInboxResp struct {
 	PhoneNumberID            *string    `json:"phoneNumberId,omitempty"`
 	BusinessAccountID        *string    `json:"businessAccountId,omitempty"`
 	MessageTemplatesSyncedAt *time.Time `json:"messageTemplatesSyncedAt,omitempty"`
-	RequiresReauth           bool       `json:"requiresReauth"`
 	CreatedAt                time.Time  `json:"createdAt"`
 }
 

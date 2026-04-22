@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"backend/internal/audit"
 	"backend/internal/model"
 	"backend/internal/repo"
 )
@@ -12,12 +13,18 @@ import (
 var ErrNotNoteOwner = errors.New("not note owner")
 
 type NoteService struct {
-	repo *repo.NoteRepo
-	rt   *RealtimeService
+	repo        *repo.NoteRepo
+	rt          *RealtimeService
+	auditLogger *audit.Logger
 }
 
 func NewNoteService(repo *repo.NoteRepo, rt *RealtimeService) *NoteService {
 	return &NoteService{repo: repo, rt: rt}
+}
+
+func (s *NoteService) WithAudit(l *audit.Logger) *NoteService {
+	s.auditLogger = l
+	return s
 }
 
 func (s *NoteService) ListByContact(ctx context.Context, contactID, accountID int64, page, perPage int) ([]model.Note, int, error) {
@@ -49,6 +56,9 @@ func (s *NoteService) Create(ctx context.Context, accountID, contactID, userID i
 		"user_id":    userID,
 		"account_id": accountID,
 	})
+	s.emitContactAudit(ctx, accountID, &userID, "contact.note_created", contactID, map[string]any{
+		"note_id": m.ID,
+	})
 	return m, nil
 }
 
@@ -78,5 +88,19 @@ func (s *NoteService) Delete(ctx context.Context, id, accountID, userID int64, r
 	if note.UserID != userID && role < int(model.RoleAdmin) {
 		return ErrNotNoteOwner
 	}
-	return s.repo.Delete(ctx, id, accountID)
+	if err := s.repo.Delete(ctx, id, accountID); err != nil {
+		return err
+	}
+	s.emitContactAudit(ctx, accountID, &userID, "contact.note_deleted", note.ContactID, map[string]any{
+		"note_id": id,
+	})
+	return nil
+}
+
+func (s *NoteService) emitContactAudit(ctx context.Context, accountID int64, userID *int64, action string, contactID int64, metadata any) {
+	if s.auditLogger == nil {
+		return
+	}
+	cid := contactID
+	s.auditLogger.Log(ctx, accountID, userID, action, "contact", &cid, metadata, "", "")
 }

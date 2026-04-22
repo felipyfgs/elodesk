@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useAuthStore } from '~/stores/auth'
 
 export interface ConversationContact {
   id: string
@@ -15,11 +16,21 @@ export interface ConversationInbox {
   channelType: string
 }
 
+// Backend sends status as int: 0=Open, 1=Resolved, 2=Pending, 3=Snoozed
+export type ConversationStatus = 0 | 1 | 2 | 3
+
+export const STATUS_MAP: Record<string, ConversationStatus> = {
+  OPEN: 0,
+  RESOLVED: 1,
+  PENDING: 2,
+  SNOOZED: 3
+}
+
 export interface Conversation {
   id: string
   accountId: string
   inboxId: string
-  status: 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+  status: ConversationStatus
   assigneeId?: string | null
   teamId?: string | null
   contactId: string
@@ -115,11 +126,20 @@ export const useConversationsStore = defineStore('conversations', {
       // Tab filter — mine/unassigned need the auth store, imported lazily
       if (state.filters.tab === 'unassigned') {
         result = result.filter(c => !c.assigneeId)
+      } else if (state.filters.tab === 'mine') {
+        const auth = useAuthStore()
+        const myId = auth.user?.id
+        if (myId) {
+          result = result.filter(c => c.assigneeId === myId)
+        }
       }
 
-      // Status filter
+      // Status filter — backend sends int, filters are string labels
       if (state.filters.status) {
-        result = result.filter(c => c.status === state.filters.status)
+        const statusNum = STATUS_MAP[state.filters.status]
+        if (statusNum !== undefined) {
+          result = result.filter(c => c.status === statusNum)
+        }
       }
 
       // Inbox filter

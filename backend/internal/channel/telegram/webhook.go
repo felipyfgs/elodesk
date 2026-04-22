@@ -112,6 +112,11 @@ func processMessage(
 		}
 	}
 
+	if c, cErr := contactRepo.FindByID(ctx, ci.ContactID, accountID); cErr == nil && c.Blocked {
+		logger.Warn().Str("component", "telegram.webhook").Int64("contact_id", c.ID).Msg("contact_blocked_inbound_dropped")
+		return nil
+	}
+
 	conv, err := conversationRepo.EnsureOpen(ctx, accountID, inbox.ID, ci.ContactID)
 	if err != nil {
 		return fmt.Errorf("ensure open conversation: %w", err)
@@ -266,6 +271,11 @@ func processCallbackQuery(
 		if err := contactInboxRepo.Create(ctx, ci); err != nil {
 			return fmt.Errorf("create contact inbox: %w", err)
 		}
+	}
+
+	if c, cErr := contactRepo.FindByID(ctx, ci.ContactID, accountID); cErr == nil && c.Blocked {
+		logger.Warn().Str("component", "telegram.webhook").Int64("contact_id", c.ID).Msg("contact_blocked_inbound_dropped")
+		return nil
 	}
 
 	conv, err := conversationRepo.EnsureOpen(ctx, accountID, inbox.ID, ci.ContactID)

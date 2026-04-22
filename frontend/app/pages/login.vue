@@ -68,7 +68,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       mfaRequired.value = true
       mfaToken.value = res.mfaToken
     } else {
-      const redirect = (route.query.redirect as string) || '/conversations'
+      const data = res as LoginSuccess
+      const redirect = (route.query.redirect as string) || `/accounts/${data.account.id}/conversations`
       await navigateTo(redirect)
     }
   } catch (err: unknown) {
@@ -89,8 +90,8 @@ async function onMfaSubmit() {
   mfaError.value = null
   mfaLoading.value = true
   try {
-    await verifyMfa(mfaToken.value, code)
-    const redirect = (route.query.redirect as string) || '/conversations'
+    const mfaRes = await verifyMfa(mfaToken.value, code)
+    const redirect = (route.query.redirect as string) || `/accounts/${mfaRes.account.id}/conversations`
     await navigateTo(redirect)
   } catch {
     mfaAttempts.value++

@@ -72,7 +72,7 @@ async function submit() {
       body: state
     })
     toast.add({ title: t('common.success'), color: 'success' })
-    router.push(`/inboxes/${res.id}`)
+    router.push(`/accounts/${auth.account?.id}/inboxes/${res.id}`)
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
@@ -86,21 +86,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <UButton
-        icon="i-lucide-arrow-left"
-        variant="ghost"
-        color="neutral"
-        to="/inboxes/new"
-      />
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('inboxes.channels.instagram') }}
-        </h2>
-        <p class="text-sm text-muted">
-          {{ t('inboxes.wizards.instagram.description') }}
-        </p>
-      </div>
+    <div>
+      <h2 class="text-lg font-semibold">
+        {{ t('inboxes.channels.instagram') }}
+      </h2>
+      <p class="text-sm text-muted">
+        {{ t('inboxes.wizards.instagram.description') }}
+      </p>
     </div>
 
     <UStepper v-model="step" :items="stepperItems" :linear="true">
@@ -140,7 +132,7 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
     </UStepper>
 
     <div class="flex justify-end gap-2">
-      <UButton to="/inboxes/new" variant="ghost" color="neutral">
+      <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
       <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">

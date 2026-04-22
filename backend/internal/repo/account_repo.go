@@ -14,14 +14,14 @@ import (
 var ErrAccountNotFound = errors.New("account not found")
 var ErrAccountSlugExists = errors.New("account slug already exists")
 
-const accountSelectColumns = "id, name, slug, created_at, updated_at"
+const accountSelectColumns = "id, name, slug, locale, status, custom_attributes, settings, created_at, updated_at"
 
 type accountScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanAccount(scanner accountScanner, m *model.Account) error {
-	return scanner.Scan(&m.ID, &m.Name, &m.Slug, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.Name, &m.Slug, &m.Locale, &m.Status, &m.CustomAttributes, &m.Settings, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type AccountRepo struct {
@@ -33,11 +33,12 @@ func NewAccountRepo(pool *pgxpool.Pool) *AccountRepo {
 }
 
 func (r *AccountRepo) CreateTx(ctx context.Context, tx pgx.Tx, m *model.Account) error {
-	query := `INSERT INTO accounts (name, slug) VALUES ($1, $2)
-		RETURNING id, created_at, updated_at`
-	err := tx.QueryRow(ctx, query, m.Name, m.Slug).
-		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
-	if err != nil {
+	if m.Locale == "" {
+		m.Locale = "pt"
+	}
+	query := `INSERT INTO accounts (name, slug, locale) VALUES ($1, $2, $3)
+		RETURNING ` + accountSelectColumns
+	if err := scanAccount(tx.QueryRow(ctx, query, m.Name, m.Slug, m.Locale), m); err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("%w: %w", ErrAccountSlugExists, err)
 		}
@@ -84,6 +85,20 @@ func (r *AccountRepo) FindBySlug(ctx context.Context, slug string) (*model.Accou
 	return &m, nil
 }
 
+func (r *AccountRepo) Update(ctx context.Context, m *model.Account) error {
+	query := `UPDATE accounts
+		SET name = $2, locale = $3, settings = $4, updated_at = NOW()
+		WHERE id = $1
+		RETURNING ` + accountSelectColumns
+	if err := scanAccount(r.pool.QueryRow(ctx, query, m.ID, m.Name, m.Locale, m.Settings), m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: %w", ErrAccountNotFound, err)
+		}
+		return fmt.Errorf("failed to update account: %w", err)
+	}
+	return nil
+}
+
 const accountUserSelectColumns = "id, account_id, user_id, role, created_at, updated_at"
 
 type accountUserScanner interface {
@@ -111,7 +126,7 @@ func (r *AccountRepo) FindAccountUser(ctx context.Context, accountID, userID int
 // sufficient for MVP login (first account on record). Errors with
 // ErrAccountNotFound when the user has no memberships yet.
 func (r *AccountRepo) FindPrimaryByUserID(ctx context.Context, userID int64) (*model.Account, error) {
-	query := `SELECT a.id, a.name, a.slug, a.created_at, a.updated_at
+	query := `SELECT a.id, a.name, a.slug, a.locale, a.status, a.custom_attributes, a.settings, a.created_at, a.updated_at
 		FROM accounts a
 		JOIN account_users au ON au.account_id = a.id
 		WHERE au.user_id = $1

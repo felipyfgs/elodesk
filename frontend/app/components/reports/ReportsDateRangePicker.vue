@@ -3,6 +3,7 @@ import type { Range } from '~/types/reports'
 
 const props = defineProps<{ modelValue: Range }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Range] }>()
+const { t } = useI18n()
 
 function fmt(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -20,8 +21,18 @@ const end = computed({
 
 <template>
   <div class="flex items-center gap-2">
-    <UInput v-model="start" type="date" size="sm" />
+    <UInput
+      v-model="start"
+      type="date"
+      size="sm"
+      :placeholder="t('reports.from')"
+    />
     <span class="text-muted">→</span>
-    <UInput v-model="end" type="date" size="sm" />
+    <UInput
+      v-model="end"
+      type="date"
+      size="sm"
+      :placeholder="t('reports.to')"
+    />
   </div>
 </template>

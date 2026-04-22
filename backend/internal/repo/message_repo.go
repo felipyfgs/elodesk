@@ -232,6 +232,20 @@ func (r *MessageRepo) MarkDeliveredBefore(ctx context.Context, conversationID, a
 	return int(tag.RowsAffected()), nil
 }
 
+func (r *MessageRepo) UpdateContentAttributes(ctx context.Context, id, accountID int64, attrs map[string]any) error {
+	attrsJSON, err := json.Marshal(attrs)
+	if err != nil {
+		return fmt.Errorf("marshal content attributes: %w", err)
+	}
+	query := `UPDATE messages SET content_attributes = COALESCE(content_attributes::jsonb || $3::jsonb, $3::jsonb), updated_at = NOW()
+		WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL`
+	_, err = r.pool.Exec(ctx, query, id, accountID, attrsJSON)
+	if err != nil {
+		return fmt.Errorf("failed to update message content_attributes: %w", err)
+	}
+	return nil
+}
+
 func (r *MessageRepo) UpdateSourceID(ctx context.Context, id, accountID int64, sourceID *string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE messages SET source_id = $1, updated_at = NOW() WHERE id = $2 AND account_id = $3`,

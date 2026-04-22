@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { z } from 'zod/v4'
 import type { FormSubmitEvent, AuthFormField } from '@nuxt/ui'
+import { useAuthStore } from '~/stores/auth'
 
 const { register } = useAuth()
 const { t } = useI18n()
+const auth = useAuthStore()
 const { markSystemSetup } = await import('~/middleware/auth.global')
 
 const fields: AuthFormField[] = [
@@ -41,7 +43,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       accountName: event.data.accountName || undefined
     })
     markSystemSetup()
-    await navigateTo('/conversations')
+    const accountId = auth.account?.id
+    await navigateTo(accountId ? `/accounts/${accountId}/conversations` : '/conversations')
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     if (e?.data?.message?.includes('email already')) {

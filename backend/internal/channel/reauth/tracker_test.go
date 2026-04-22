@@ -7,6 +7,8 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
+
+	"backend/internal/channel"
 )
 
 func TestTracker_RecordError_UnderThreshold(t *testing.T) {
@@ -85,6 +87,70 @@ func TestTracker_ShouldPrompt(t *testing.T) {
 	prompt, _ = tr.ShouldPrompt(ctx, "ch:4")
 	if !prompt {
 		t.Fatal("should prompt after 3 errors")
+	}
+}
+
+func TestTracker_RecordErrorForKind_Instagram(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = client.Close() }()
+
+	tr := NewTracker(client)
+	ctx := context.Background()
+
+	// Instagram threshold is 1 — single failure is enough to prompt reauth.
+	prompt, err := tr.RecordErrorForKind(ctx, channel.KindInstagram, "ig:42")
+	if err != nil {
+		t.Fatalf("record error: %v", err)
+	}
+	if !prompt {
+		t.Fatal("instagram should prompt after 1 error (threshold=1)")
+	}
+}
+
+func TestTracker_ShouldPromptForKind_TiktokThreshold(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = client.Close() }()
+
+	tr := NewTracker(client)
+	ctx := context.Background()
+
+	// No errors yet: should not prompt.
+	prompt, _ := tr.ShouldPromptForKind(ctx, channel.KindTiktok, "tt:1")
+	if prompt {
+		t.Fatal("tiktok: no errors yet, should not prompt")
+	}
+
+	// One error: tiktok threshold is 1, should prompt.
+	_, _ = tr.RecordErrorForKind(ctx, channel.KindTiktok, "tt:1")
+	prompt, _ = tr.ShouldPromptForKind(ctx, channel.KindTiktok, "tt:1")
+	if !prompt {
+		t.Fatal("tiktok: after 1 error should prompt (threshold=1)")
+	}
+}
+
+func TestTracker_RecordErrorForKind_DefaultKind(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = client.Close() }()
+
+	tr := NewTracker(client)
+	ctx := context.Background()
+
+	// Twilio isn't in kindThresholds → uses default threshold (3). First 2
+	// errors must not prompt.
+	for i := 0; i < 2; i++ {
+		prompt, _ := tr.RecordErrorForKind(ctx, channel.KindTwilio, "tw:1")
+		if prompt {
+			t.Fatalf("twilio: should not prompt after %d errors (default threshold=3)", i+1)
+		}
+	}
+
+	// Third error hits default threshold.
+	prompt, _ := tr.RecordErrorForKind(ctx, channel.KindTwilio, "tw:1")
+	if !prompt {
+		t.Fatal("twilio: should prompt after 3 errors (default threshold)")
 	}
 }
 

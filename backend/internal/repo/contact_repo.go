@@ -12,16 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrContactNotFound = errors.New("contact not found")
+var (
+	ErrContactNotFound    = errors.New("contact not found")
+	ErrSameContactMerge   = errors.New("cannot merge contact with itself")
+)
 
-const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, last_activity_at, created_at, updated_at"
+const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, blocked, last_activity_at, created_at, updated_at"
 
 type contactScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanContact(scanner contactScanner, m *model.Contact) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.AvatarURL, &m.Blocked, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type ContactRepo struct {
@@ -111,6 +114,19 @@ func (r *ContactRepo) FindByPhoneE164(ctx context.Context, phoneE164 string, acc
 			return nil, fmt.Errorf("%w: %w", ErrContactNotFound, err)
 		}
 		return nil, fmt.Errorf("find contact by phone_e164: %w", err)
+	}
+	return &m, nil
+}
+
+func (r *ContactRepo) FindByPhone(ctx context.Context, phone string, accountID int64) (*model.Contact, error) {
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_number = $1 AND account_id = $2 LIMIT 1`
+	row := r.pool.QueryRow(ctx, query, phone, accountID)
+	var m model.Contact
+	if err := scanContact(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrContactNotFound, err)
+		}
+		return nil, fmt.Errorf("find contact by phone_number: %w", err)
 	}
 	return &m, nil
 }
@@ -329,6 +345,109 @@ func (r *ContactRepo) ImportBatch(ctx context.Context, accountID int64, batch []
 	}
 
 	return result, nil
+}
+
+func (r *ContactRepo) Delete(ctx context.Context, id, accountID int64) error {
+	cmd, err := r.pool.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, id, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to delete contact: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrContactNotFound
+	}
+	return nil
+}
+
+func (r *ContactRepo) UpdateBlocked(ctx context.Context, id, accountID int64, blocked bool) error {
+	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET blocked = $3, updated_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID, blocked)
+	if err != nil {
+		return fmt.Errorf("failed to update contact blocked: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrContactNotFound
+	}
+	return nil
+}
+
+func (r *ContactRepo) UpdateAvatarURL(ctx context.Context, id, accountID int64, url *string) error {
+	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET avatar_url = $3, updated_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID, url)
+	if err != nil {
+		return fmt.Errorf("failed to update contact avatar: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrContactNotFound
+	}
+	return nil
+}
+
+// Merge moves all dependent records from childID to primaryID atomically and
+// deletes the child. Returns the updated primary contact.
+func (r *ContactRepo) Merge(ctx context.Context, childID, primaryID, accountID int64) (*model.Contact, error) {
+	if childID == primaryID {
+		return nil, ErrSameContactMerge
+	}
+
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin merge tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var childExists, primaryExists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM contacts WHERE id = $1 AND account_id = $2)`, childID, accountID).Scan(&childExists); err != nil {
+		return nil, fmt.Errorf("check child contact: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM contacts WHERE id = $1 AND account_id = $2)`, primaryID, accountID).Scan(&primaryExists); err != nil {
+		return nil, fmt.Errorf("check primary contact: %w", err)
+	}
+	if !childExists || !primaryExists {
+		return nil, ErrContactNotFound
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE contact_inboxes SET contact_id = $1 WHERE contact_id = $2`, primaryID, childID); err != nil {
+		return nil, fmt.Errorf("merge contact_inboxes: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE conversations SET contact_id = $1 WHERE contact_id = $2 AND account_id = $3`, primaryID, childID, accountID); err != nil {
+		return nil, fmt.Errorf("merge conversations: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE notes SET contact_id = $1 WHERE contact_id = $2 AND account_id = $3`, primaryID, childID, accountID); err != nil {
+		return nil, fmt.Errorf("merge notes: %w", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO label_taggings (account_id, label_id, taggable_type, taggable_id)
+		 SELECT account_id, label_id, 'contact', $1 FROM label_taggings
+		 WHERE taggable_type = 'contact' AND taggable_id = $2 AND account_id = $3
+		 ON CONFLICT (label_id, taggable_type, taggable_id) DO NOTHING`,
+		primaryID, childID, accountID); err != nil {
+		return nil, fmt.Errorf("merge label_taggings insert: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM label_taggings WHERE taggable_type = 'contact' AND taggable_id = $1 AND account_id = $2`, childID, accountID); err != nil {
+		return nil, fmt.Errorf("merge label_taggings delete: %w", err)
+	}
+	// additional_attributes merge: primary wins on conflicting keys.
+	if _, err := tx.Exec(ctx,
+		`UPDATE contacts p SET additional_attributes = COALESCE(c.additional_attributes, '{}'::jsonb) || COALESCE(p.additional_attributes, '{}'::jsonb),
+		 updated_at = NOW()
+		 FROM contacts c
+		 WHERE p.id = $1 AND c.id = $2 AND p.account_id = $3 AND c.account_id = $3`,
+		primaryID, childID, accountID); err != nil {
+		return nil, fmt.Errorf("merge additional_attributes: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, childID, accountID); err != nil {
+		return nil, fmt.Errorf("delete child contact: %w", err)
+	}
+
+	row := tx.QueryRow(ctx, `SELECT `+contactSelectColumns+` FROM contacts WHERE id = $1 AND account_id = $2`, primaryID, accountID)
+	var primary model.Contact
+	if err := scanContact(row, &primary); err != nil {
+		return nil, fmt.Errorf("load merged primary: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit merge: %w", err)
+	}
+	return &primary, nil
 }
 
 func (r *ContactRepo) ListConversationsByContactID(ctx context.Context, contactID, accountID int64, page, perPage int) ([]model.Conversation, int, error) {

@@ -144,6 +144,11 @@ func persistInboundMessage(
 		}
 	}
 
+	if c, cErr := contactRepo.FindByID(ctx, ci.ContactID, accountID); cErr == nil && c.Blocked {
+		logger.Warn().Str("component", "facebook.webhook").Int64("contact_id", c.ID).Msg("contact_blocked_inbound_dropped")
+		return nil
+	}
+
 	conv, err := conversationRepo.EnsureOpen(ctx, accountID, inbox.ID, ci.ContactID)
 	if err != nil {
 		return fmt.Errorf("ensure open conversation: %w", err)

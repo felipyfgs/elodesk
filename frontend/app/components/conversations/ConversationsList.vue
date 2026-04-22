@@ -51,7 +51,7 @@ defineShortcuts({
       :ref="(el) => { itemRefs[c.id] = el as Element | null }"
       class="p-4 sm:px-6 text-sm cursor-pointer border-l-2 transition-colors"
       :class="[
-        c.status === 'OPEN' ? 'text-highlighted' : 'text-toned',
+        c.status === 0 ? 'text-highlighted' : 'text-toned',
         selected && selected.id === c.id
           ? 'border-primary bg-primary/10'
           : 'border-bg hover:border-primary hover:bg-primary/5'
