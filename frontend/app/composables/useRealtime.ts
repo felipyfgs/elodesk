@@ -99,6 +99,7 @@ export const useRealtime = () => {
           tryRejoin()
         }
       }, 500)
+      setTimeout(() => clearInterval(interval), 30_000)
     }
   }
 

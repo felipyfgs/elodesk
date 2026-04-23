@@ -1,4 +1,4 @@
--- 0025_channels_twitter.sql: Twitter/X DM channel table + indexes
+-- 0026_channels_twitter.sql: Twitter/X DM channel table + indexes
 
 CREATE TABLE IF NOT EXISTS channels_twitter (
     id BIGSERIAL PRIMARY KEY,

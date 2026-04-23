@@ -12,7 +12,6 @@ const _useDashboard = () => {
   const aid = computed(() => auth.account?.id ?? '')
 
   const accountPath = (path = '') => aid.value ? `/accounts/${aid.value}${path}` : (path || '/')
-  const isAccountRootActive = () => route.path === accountPath()
   const isSectionActive = (section: string) => {
     const path = accountPath(`/${section}`)
     return route.path === path || route.path.startsWith(`${path}/`)
@@ -20,14 +19,6 @@ const _useDashboard = () => {
 
   const links = computed<NavigationMenuItem[][]>(() => [
     [
-      {
-        label: t('nav.home'),
-        icon: 'i-lucide-house',
-        to: accountPath(),
-        kbds: ['G', 'H'],
-        active: isAccountRootActive(),
-        onSelect: () => { isSidebarOpen.value = false }
-      },
       {
         label: t('nav.conversations'),
         icon: 'i-lucide-messages-square',

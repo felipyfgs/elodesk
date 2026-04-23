@@ -115,23 +115,24 @@ const breadcrumb = computed(() => [
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <div v-if="loading" class="flex items-center justify-center py-24">
-          <UIcon name="i-lucide-loader-2" class="size-8 animate-spin text-muted" />
+        <div v-if="loading" class="flex flex-col gap-4 py-4">
+          <USkeleton class="h-12 w-full rounded-lg" />
+          <USkeleton class="h-64 w-full rounded-lg" />
         </div>
 
-        <div v-else-if="!inbox" class="flex items-center justify-center py-24 text-muted">
-          <div class="text-center">
-            <UIcon name="i-lucide-alert-circle" class="size-12 mx-auto text-dimmed" />
-            <p class="mt-2">
-              {{ t('inboxes.notFound') }}
-            </p>
+        <UEmpty
+          v-else-if="!inbox"
+          icon="i-lucide-alert-circle"
+          :title="t('inboxes.notFound')"
+          :ui="{ root: 'py-24' }"
+        >
+          <template #actions>
             <UButton
               :label="t('inboxes.title')"
-              class="mt-4"
               :to="`/accounts/${auth.account?.id}/inboxes`"
             />
-          </div>
-        </div>
+          </template>
+        </UEmpty>
 
         <div v-else class="flex flex-col gap-4 sm:gap-6 lg:gap-12 w-full">
           <NuxtPage :inbox="inbox" @inbox-updated="inbox = $event" />

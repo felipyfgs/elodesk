@@ -81,7 +81,7 @@ func TestScopesGranted_Missing(t *testing.T) {
 
 func TestExtractContent_Text(t *testing.T) {
 	c := &EventContent{Type: MessageTypeText, ConversationID: "c1", MessageID: "m1", Text: &EventTextBody{Body: "hi"}}
-	content, _, attrs := extractContent(c, false, "biz-1")
+	content, _, attrs := extractContent(c, false)
 	if content != "hi" {
 		t.Fatalf("expected text content, got %q", content)
 	}
@@ -92,7 +92,7 @@ func TestExtractContent_Text(t *testing.T) {
 
 func TestExtractContent_Image(t *testing.T) {
 	c := &EventContent{Type: MessageTypeImage, ConversationID: "c1", MessageID: "m1", Image: &EventImageBody{MediaID: "media-1"}}
-	_, _, attrs := extractContent(c, false, "biz-1")
+	_, _, attrs := extractContent(c, false)
 	if attrs == nil {
 		t.Fatalf("expected attrs with media_id")
 	}

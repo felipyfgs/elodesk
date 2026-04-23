@@ -268,7 +268,7 @@ function handleExportCSV() {
 const headerMenuItems = computed(() => [
   [
     { label: t('contacts.add'), icon: 'i-lucide-plus', onSelect: handleAdd },
-    { label: t('contacts.import'), icon: 'i-lucide-download', onSelect: handleImport },
+    { label: t('contacts.importCsv'), icon: 'i-lucide-download', onSelect: handleImport },
     { label: t('contacts.export'), icon: 'i-lucide-upload', onSelect: handleExportCSV }
   ]
 ])
@@ -429,9 +429,9 @@ const headerMenuItems = computed(() => [
 
     <template v-if="!isSearchView && contactsStore.list.length > 0" #footer>
       <ContactsPaginationFooter
-        :current-page="contactsStore.meta.page"
-        :total-items="contactsStore.meta.total"
-        :items-per-page="contactsStore.meta.pageSize"
+        :current-page="contactsStore.meta?.page ?? 1"
+        :total-items="contactsStore.meta?.total ?? 0"
+        :items-per-page="contactsStore.meta?.pageSize ?? 25"
         @update:page="handlePageChange"
       />
     </template>

@@ -112,7 +112,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	reportsRepo := repo.NewReportsRepo(db.Pool)
 	reportsHandler := handler.NewReportHandler(reportsRepo, slaRepo)
 
-	inboxSvc := service.NewInboxService(inboxRepo, channelApiRepo, inboxAgentRepo, inboxBusinessHoursRepo, cipher)
+	inboxSvc := service.NewInboxService(db.Pool, inboxRepo, channelApiRepo, inboxAgentRepo, inboxBusinessHoursRepo, cipher)
 	inboxHandler := handler.NewInboxHandler(inboxSvc, auditLogger)
 
 	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo).
@@ -124,6 +124,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	messageSvc := service.NewMessageService(messageRepo)
 	messageHandler := handler.NewMessageHandler(messageSvc, inboxRepo, contactInboxRepo, messageRepo)
+	messageHandler.SetConversationRepo(conversationRepo)
 	messageHandler.SetAttachmentRepo(attachmentRepo)
 
 	conversationHandler := handler.NewConversationHandler(conversationSvc, messageSvc, inboxRepo, contactInboxRepo, conversationRepo, agentRepo, teamRepo, auditLogger)
@@ -219,6 +220,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Get("/inboxes", inboxHandler.List)
 	accounts.Get("/inboxes/:id", inboxHandler.GetByID)
 	accounts.Put("/inboxes/:id", ownerAdmin, inboxHandler.Update)
+	accounts.Delete("/inboxes/:id", ownerAdmin, inboxHandler.Delete)
 	accounts.Get("/inboxes/:id/business_hours", agentPlus, inboxHandler.GetBusinessHours)
 	accounts.Put("/inboxes/:id/business_hours", ownerAdmin, inboxHandler.UpdateBusinessHours)
 	accounts.Get("/inboxes/:id/agents", inboxHandler.ListAgents)
@@ -238,6 +240,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/conversations", agentPlus, conversationHandler.CreateAuthenticated)
 	accounts.Get("/conversations/:id", conversationHandler.Get)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
+	accounts.Post("/conversations/:conversationId/messages", agentPlus, messageHandler.CreateAuthenticated)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
 	accounts.Post("/uploads/signed-url", uploadHandler.SignedUploadURL)
 	accounts.Get("/uploads/signed-url", uploadHandler.SignedObjectDownloadURL)

@@ -7,6 +7,8 @@ const props = withDefaults(defineProps<{
   cancelLabel?: string
   confirmColor?: 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'
   loading?: boolean
+  confirmValue?: string
+  confirmPlaceholder?: string
 }>(), {
   title: undefined,
   description: undefined,
@@ -14,7 +16,9 @@ const props = withDefaults(defineProps<{
   confirmLabel: undefined,
   cancelLabel: undefined,
   confirmColor: 'error',
-  loading: false
+  loading: false,
+  confirmValue: undefined,
+  confirmPlaceholder: undefined
 })
 
 const emit = defineEmits<{
@@ -22,19 +26,51 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const inputValue = ref('')
+
+const canConfirm = computed(() => {
+  if (!props.confirmValue) return true
+  return inputValue.value.trim() === props.confirmValue
+})
+
+function handleClose() {
+  inputValue.value = ''
+  emit('close', false)
+}
+
+function handleConfirm() {
+  if (!canConfirm.value) return
+  inputValue.value = ''
+  emit('close', true)
+}
 </script>
 
 <template>
   <UModal
     :title="props.title ?? t('common.confirm')"
     :description="props.description"
-    @update:open="emit('close', false)"
+    @update:open="handleClose"
   >
     <template #body>
-      <p v-if="props.itemName" class="text-sm font-medium text-default">
-        {{ props.itemName }}
-      </p>
-      <slot />
+      <div class="space-y-3">
+        <p v-if="props.itemName" class="text-sm font-medium text-default">
+          {{ props.itemName }}
+        </p>
+        <slot />
+        <UFormField v-if="props.confirmValue" :label="props.confirmPlaceholder ?? t('common.typeToConfirm')">
+          <UInput
+            v-model="inputValue"
+            :placeholder="props.confirmValue"
+            class="w-full"
+          />
+        </UFormField>
+        <p
+          v-if="props.confirmValue && inputValue && !canConfirm"
+          class="text-xs text-error"
+        >
+          {{ t('common.nameMismatch') }}
+        </p>
+      </div>
     </template>
 
     <template #footer>
@@ -43,14 +79,15 @@ const { t } = useI18n()
           color="neutral"
           variant="ghost"
           :disabled="props.loading"
-          @click="emit('close', false)"
+          @click="handleClose"
         >
           {{ props.cancelLabel ?? t('common.cancel') }}
         </UButton>
         <UButton
           :color="props.confirmColor"
           :loading="props.loading"
-          @click="emit('close', true)"
+          :disabled="!canConfirm"
+          @click="handleConfirm"
         >
           {{ props.confirmLabel ?? t('common.confirm') }}
         </UButton>

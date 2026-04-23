@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { formatTimeAgo } from '@vueuse/core'
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useAuthStore } from '~/stores/auth'
+import ConfirmModal from '~/components/ConfirmModal.vue'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -12,11 +12,9 @@ const inboxes = useInboxesStore()
 const rt = useRealtime()
 const aid = computed(() => auth.account?.id ?? '')
 const toast = useToast()
+const overlay = useOverlay()
 
-const deleteModalOpen = ref(false)
-const inboxToDelete = ref<Inbox | null>(null)
-const deleteConfirmName = ref('')
-const deleting = ref(false)
+const deleteModal = overlay.create(ConfirmModal)
 
 const channelConfig: Record<string, { icon: string, iconClass: string }> = {
   api: { icon: 'i-lucide-webhook', iconClass: 'text-primary' },
@@ -43,15 +41,6 @@ function formatChannelType(type: string): string {
   return normalized.toLowerCase()
 }
 
-function getBadgeColor(type: string) {
-  if (type === 'whatsapp' || type === 'telegram' || type === 'line') return 'success'
-  if (type === 'api' || type === 'facebook_page' || type === 'twilio') return 'primary'
-  if (type === 'sms' || type === 'web_widget') return 'warning'
-  if (type === 'instagram') return 'error'
-  if (type === 'email') return 'info'
-  return 'neutral'
-}
-
 function getChannelConfig(type: string) {
   return channelConfig[formatChannelType(type)] ?? defaultConfig
 }
@@ -65,57 +54,32 @@ function getChannelLabel(type: string): string {
   return label
 }
 
-function getOpenConversationsLabel(count?: number): string {
-  if (count == null) return '-'
-  return t('inboxes.openConversations', { count })
-}
+async function openDeleteModal(inbox: Inbox) {
+  const confirmed = await deleteModal.open({
+    title: t('inboxes.delete.title'),
+    description: t('inboxes.delete.description'),
+    itemName: inbox.name,
+    confirmValue: inbox.name,
+    confirmPlaceholder: t('inboxes.delete.namePlaceholder'),
+    confirmLabel: t('common.delete')
+  }).result
 
-function getVisibleAgents(inbox: Inbox) {
-  return (inbox.agents ?? []).slice(0, 3)
-}
-
-function getExtraAgents(inbox: Inbox): number {
-  return Math.max(0, (inbox.agents?.length ?? 0) - 3)
-}
-
-const canConfirmDelete = computed(() => {
-  return !!inboxToDelete.value && deleteConfirmName.value.trim() === inboxToDelete.value.name
-})
-
-function openDeleteModal(inbox: Inbox) {
-  inboxToDelete.value = inbox
-  deleteConfirmName.value = ''
-  deleteModalOpen.value = true
-}
-
-function closeDeleteModal() {
-  deleteModalOpen.value = false
-  inboxToDelete.value = null
-  deleteConfirmName.value = ''
-}
-
-async function confirmDeleteInbox() {
-  if (!auth.account?.id || !inboxToDelete.value || !canConfirmDelete.value) return
-
-  deleting.value = true
-  try {
-    const target = inboxToDelete.value
-    await api(`/accounts/${auth.account.id}/inboxes/${target.id}`, { method: 'DELETE' })
-    inboxes.remove(target.id)
-    toast.add({
-      title: t('common.success'),
-      description: t('inboxes.delete.success', { name: target.name }),
-      color: 'success'
-    })
-    closeDeleteModal()
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      description: t('inboxes.delete.error'),
-      color: 'error'
-    })
-  } finally {
-    deleting.value = false
+  if (confirmed && auth.account?.id) {
+    try {
+      await api(`/accounts/${auth.account.id}/inboxes/${inbox.id}`, { method: 'DELETE' })
+      inboxes.remove(inbox.id)
+      toast.add({
+        title: t('common.success'),
+        description: t('inboxes.delete.success', { name: inbox.name }),
+        color: 'success'
+      })
+    } catch {
+      toast.add({
+        title: t('common.error'),
+        description: t('inboxes.delete.error'),
+        color: 'error'
+      })
+    }
   }
 }
 
@@ -158,169 +122,73 @@ onMounted(async () => {
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <div v-if="inboxes.loading" class="flex flex-1 items-center justify-center py-24">
-          <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
+        <div v-if="inboxes.loading" class="flex flex-col gap-4 py-4">
+          <USkeleton v-for="n in 5" :key="n" class="h-16 w-full rounded-lg" />
         </div>
 
-        <div v-else-if="!inboxes.list.length" class="flex flex-1 items-center justify-center py-24 text-muted">
-          <div class="text-center">
-            <UIcon name="i-lucide-inbox" class="size-12 mx-auto text-dimmed" />
-            <p class="mt-2">
-              {{ t('inboxes.empty') }}
-            </p>
+        <UEmpty
+          v-else-if="!inboxes.list.length"
+          icon="i-lucide-inbox"
+          :title="t('inboxes.empty')"
+          :ui="{ root: 'py-24' }"
+        >
+          <template #actions>
             <UButton
               :label="t('inboxes.new')"
               icon="i-lucide-plus"
-              class="mt-4"
               :to="`/accounts/${auth.account?.id}/inboxes/new`"
             />
-          </div>
-        </div>
+          </template>
+        </UEmpty>
 
-        <div v-else class="w-full rounded-lg border border-default overflow-hidden">
-          <div class="flex items-center justify-between gap-4 px-4 py-2.5 bg-muted text-left">
-            <span class="text-xs font-medium text-muted uppercase tracking-wide">
-              {{ t('inboxes.fields.name') }}
-            </span>
-            <span class="text-xs font-medium text-muted uppercase tracking-wide text-right">
-              {{ t('inboxes.fields.actions') }}
-            </span>
-          </div>
-
-          <UPageList class="w-full">
-            <div
-              v-for="inbox in inboxes.list"
-              :key="inbox.id"
-              class="flex items-center justify-between gap-4 px-4 py-3.5 border-t border-default"
-            >
-              <div class="min-w-0 flex items-center gap-3">
-                <div class="p-2.5 rounded-lg bg-elevated ring ring-default shrink-0">
-                  <UIcon
-                    :name="getChannelConfig(inbox.channelType).icon"
-                    :class="['size-4', getChannelConfig(inbox.channelType).iconClass]"
-                  />
-                </div>
-
-                <div class="min-w-0">
-                  <NuxtLink
-                    :to="`/accounts/${aid}/inboxes/${inbox.id}`"
-                    class="block font-medium text-default hover:text-primary truncate"
-                  >
-                    {{ inbox.name }}
-                  </NuxtLink>
-
-                  <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <UBadge
-                      :color="getBadgeColor(formatChannelType(inbox.channelType))"
-                      variant="subtle"
-                      size="xs"
-                    >
-                      {{ getChannelLabel(inbox.channelType) }}
-                    </UBadge>
-
-                    <span>{{ getOpenConversationsLabel(inbox.openConversationCount) }}</span>
-
-                    <span v-if="inbox.lastActivityAt">•</span>
-
-                    <span v-if="inbox.lastActivityAt">
-                      {{ formatTimeAgo(new Date(inbox.lastActivityAt)) }}
-                    </span>
-                  </div>
-                </div>
+        <div v-else class="divide-y divide-default border-t border-default">
+          <div
+            v-for="inbox in inboxes.list"
+            :key="inbox.id"
+            class="flex items-center justify-between gap-4 py-4"
+          >
+            <div class="min-w-0 flex items-center gap-4">
+              <div class="size-10 justify-center bg-elevated rounded-xl ring ring-default border border-default shadow-sm grid place-items-center shrink-0">
+                <UIcon
+                  :name="getChannelConfig(inbox.channelType).icon"
+                  :class="['size-5', getChannelConfig(inbox.channelType).iconClass]"
+                />
               </div>
 
-              <div class="flex items-center gap-2 shrink-0">
-                <div
-                  v-if="getVisibleAgents(inbox).length"
-                  class="flex items-center gap-1"
+              <div class="min-w-0">
+                <NuxtLink
+                  :to="`/accounts/${aid}/inboxes/${inbox.id}`"
+                  class="block font-medium text-default hover:text-primary truncate"
                 >
-                  <UAvatarGroup size="xs" :max="3">
-                    <UTooltip
-                      v-for="agent in getVisibleAgents(inbox)"
-                      :key="agent.userId"
-                      :text="agent.user?.name"
-                    >
-                      <UAvatar
-                        :src="agent.user?.avatarUrl ?? undefined"
-                        :alt="agent.user?.name"
-                        size="xs"
-                      />
-                    </UTooltip>
-                  </UAvatarGroup>
-                  <span v-if="getExtraAgents(inbox) > 0" class="text-xs text-muted ml-1">
-                    +{{ getExtraAgents(inbox) }}
-                  </span>
-                </div>
-
-                <UButton
-                  icon="i-lucide-settings"
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  :aria-label="t('inboxes.settings')"
-                  :to="`/accounts/${aid}/inboxes/${inbox.id}/settings`"
-                />
-                <UButton
-                  icon="i-lucide-trash"
-                  variant="ghost"
-                  color="error"
-                  size="sm"
-                  :aria-label="t('common.delete')"
-                  @click="openDeleteModal(inbox)"
-                />
+                  {{ inbox.name }}
+                </NuxtLink>
+                <span class="text-sm text-muted">
+                  {{ getChannelLabel(inbox.channelType) }}
+                </span>
               </div>
             </div>
-          </UPageList>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <UButton
+                icon="i-lucide-settings"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :aria-label="t('inboxes.settings')"
+                :to="`/accounts/${aid}/inboxes/${inbox.id}`"
+              />
+              <UButton
+                icon="i-lucide-trash"
+                variant="ghost"
+                color="error"
+                size="sm"
+                :aria-label="t('common.delete')"
+                @click="openDeleteModal(inbox)"
+              />
+            </div>
+          </div>
         </div>
       </div>
-
-      <UModal
-        v-model:open="deleteModalOpen"
-        :title="t('inboxes.delete.title')"
-        :description="t('inboxes.delete.description')"
-      >
-        <template #body>
-          <div class="space-y-3">
-            <p class="text-sm text-muted">
-              <span class="font-medium text-default">{{ inboxToDelete?.name }}</span>
-            </p>
-            <UFormField :label="t('inboxes.delete.nameLabel')" name="confirm-name">
-              <UInput
-                v-model="deleteConfirmName"
-                :placeholder="t('inboxes.delete.namePlaceholder')"
-                class="w-full"
-              />
-            </UFormField>
-            <p
-              v-if="deleteConfirmName && !canConfirmDelete"
-              class="text-xs text-error"
-            >
-              {{ t('inboxes.delete.nameMismatch') }}
-            </p>
-          </div>
-        </template>
-
-        <template #footer>
-          <div class="flex justify-end gap-2">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              :disabled="deleting"
-              @click="closeDeleteModal"
-            >
-              {{ t('common.cancel') }}
-            </UButton>
-            <UButton
-              color="error"
-              :disabled="!canConfirmDelete"
-              :loading="deleting"
-              @click="confirmDeleteInbox"
-            >
-              {{ t('common.delete') }}
-            </UButton>
-          </div>
-        </template>
-      </UModal>
     </template>
   </UDashboardPanel>
 </template>

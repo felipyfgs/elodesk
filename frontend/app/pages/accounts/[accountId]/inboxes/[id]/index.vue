@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChannelApiData, Inbox } from '~/stores/inboxes'
 import { useAuthStore } from '~/stores/auth'
+import InboxSettingsForm from '~/components/inboxes/settings/InboxSettingsForm.vue'
 
 const props = defineProps<{
   inbox: Inbox
@@ -95,7 +96,7 @@ async function saveOverview() {
 </script>
 
 <template>
-  <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+  <div class="grid gap-4">
     <UPageCard :title="t('inboxes.general')" variant="subtle">
       <UForm :state="formState" class="flex flex-col gap-5" @submit="saveOverview">
         <div class="grid gap-4 md:grid-cols-2">
@@ -196,30 +197,8 @@ async function saveOverview() {
       </UForm>
     </UPageCard>
 
-    <UPageCard :title="t('inboxes.summary')" variant="subtle">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-lg bg-elevated p-3">
-          <div class="text-xs text-muted">
-            {{ t('inboxes.fields.agents') }}
-          </div>
-          <div class="mt-1 text-xl font-semibold">
-            {{ props.inbox.agents?.length ?? 0 }}
-          </div>
-        </div>
-        <div class="rounded-lg bg-elevated p-3">
-          <div class="text-xs text-muted">
-            {{ t('inboxes.open') }}
-          </div>
-          <div class="mt-1 text-xl font-semibold">
-            {{ props.inbox.openConversationCount ?? 0 }}
-          </div>
-        </div>
-      </div>
-    </UPageCard>
-
     <UPageCard
       v-if="inbox.channelType === 'Channel::WebWidget'"
-      class="lg:col-span-2"
       :title="t('inboxes.security')"
       variant="subtle"
     >
@@ -228,7 +207,6 @@ async function saveOverview() {
 
     <UPageCard
       v-if="!isApi"
-      class="lg:col-span-2"
       :title="t('inboxes.channel')"
       variant="subtle"
     >

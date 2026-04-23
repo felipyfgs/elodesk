@@ -16,10 +16,8 @@ type DayName = (typeof days)[number]
 
 interface DaySlot {
   enabled: boolean
-  openHour: number
-  openMinute: number
-  closeHour: number
-  closeMinute: number
+  openTime: string
+  closeTime: string
 }
 
 type BusinessHoursSettings = Record<DayName, DaySlot>
@@ -36,12 +34,26 @@ const loading = ref(true)
 const saving = ref(false)
 const timezone = ref(String(auth.account?.settings?.timezone ?? 'America/Sao_Paulo'))
 
+const timezones = [
+  { label: 'America/Sao_Paulo (GMT-03:00)', value: 'America/Sao_Paulo' },
+  { label: 'America/New_York (GMT-05:00)', value: 'America/New_York' },
+  { label: 'America/Chicago (GMT-06:00)', value: 'America/Chicago' },
+  { label: 'America/Denver (GMT-07:00)', value: 'America/Denver' },
+  { label: 'America/Los_Angeles (GMT-08:00)', value: 'America/Los_Angeles' },
+  { label: 'Europe/London (GMT+00:00)', value: 'Europe/London' },
+  { label: 'Europe/Paris (GMT+01:00)', value: 'Europe/Paris' },
+  { label: 'Europe/Berlin (GMT+01:00)', value: 'Europe/Berlin' },
+  { label: 'Asia/Tokyo (GMT+09:00)', value: 'Asia/Tokyo' },
+  { label: 'Asia/Shanghai (GMT+08:00)', value: 'Asia/Shanghai' },
+  { label: 'Asia/Kolkata (GMT+05:30)', value: 'Asia/Kolkata' },
+  { label: 'Australia/Sydney (GMT+11:00)', value: 'Australia/Sydney' },
+  { label: 'Pacific/Auckland (GMT+13:00)', value: 'Pacific/Auckland' }
+]
+
 const defaultSlot = (enabled = true): DaySlot => ({
   enabled,
-  openHour: 9,
-  openMinute: 0,
-  closeHour: 18,
-  closeMinute: 0
+  openTime: '09:00',
+  closeTime: '18:00'
 })
 
 const schedule = reactive<BusinessHoursSettings>(
@@ -54,13 +66,6 @@ function getSlot(day: DayName): DaySlot {
   return schedule[day]
 }
 
-function clampSlot(slot: DaySlot) {
-  slot.openHour = Math.min(23, Math.max(0, Number(slot.openHour) || 0))
-  slot.closeHour = Math.min(23, Math.max(0, Number(slot.closeHour) || 0))
-  slot.openMinute = Math.min(59, Math.max(0, Number(slot.openMinute) || 0))
-  slot.closeMinute = Math.min(59, Math.max(0, Number(slot.closeMinute) || 0))
-}
-
 function normalizeSchedule(value: unknown): Partial<BusinessHoursSettings> {
   if (!value || typeof value !== 'object') return {}
   return value as Partial<BusinessHoursSettings>
@@ -69,8 +74,14 @@ function normalizeSchedule(value: unknown): Partial<BusinessHoursSettings> {
 function applySchedule(value: unknown) {
   const saved = normalizeSchedule(value)
   for (const day of days) {
-    Object.assign(schedule[day], defaultSlot(day !== 'saturday' && day !== 'sunday'), saved[day] ?? {})
-    clampSlot(schedule[day])
+    const s = saved[day]
+    if (s) {
+      schedule[day].enabled = s.enabled ?? (day !== 'saturday' && day !== 'sunday')
+      schedule[day].openTime = s.openTime || '09:00'
+      schedule[day].closeTime = s.closeTime || '18:00'
+    } else {
+      Object.assign(schedule[day], defaultSlot(day !== 'saturday' && day !== 'sunday'))
+    }
   }
 }
 
@@ -96,7 +107,6 @@ async function save() {
   if (!auth.account?.id) return
   saving.value = true
   try {
-    for (const day of days) clampSlot(schedule[day])
     const res = await api<BusinessHoursResponse>(`/accounts/${auth.account.id}/inboxes/${props.inbox.id}/business_hours`, {
       method: 'PUT',
       body: {
@@ -125,17 +135,24 @@ onMounted(load)
         <p class="text-sm text-muted">
           {{ t('inboxes.businessHoursDescription') }}
         </p>
-        <p class="mt-1 text-xs text-dimmed">
-          {{ t('inboxes.timezone') }}: {{ timezone }}
-        </p>
       </div>
       <UButton variant="ghost" size="sm" @click="toggleAll(!allEnabled)">
         {{ allEnabled ? t('inboxes.disableAll') : t('inboxes.enableAll') }}
       </UButton>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-8">
-      <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-muted" />
+    <UFormField :label="t('inboxes.timezone')">
+      <USelect
+        v-model="timezone"
+        :items="timezones"
+        value-key="value"
+        label-key="label"
+        class="w-full"
+      />
+    </UFormField>
+
+    <div v-if="loading" class="flex flex-col gap-2">
+      <USkeleton v-for="n in 7" :key="n" class="h-14 w-full rounded-lg" />
     </div>
 
     <div v-else class="flex flex-col gap-2">
@@ -145,49 +162,25 @@ onMounted(load)
         class="grid gap-3 rounded-lg px-3 py-3 sm:grid-cols-[160px_1fr_auto_1fr]"
         :class="getSlot(day).enabled ? 'bg-elevated' : 'bg-muted opacity-70'"
       >
-        <label class="flex items-center gap-3">
-          <UCheckbox v-model="getSlot(day).enabled" />
+        <div class="flex items-center gap-3">
+          <USwitch v-model="getSlot(day).enabled" />
           <span class="text-sm font-medium">
             {{ t(`inboxes.days.${day}`) }}
           </span>
-        </label>
+        </div>
 
         <template v-if="getSlot(day).enabled">
-          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <UInput
-              v-model.number="getSlot(day).openHour"
-              type="number"
-              :min="0"
-              :max="23"
-              size="sm"
-            />
-            <span class="text-muted">:</span>
-            <UInput
-              v-model.number="getSlot(day).openMinute"
-              type="number"
-              :min="0"
-              :max="59"
-              size="sm"
-            />
-          </div>
+          <UInput
+            v-model="getSlot(day).openTime"
+            type="time"
+            size="sm"
+          />
           <span class="hidden self-center text-muted sm:block">-</span>
-          <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <UInput
-              v-model.number="getSlot(day).closeHour"
-              type="number"
-              :min="0"
-              :max="23"
-              size="sm"
-            />
-            <span class="text-muted">:</span>
-            <UInput
-              v-model.number="getSlot(day).closeMinute"
-              type="number"
-              :min="0"
-              :max="59"
-              size="sm"
-            />
-          </div>
+          <UInput
+            v-model="getSlot(day).closeTime"
+            type="time"
+            size="sm"
+          />
         </template>
 
         <span v-else class="text-sm text-muted sm:col-span-3">

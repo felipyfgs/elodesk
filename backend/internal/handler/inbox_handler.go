@@ -421,3 +421,26 @@ func (h *InboxHandler) Update(c *fiber.Ctx) error {
 
 	return c.JSON(dto.SuccessResp(nil))
 }
+
+func (h *InboxHandler) Delete(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
+	}
+
+	if err := h.svc.DeleteInbox(c.Context(), int64(id), accountID); err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if h.auditLogger != nil {
+		inboxID := int64(id)
+		h.auditLogger.LogFromCtx(c, "inbox.deleted", "inbox", &inboxID, nil)
+	}
+
+	return c.JSON(dto.SuccessResp(nil))
+}

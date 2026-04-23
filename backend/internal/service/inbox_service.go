@@ -10,6 +10,8 @@ import (
 	"backend/internal/crypto"
 	"backend/internal/model"
 	"backend/internal/repo"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ErrInvalidAgentReplyTimeWindow is returned when callers pass
@@ -30,6 +32,7 @@ type InboxCredentials struct {
 }
 
 type InboxService struct {
+	pool                   *pgxpool.Pool
 	inboxRepo              *repo.InboxRepo
 	channelApiRepo         *repo.ChannelAPIRepo
 	inboxAgentRepo         *repo.InboxAgentRepo
@@ -37,8 +40,9 @@ type InboxService struct {
 	cipher                 *crypto.Cipher
 }
 
-func NewInboxService(inboxRepo *repo.InboxRepo, channelApiRepo *repo.ChannelAPIRepo, inboxAgentRepo *repo.InboxAgentRepo, inboxBusinessHoursRepo *repo.InboxBusinessHoursRepo, cipher *crypto.Cipher) *InboxService {
+func NewInboxService(pool *pgxpool.Pool, inboxRepo *repo.InboxRepo, channelApiRepo *repo.ChannelAPIRepo, inboxAgentRepo *repo.InboxAgentRepo, inboxBusinessHoursRepo *repo.InboxBusinessHoursRepo, cipher *crypto.Cipher) *InboxService {
 	return &InboxService{
+		pool:                   pool,
 		inboxRepo:              inboxRepo,
 		channelApiRepo:         channelApiRepo,
 		inboxAgentRepo:         inboxAgentRepo,
@@ -235,6 +239,43 @@ func validateAgentReplyTimeWindow(attrs map[string]any) error {
 
 func (s *InboxService) ListByAccount(ctx context.Context, accountID int64) ([]model.Inbox, error) {
 	return s.inboxRepo.ListByAccount(ctx, accountID)
+}
+
+// channelTypeTable maps channel_type values to their backing channel tables.
+var channelTypeTable = map[string]string{
+	"Channel::Api":          "channels_api",
+	"Channel::Whatsapp":     "channels_whatsapp",
+	"Channel::Sms":          "channels_sms",
+	"Channel::Instagram":    "channels_instagram",
+	"Channel::FacebookPage": "channels_facebook_page",
+	"Channel::WebWidget":    "channels_web_widget",
+	"Channel::Telegram":     "channels_telegram",
+	"Channel::Line":         "channels_line",
+	"Channel::Tiktok":       "channels_tiktok",
+	"Channel::Twilio":       "channels_twilio",
+	"Channel::Twitter":      "channels_twitter",
+	"Channel::Email":        "channels_email",
+}
+
+// DeleteInbox removes the inbox and its backing channel record. The channel
+// row is deleted first because the inbox no longer has a CASCADE constraint
+// on channel_id (polymorphic reference).
+func (s *InboxService) DeleteInbox(ctx context.Context, inboxID, accountID int64) error {
+	inbox, err := s.inboxRepo.FindByID(ctx, inboxID, accountID)
+	if err != nil {
+		return err
+	}
+
+	table, ok := channelTypeTable[inbox.ChannelType]
+	if !ok {
+		return fmt.Errorf("unknown channel type: %s", inbox.ChannelType)
+	}
+
+	if _, err := s.pool.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE id = $1", table), inbox.ChannelID); err != nil {
+		return fmt.Errorf("delete channel: %w", err)
+	}
+
+	return s.inboxRepo.Delete(ctx, inboxID, accountID)
 }
 
 func (s *InboxService) GetByID(ctx context.Context, id, accountID int64) (*model.Inbox, error) {

@@ -24,16 +24,7 @@ const reply = ref('')
 const sending = ref(false)
 const attachments = ref<UploadedFile[]>([])
 const selectedFiles = ref<File[]>([])
-
-// Picker state
-const cannedPickerVisible = ref(false)
-const mentionPickerVisible = ref(false)
-const pickerSearch = ref('')
-const pickerPosition = ref({ top: 0, left: 0 })
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-
-// Typing indicator throttle
-let typingTimeout: ReturnType<typeof setTimeout> | null = null
+const fileUploadRef = ref<HTMLElement | null>(null)
 
 const chatStatus = computed<'ready' | 'submitted' | 'error'>(() => {
   if (sending.value) return 'submitted'
@@ -43,8 +34,8 @@ const chatStatus = computed<'ready' | 'submitted' | 'error'>(() => {
 const maxChars = computed(() => {
   const channelType = props.conversation.inbox?.channelType
   switch (channelType) {
-    case 'Whatsapp': return 4096
-    case 'Sms': return 160
+    case 'Channel::Whatsapp': return 4096
+    case 'Channel::Sms': return 160
     default: return 0
   }
 })
@@ -72,7 +63,6 @@ async function send() {
     reply.value = ''
     attachments.value = []
     selectedFiles.value = []
-    emitTyping()
   } finally {
     sending.value = false
   }
@@ -80,89 +70,6 @@ async function send() {
 
 function handleSubmit() {
   send()
-}
-
-function _handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    send()
-    return
-  }
-
-  const textarea = textareaRef.value
-  if (!textarea) return
-
-  const cursorPos = textarea.selectionStart
-  const textBefore = reply.value.slice(0, cursorPos)
-
-  const cannedMatch = textBefore.match(/\/(\w*)$/)
-  const mentionMatch = textBefore.match(/@(\w*)$/)
-
-  if (cannedMatch) {
-    cannedPickerVisible.value = true
-    mentionPickerVisible.value = false
-    pickerSearch.value = cannedMatch[1] ?? ''
-    updatePickerPosition(textarea)
-  } else if (mentionMatch) {
-    mentionPickerVisible.value = true
-    cannedPickerVisible.value = false
-    pickerSearch.value = mentionMatch[1] ?? ''
-    updatePickerPosition(textarea)
-  } else {
-    cannedPickerVisible.value = false
-    mentionPickerVisible.value = false
-  }
-
-  emitTyping()
-}
-
-function emitTyping() {
-  if (typingTimeout) clearTimeout(typingTimeout)
-  typingTimeout = setTimeout(() => {
-    typingTimeout = null
-  }, 3000)
-}
-
-function updatePickerPosition(textarea: HTMLTextAreaElement) {
-  const rect = textarea.getBoundingClientRect()
-  pickerPosition.value = {
-    top: rect.bottom + 4,
-    left: rect.left
-  }
-}
-
-function handleCannedSelect(content: string) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-  const cursorPos = textarea.selectionStart
-  const textBefore = reply.value.slice(0, cursorPos)
-  const match = textBefore.match(/\/\w*$/)
-  if (match) {
-    const before = reply.value.slice(0, cursorPos - match[0].length)
-    reply.value = before + content + reply.value.slice(cursorPos)
-    nextTick(() => {
-      textarea.selectionStart = textarea.selectionEnd = before.length + content.length
-      textarea.focus()
-    })
-  }
-  cannedPickerVisible.value = false
-}
-
-function handleMentionSelect(name: string) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-  const cursorPos = textarea.selectionStart
-  const textBefore = reply.value.slice(0, cursorPos)
-  const match = textBefore.match(/@\w*$/)
-  if (match) {
-    const before = reply.value.slice(0, cursorPos - match[0].length)
-    reply.value = before + `@${name} ` + reply.value.slice(cursorPos)
-    nextTick(() => {
-      textarea.selectionStart = textarea.selectionEnd = before.length + name.length + 2
-      textarea.focus()
-    })
-  }
-  mentionPickerVisible.value = false
 }
 
 function handleFilesSelected(files: File[] | null | undefined) {
@@ -208,6 +115,12 @@ function removeAttachment(id: string) {
     selectedFiles.value = selectedFiles.value.filter(f => f !== att.file)
   }
   attachments.value = attachments.value.filter(a => a.id !== id)
+}
+
+function openFilePicker() {
+  const el = fileUploadRef.value?.$el ?? fileUploadRef.value
+  const input = el?.querySelector?.('input[type="file"]') as HTMLInputElement | null
+  input?.click()
 }
 
 onMounted(() => {
@@ -266,11 +179,11 @@ onMounted(() => {
                 <UIcon
                   v-else-if="att.error"
                   name="i-lucide-alert-circle"
-                  class="size-3.5 text-red-500"
+                  class="size-3.5 text-error"
                 />
                 <button
                   type="button"
-                  class="text-muted hover:text-red-500 transition-colors"
+                  class="text-muted hover:text-error transition-colors"
                   @click.stop="removeAttachment(att.id)"
                 >
                   <UIcon name="i-lucide-x" class="size-3.5" />
@@ -288,14 +201,14 @@ onMounted(() => {
             variant="ghost"
             icon="i-lucide-paperclip"
             size="xs"
-            @click="($refs.fileUploadRef as any)?.open?.()"
+            @click="openFilePicker"
           />
         </UTooltip>
 
         <span
           v-if="maxChars > 0"
           class="text-xs"
-          :class="charExceeded ? 'text-red-500 font-medium' : 'text-dimmed'"
+          :class="charExceeded ? 'text-error font-medium' : 'text-dimmed'"
         >
           {{ charCount }}/{{ maxChars }}
         </span>
@@ -308,20 +221,5 @@ onMounted(() => {
         />
       </template>
     </UChatPrompt>
-
-    <!-- Pickers -->
-    <CannedResponsePicker
-      v-if="cannedPickerVisible"
-      v-model="cannedPickerVisible"
-      :search="pickerSearch"
-      @select="handleCannedSelect"
-    />
-
-    <MentionPicker
-      v-if="mentionPickerVisible"
-      v-model="mentionPickerVisible"
-      :search="pickerSearch"
-      @select="handleMentionSelect"
-    />
   </div>
 </template>

@@ -27,8 +27,8 @@ backend/docs/
 .opencode/
 .windsurf/
 
-# openspec
-openspec/
 
 # reference projects (study only)
 _refs/
+
+openspec/changes/archive/

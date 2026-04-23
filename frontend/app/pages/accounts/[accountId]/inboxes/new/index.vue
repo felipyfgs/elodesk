@@ -10,9 +10,8 @@ const auth = useAuthStore()
 interface ChannelOption {
   kind: string
   icon: string
-  color: string
-  bg: string
   description: string
+  beta?: boolean
 }
 
 const twitterEnabled = computed<boolean>(() => {
@@ -20,22 +19,29 @@ const twitterEnabled = computed<boolean>(() => {
   return raw === true || raw === 'true'
 })
 
+const tiktokEnabled = computed<boolean>(() => {
+  const raw = runtimeConfig.public?.featureChannelTiktok
+  return raw === true || raw === 'true'
+})
+
 const channels = computed<ChannelOption[]>(() => {
   const base: ChannelOption[] = [
-    { kind: 'api', icon: 'i-lucide-webhook', color: 'text-blue-500', bg: 'bg-blue-500/10 ring-blue-500/25', description: 'REST API inbox' },
-    { kind: 'whatsapp', icon: 'i-simple-icons-whatsapp', color: 'text-green-500', bg: 'bg-green-500/10 ring-green-500/25', description: 'Cloud API or 360dialog' },
-    { kind: 'twilio', icon: 'i-lucide-cloud', color: 'text-red-500', bg: 'bg-red-500/10 ring-red-500/25', description: 'Twilio (WhatsApp / SMS)' },
-    { kind: 'sms', icon: 'i-lucide-message-square', color: 'text-purple-500', bg: 'bg-purple-500/10 ring-purple-500/25', description: 'SMS via Bandwidth / Zenvia' },
-    { kind: 'instagram', icon: 'i-simple-icons-instagram', color: 'text-pink-500', bg: 'bg-pink-500/10 ring-pink-500/25', description: 'Instagram Direct' },
-    { kind: 'facebook_page', icon: 'i-simple-icons-facebook', color: 'text-blue-600', bg: 'bg-blue-600/10 ring-blue-600/25', description: 'Facebook Messenger' },
-    { kind: 'telegram', icon: 'i-simple-icons-telegram', color: 'text-sky-500', bg: 'bg-sky-500/10 ring-sky-500/25', description: 'Telegram Bot' },
-    { kind: 'line', icon: 'i-simple-icons-line', color: 'text-green-600', bg: 'bg-green-600/10 ring-green-600/25', description: 'LINE Messaging API' },
-    { kind: 'tiktok', icon: 'i-simple-icons-tiktok', color: 'text-neutral-800', bg: 'bg-neutral-800/10 ring-neutral-800/25', description: 'TikTok Business Messaging' },
-    { kind: 'web_widget', icon: 'i-lucide-globe', color: 'text-amber-500', bg: 'bg-amber-500/10 ring-amber-500/25', description: 'Live chat widget' },
-    { kind: 'email', icon: 'i-lucide-mail', color: 'text-orange-500', bg: 'bg-orange-500/10 ring-orange-500/25', description: 'IMAP / SMTP' }
+    { kind: 'api', icon: 'i-lucide-webhook', description: 'REST API inbox' },
+    { kind: 'whatsapp', icon: 'i-simple-icons-whatsapp', description: 'Cloud API or 360dialog' },
+    { kind: 'twilio', icon: 'i-lucide-cloud', description: 'Twilio (WhatsApp / SMS)' },
+    { kind: 'sms', icon: 'i-lucide-message-square', description: 'SMS via Bandwidth / Zenvia' },
+    { kind: 'instagram', icon: 'i-simple-icons-instagram', description: 'Instagram Direct' },
+    { kind: 'facebook_page', icon: 'i-simple-icons-facebook', description: 'Facebook Messenger' },
+    { kind: 'telegram', icon: 'i-simple-icons-telegram', description: 'Telegram Bot' },
+    { kind: 'line', icon: 'i-simple-icons-line', description: 'LINE Messaging API' },
+    { kind: 'web_widget', icon: 'i-lucide-globe', description: 'Live chat widget' },
+    { kind: 'email', icon: 'i-lucide-mail', description: 'IMAP / SMTP' }
   ]
+  if (tiktokEnabled.value) {
+    base.push({ kind: 'tiktok', icon: 'i-simple-icons-tiktok', description: 'TikTok Business Messaging', beta: true })
+  }
   if (twitterEnabled.value) {
-    base.push({ kind: 'twitter', icon: 'i-simple-icons-x', color: 'text-neutral-900', bg: 'bg-neutral-900/10 ring-neutral-900/25', description: 'Twitter / X DMs' })
+    base.push({ kind: 'twitter', icon: 'i-simple-icons-x', description: 'Twitter / X DMs', beta: true })
   }
   return base
 })
@@ -70,15 +76,23 @@ const breadcrumb = computed(() => [
             :ui="{
               container: 'gap-3',
               wrapper: 'items-start',
-              leading: `p-3 rounded-full ring ring-inset ${ch.bg}`
+              leading: 'p-3 rounded-full bg-elevated ring ring-default'
             }"
           >
             <template #leading>
-              <UIcon :name="ch.icon" :class="['size-6 shrink-0', ch.color]" />
+              <UIcon :name="ch.icon" class="size-6 shrink-0 text-default" />
             </template>
 
             <template #title>
-              <span class="font-medium">{{ t(`inboxes.channels.${ch.kind}`) }}</span>
+              <div class="flex items-center gap-2">
+                <span class="font-medium">{{ t(`inboxes.channels.${ch.kind}`) }}</span>
+                <UBadge
+                  v-if="ch.beta"
+                  :label="t('common.beta')"
+                  variant="subtle"
+                  size="xs"
+                />
+              </div>
             </template>
 
             <template #description>

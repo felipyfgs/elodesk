@@ -130,6 +130,17 @@ func (r *InboxRepo) UpdateName(ctx context.Context, id, accountID int64, name st
 	return nil
 }
 
+func (r *InboxRepo) Delete(ctx context.Context, id, accountID int64) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM inboxes WHERE id = $1 AND account_id = $2`, id, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to delete inbox: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", ErrInboxNotFound, pgx.ErrNoRows)
+	}
+	return nil
+}
+
 func (r *InboxRepo) FindByIdentifier(ctx context.Context, identifier string) (*model.Inbox, error) {
 	query := `SELECT i.` + inboxSelectColumns + ` FROM inboxes i
 		JOIN channels_api ca ON ca.id = i.channel_id WHERE ca.identifier = $1`

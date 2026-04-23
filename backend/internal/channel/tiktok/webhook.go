@@ -170,7 +170,7 @@ func ProcessWebhook(
 		return fmt.Errorf("ensure open conversation: %w", err)
 	}
 
-	messageContent, contentType, attrs := extractContent(&content, outgoingEcho, ch.BusinessID)
+	messageContent, contentType, attrs := extractContent(&content, outgoingEcho)
 
 	dbMsg := &model.Message{
 		AccountID:      ch.AccountID,
@@ -188,7 +188,7 @@ func ProcessWebhook(
 	return nil
 }
 
-func extractContent(c *EventContent, outgoingEcho bool, businessID string) (string, model.MessageContentType, *string) {
+func extractContent(c *EventContent, outgoingEcho bool) (string, model.MessageContentType, *string) {
 	base := map[string]any{
 		"tiktok_conversation_id": c.ConversationID,
 	}
@@ -198,7 +198,6 @@ func extractContent(c *EventContent, outgoingEcho bool, businessID string) (stri
 	if outgoingEcho {
 		base["external_echo"] = true
 	}
-	_ = businessID
 
 	switch c.Type {
 	case MessageTypeText:

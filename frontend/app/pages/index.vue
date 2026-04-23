@@ -7,7 +7,7 @@ const auth = useAuthStore()
 const primaryId = auth.accounts[0]?.id
 
 if (primaryId) {
-  navigateTo(`/accounts/${primaryId}`, { replace: true })
+  navigateTo(`/accounts/${primaryId}/conversations`, { replace: true })
 } else if (!auth.isAuthenticated) {
   navigateTo('/login', { replace: true })
 }

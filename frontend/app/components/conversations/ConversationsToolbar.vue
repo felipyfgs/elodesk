@@ -23,52 +23,6 @@ const loading = ref(false)
 
 const selectedIds = computed(() => convs.selection)
 
-const snoozeItems = computed(() => [
-  [{
-    label: t('conversations.bulk.snooze.1h'),
-    icon: 'i-lucide-clock',
-    click: () => snooze('1h')
-  }, {
-    label: t('conversations.bulk.snooze.4h'),
-    icon: 'i-lucide-clock',
-    click: () => snooze('4h')
-  }, {
-    label: t('conversations.bulk.snooze.tomorrow'),
-    icon: 'i-lucide-calendar',
-    click: () => snooze('tomorrow')
-  }, {
-    label: t('conversations.bulk.snooze.nextWeek'),
-    icon: 'i-lucide-calendar-range',
-    click: () => snooze('next_week')
-  }]
-])
-
-function snooze(duration: string) {
-  const now = new Date()
-  let until: Date
-  switch (duration) {
-    case '1h':
-      until = new Date(now.getTime() + 60 * 60 * 1000)
-      break
-    case '4h':
-      until = new Date(now.getTime() + 4 * 60 * 60 * 1000)
-      break
-    case 'tomorrow':
-      until = new Date(now)
-      until.setDate(until.getDate() + 1)
-      until.setHours(9, 0, 0, 0)
-      break
-    case 'next_week':
-      until = new Date(now)
-      until.setDate(until.getDate() + 7)
-      until.setHours(9, 0, 0, 0)
-      break
-    default:
-      until = new Date(now.getTime() + 60 * 60 * 1000)
-  }
-  bulkToggleStatus('SNOOZED')
-}
-
 async function bulkToggleStatus(status: string) {
   const accountId = auth.account?.id
   if (!accountId || loading.value) return
@@ -82,49 +36,10 @@ async function bulkToggleStatus(status: string) {
         })
       )
     )
-    toast.add({
-      title: t('conversations.bulk.success', { count: selectedIds.value.length }),
-      icon: 'i-lucide-check-circle',
-      color: 'success'
-    })
+    toast.add({ title: t('conversations.bulk.success', { count: selectedIds.value.length }), icon: 'i-lucide-check-circle', color: 'success' })
     convs.clearSelection()
   } catch {
-    toast.add({
-      title: t('common.error'),
-      icon: 'i-lucide-x-circle',
-      color: 'error'
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
-async function _bulkAssignAgent(userId: string) {
-  const accountId = auth.account?.id
-  if (!accountId || loading.value) return
-  loading.value = true
-  try {
-    await Promise.all(
-      selectedIds.value.map(id =>
-        api(`/accounts/${accountId}/conversations/${id}/assignments`, {
-          method: 'POST',
-          body: { assignee_id: Number(userId) }
-        })
-      )
-    )
-    toast.add({
-      title: t('conversations.bulk.assigned', { count: selectedIds.value.length }),
-      icon: 'i-lucide-check-circle',
-      color: 'success'
-    })
-    assignAgentOpen.value = false
-    convs.clearSelection()
-  } catch {
-    toast.add({
-      title: t('common.error'),
-      icon: 'i-lucide-x-circle',
-      color: 'error'
-    })
+    toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -143,19 +58,11 @@ async function bulkAssignTeam(teamId: string) {
         })
       )
     )
-    toast.add({
-      title: t('conversations.bulk.assigned', { count: selectedIds.value.length }),
-      icon: 'i-lucide-check-circle',
-      color: 'success'
-    })
+    toast.add({ title: t('conversations.bulk.assigned', { count: selectedIds.value.length }), icon: 'i-lucide-check-circle', color: 'success' })
     assignTeamOpen.value = false
     convs.clearSelection()
   } catch {
-    toast.add({
-      title: t('common.error'),
-      icon: 'i-lucide-x-circle',
-      color: 'error'
-    })
+    toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -175,19 +82,11 @@ async function bulkToggleLabel(labelId: string, action: 'add' | 'remove') {
         })
       )
     )
-    toast.add({
-      title: t('conversations.bulk.labelsUpdated', { count: selectedIds.value.length }),
-      icon: 'i-lucide-check-circle',
-      color: 'success'
-    })
+    toast.add({ title: t('conversations.bulk.labelsUpdated', { count: selectedIds.value.length }), icon: 'i-lucide-check-circle', color: 'success' })
     labelOpen.value = false
     convs.clearSelection()
   } catch {
-    toast.add({
-      title: t('common.error'),
-      icon: 'i-lucide-x-circle',
-      color: 'error'
-    })
+    toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -207,7 +106,6 @@ async function bulkDelete() {
 
   loading.value = true
   try {
-    // Resolve conversations (soft delete not available, resolve as alternative)
     await Promise.all(
       selectedIds.value.map(id =>
         api(`/accounts/${accountId}/conversations/${id}/status`, {
@@ -216,22 +114,21 @@ async function bulkDelete() {
         })
       )
     )
-    toast.add({
-      title: t('conversations.bulk.resolved', { count: selectedIds.value.length }),
-      icon: 'i-lucide-check-circle',
-      color: 'success'
-    })
+    toast.add({ title: t('conversations.bulk.resolved', { count: selectedIds.value.length }), icon: 'i-lucide-check-circle', color: 'success' })
     convs.clearSelection()
   } catch {
-    toast.add({
-      title: t('common.error'),
-      icon: 'i-lucide-x-circle',
-      color: 'error'
-    })
+    toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
     loading.value = false
   }
 }
+
+const snoozeItems = computed(() => [[
+  { label: t('conversations.bulk.snooze.1h'), icon: 'i-lucide-clock', click: () => bulkToggleStatus('SNOOZED') },
+  { label: t('conversations.bulk.snooze.4h'), icon: 'i-lucide-clock', click: () => bulkToggleStatus('SNOOZED') },
+  { label: t('conversations.bulk.snooze.tomorrow'), icon: 'i-lucide-calendar', click: () => bulkToggleStatus('SNOOZED') },
+  { label: t('conversations.bulk.snooze.nextWeek'), icon: 'i-lucide-calendar-range', click: () => bulkToggleStatus('SNOOZED') }
+]])
 </script>
 
 <template>
@@ -274,17 +171,7 @@ async function bulkDelete() {
           @click="bulkToggleStatus('OPEN')"
         />
 
-        <UDropdownMenu
-          :items="[[{
-            label: t('conversations.bulk.addLabel'),
-            icon: 'i-lucide-tag',
-            click: () => { labelAction = 'add'; labelOpen = true }
-          }, {
-            label: t('conversations.bulk.removeLabel'),
-            icon: 'i-lucide-tag-x',
-            click: () => { labelAction = 'remove'; labelOpen = true }
-          }]]"
-        >
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.addLabel'), icon: 'i-lucide-tag', click: () => { labelAction = 'add'; labelOpen = true } }, { label: t('conversations.bulk.removeLabel'), icon: 'i-lucide-tag-x', click: () => { labelAction = 'remove'; labelOpen = true } }]]">
           <UButton
             :label="t('conversations.bulk.labels')"
             icon="i-lucide-tag"
@@ -294,17 +181,7 @@ async function bulkDelete() {
           />
         </UDropdownMenu>
 
-        <UDropdownMenu
-          :items="[[{
-            label: t('conversations.bulk.assignAgent'),
-            icon: 'i-lucide-user-plus',
-            click: () => { assignAgentOpen = true }
-          }, {
-            label: t('conversations.bulk.assignTeam'),
-            icon: 'i-lucide-users',
-            click: () => { assignTeamOpen = true }
-          }]]"
-        >
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.assignAgent'), icon: 'i-lucide-user-plus', click: () => { assignAgentOpen = true } }, { label: t('conversations.bulk.assignTeam'), icon: 'i-lucide-users', click: () => { assignTeamOpen = true } }]]">
           <UButton
             :label="t('conversations.bulk.assign')"
             icon="i-lucide-user-plus"
@@ -323,7 +200,6 @@ async function bulkDelete() {
           :loading="loading"
           @click="bulkDelete()"
         />
-
         <UButton
           :label="t('conversations.bulk.clearSelection')"
           color="neutral"
@@ -336,50 +212,47 @@ async function bulkDelete() {
     </template>
   </UDashboardToolbar>
 
-  <!-- Assign Agent Modal -->
-  <UModal v-model:open="assignAgentOpen" :title="t('conversations.bulk.assignAgent')">
-    <div class="p-4 flex flex-col gap-2">
-      <p class="text-sm text-muted">
-        {{ t('conversations.bulk.assignAgentDesc', { count: selectedIds.length }) }}
-      </p>
-      <!-- Agent selection would be populated from agents endpoint (Fase 4) -->
-      <p class="text-sm text-dimmed">
-        {{ t('conversations.bulk.agentsComingSoon') }}
-      </p>
-    </div>
-  </UModal>
-
-  <!-- Assign Team Modal -->
-  <UModal v-model:open="assignTeamOpen" :title="t('conversations.bulk.assignTeam')">
-    <div class="p-4 flex flex-col gap-2">
-      <p class="text-sm text-muted">
-        {{ t('conversations.bulk.assignTeamDesc', { count: selectedIds.length }) }}
-      </p>
-      <div
-        v-for="team in teams.list"
-        :key="team.id"
-        class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
-        @click="bulkAssignTeam(team.id)"
-      >
-        <UIcon name="i-lucide-users" class="size-4 text-muted" />
-        <span class="text-sm">{{ team.name }}</span>
+  <template v-if="convs.hasSelection">
+    <UModal v-model:open="assignAgentOpen" :title="t('conversations.bulk.assignAgent')">
+      <div class="p-4 flex flex-col gap-2">
+        <p class="text-sm text-muted">
+          {{ t('conversations.bulk.assignAgentDesc', { count: selectedIds.length }) }}
+        </p>
+        <p class="text-sm text-dimmed">
+          {{ t('conversations.bulk.agentsComingSoon') }}
+        </p>
       </div>
-    </div>
-  </UModal>
+    </UModal>
 
-  <!-- Label Modal -->
-  <UModal v-model:open="labelOpen" :title="labelAction === 'add' ? t('conversations.bulk.addLabel') : t('conversations.bulk.removeLabel')">
-    <div class="p-4 flex flex-col gap-2">
-      <div
-        v-for="label in labels.list"
-        :key="label.id"
-        :label="label.title"
-        class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
-        @click="bulkToggleLabel(label.id, labelAction)"
-      >
-        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
-        <span class="text-sm">{{ label.title }}</span>
+    <UModal v-model:open="assignTeamOpen" :title="t('conversations.bulk.assignTeam')">
+      <div class="p-4 flex flex-col gap-2">
+        <p class="text-sm text-muted">
+          {{ t('conversations.bulk.assignTeamDesc', { count: selectedIds.length }) }}
+        </p>
+        <div
+          v-for="team in teams.list"
+          :key="team.id"
+          class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
+          @click="bulkAssignTeam(team.id)"
+        >
+          <UIcon name="i-lucide-users" class="size-4 text-muted" />
+          <span class="text-sm">{{ team.name }}</span>
+        </div>
       </div>
-    </div>
-  </UModal>
+    </UModal>
+
+    <UModal v-model:open="labelOpen" :title="labelAction === 'add' ? t('conversations.bulk.addLabel') : t('conversations.bulk.removeLabel')">
+      <div class="p-4 flex flex-col gap-2">
+        <div
+          v-for="label in labels.list"
+          :key="label.id"
+          class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
+          @click="bulkToggleLabel(label.id, labelAction)"
+        >
+          <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
+          <span class="text-sm">{{ label.title }}</span>
+        </div>
+      </div>
+    </UModal>
+  </template>
 </template>

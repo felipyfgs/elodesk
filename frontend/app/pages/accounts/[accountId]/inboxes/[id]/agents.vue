@@ -92,15 +92,12 @@ onMounted(loadAgents)
           :key="agent.userId"
           class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2"
         >
-          <UAvatar :alt="agent.name" size="xs" />
-          <div class="min-w-0">
-            <p class="text-sm font-medium truncate">
-              {{ agent.name }}
-            </p>
-            <p class="text-xs text-muted truncate">
-              {{ agent.email }}
-            </p>
-          </div>
+          <UUser
+            :name="agent.name"
+            :description="agent.email"
+            :avatar="{ alt: agent.name }"
+            size="sm"
+          />
         </div>
       </div>
 

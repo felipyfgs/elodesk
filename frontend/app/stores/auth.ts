@@ -71,11 +71,11 @@ export const useAuthStore = defineStore('auth', {
       this.accountUser = null
       this.accessToken = null
       this.refreshToken = null
-      if (import.meta.client) localStorage.removeItem('auth')
+      if (import.meta.client) sessionStorage.removeItem('auth')
     },
     hydrate() {
       if (!import.meta.client) return
-      const raw = localStorage.getItem('auth')
+      const raw = sessionStorage.getItem('auth')
       if (!raw) {
         this.$reset()
         return
@@ -90,7 +90,7 @@ export const useAuthStore = defineStore('auth', {
         this.refreshToken = data.refreshToken ?? null
       } catch (error) {
         if (import.meta.dev) console.error('[auth] hydrate failed', error)
-        localStorage.removeItem('auth')
+        sessionStorage.removeItem('auth')
         this.$reset()
       }
     },
@@ -103,7 +103,7 @@ export const useAuthStore = defineStore('auth', {
     },
     persist() {
       if (!import.meta.client) return
-      localStorage.setItem(
+      sessionStorage.setItem(
         'auth',
         JSON.stringify({
           user: this.user,

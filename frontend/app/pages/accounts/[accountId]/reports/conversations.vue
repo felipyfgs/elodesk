@@ -3,7 +3,7 @@ import ConversationsReportTable from '~/components/reports/conversations/Convers
 import ConversationsReportFilters from '~/components/reports/conversations/ConversationsReportFilters.vue'
 import ConversationsReportExport from '~/components/reports/conversations/ConversationsReportExport.vue'
 import ReportsDateRangePicker from '~/components/reports/ReportsDateRangePicker.vue'
-import type { Range } from '~/types/reports'
+import type { Range } from '~/types'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 

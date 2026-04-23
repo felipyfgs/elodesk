@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Period } from '~/types/reports'
+import type { Period } from '~/types'
 
 const props = defineProps<{ modelValue: Period }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Period] }>()

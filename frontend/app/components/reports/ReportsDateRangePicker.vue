@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Range } from '~/types/reports'
+import type { Range } from '~/types'
 
 const props = defineProps<{ modelValue: Range }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Range] }>()

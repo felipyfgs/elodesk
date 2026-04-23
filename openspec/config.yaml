@@ -1,0 +1,48 @@
+schema: spec-driven
+
+context: |
+  Language: Always write all artifacts in Brazilian Portuguese (pt-BR).
+
+  Project: produto SaaS de atendimento WhatsApp composto de três peças desacopladas:
+    - wzap/     — engine WhatsApp (Go/whatsmeow) pré-existente, repositório próprio. Não muda nesta proposta. Consumido apenas via contrato público (REST/webhook/WebSocket).
+    - backend/  — NOVO. NestJS multi-tenant que consome o wzap e expõe API + realtime para o frontend.
+    - frontend/ — Nuxt 4 SPA (hoje chamado dashboard/), cliente exclusivo do backend.
+
+  Monorepo: pnpm workspace + Turbo unificando apenas backend/ e frontend/. wzap/ e _refs/ ficam fora do workspace.
+
+  Tech stack:
+    - Backend: NestJS + Prisma + PostgreSQL 16 + Redis 7 (BullMQ) + Socket.IO + pino logger + @nestjs/jwt + Passport + class-validator + MinIO SDK + openapi-typescript
+    - Frontend: Nuxt 4 + Nuxt UI 4 + Pinia + socket.io-client + @nuxtjs/i18n (PT-BR default) + Zod + VueUse
+    - Infra dev: Docker Compose (Postgres, Redis, MinIO)
+
+  Engine externa (wzap):
+    - REST: 104 rotas autenticadas via header Authorization (admin token OU session token), fonte de verdade em wzap/docs/swagger.yaml
+    - Webhook outbound: HTTP POST com assinatura X-Wzap-Signature (HMAC-SHA256) — mesmo padrão que a integração Chatwoot usa hoje em wzap/internal/integrations/chatwoot/
+    - WebSocket por sessão: GET /ws/:sessionId — otimização de latência
+    - 47 EventTypes definidos em wzap/internal/model/events.go
+
+  Multi-tenancy (schema inspirado em Chatwoot):
+    Account → AccountUser (role OWNER/ADMIN/AGENT) → Inbox → ChannelWhatsapp → Conversation → Message/Attachment
+    Isolamento por accountId obrigatório em todos os repos.
+    Idempotência por Message.sourceId = "WAID:<wzapMessageID>".
+
+  Convenções:
+    - Camadas: controller → service → repository(Prisma) — sem cruzar
+    - DI por construtor (@Injectable)
+    - Logger pino singleton, todo log começa com component="<module>"
+    - Nunca expor detalhes internos em resposta 5xx
+    - Conventional Commits (feat/fix/chore/refactor/test/docs)
+    - Testes: Jest + Supertest (backend), Vitest + Playwright (frontend)
+    - Validação de request: Zod + nestjs-zod OU class-validator nos DTOs
+
+rules:
+  proposal:
+    - Manter propostas concisas, máximo 500 palavras
+    - Sempre incluir seção "Não-objetivos" (o que NÃO será feito)
+    - Incluir seção "Riscos e mitigações"
+    - Referenciar pacotes/arquivos existentes quando relevante (com caminhos)
+  design:
+    - Detalhar fluxo de dados entre camadas (controller → service → repo)
+    - Especificar mudanças no schema Prisma (migrations) quando aplicável
+    - Incluir diagramas de sequência textuais para fluxos complexos (ex: criar sessão, inbound message, outbound message, edição/deleção)
+    - Considerar impacto em eventos Socket.IO e webhooks recebidos do wzap

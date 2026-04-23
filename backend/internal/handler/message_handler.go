@@ -20,6 +20,7 @@ type MessageHandler struct {
 	contactInboxRepo *repo.ContactInboxRepo
 	messageRepo      *repo.MessageRepo
 	attachmentRepo   *repo.AttachmentRepo
+	conversationRepo *repo.ConversationRepo
 }
 
 func NewMessageHandler(
@@ -38,6 +39,10 @@ func NewMessageHandler(
 
 func (h *MessageHandler) SetAttachmentRepo(r *repo.AttachmentRepo) {
 	h.attachmentRepo = r
+}
+
+func (h *MessageHandler) SetConversationRepo(r *repo.ConversationRepo) {
+	h.conversationRepo = r
 }
 
 func (h *MessageHandler) Create(c *fiber.Ctx) error {
@@ -64,6 +69,64 @@ func (h *MessageHandler) Create(c *fiber.Ctx) error {
 	ct := c.Get("Content-Type")
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		return h.createMultipart(c, accountID, inbox.ID, conversationID)
+	}
+
+	var req dto.CreateMessageReq
+	if err := parseAndValidate(c, &req); err != nil {
+		return nil
+	}
+
+	sourceID := req.SourceID
+	if sourceID == nil && req.EchoID != nil {
+		sourceID = req.EchoID
+	}
+
+	contentType := model.ContentTypeText
+	if req.ContentType != nil {
+		contentType = model.MessageContentType(*req.ContentType)
+	}
+
+	var contentAttrs *string
+	if len(req.ContentAttributes) > 0 {
+		s := string(req.ContentAttributes)
+		contentAttrs = &s
+	}
+
+	msg := &model.Message{
+		Content:      &req.Content,
+		SourceID:     sourceID,
+		Private:      req.Private,
+		ContentType:  contentType,
+		ContentAttrs: contentAttrs,
+	}
+
+	created, err := h.svc.Create(c.Context(), accountID, inbox.ID, conversationID, msg)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	return c.JSON(dto.SuccessResp(dto.MessageToResp(created)))
+}
+
+func (h *MessageHandler) CreateAuthenticated(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	conversationID, err := strconv.ParseInt(c.Params("conversationId"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	conv, err := h.conversationRepo.FindByID(c.Context(), conversationID, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	inbox, err := h.inboxRepo.FindByID(c.Context(), conv.InboxID, accountID)
+	if err != nil {
+		return handleNotFound(c, err)
 	}
 
 	var req dto.CreateMessageReq

@@ -36,9 +36,32 @@ function contactIdentifier(c: Conversation): string {
 }
 
 function messageRole(m: Message): 'user' | 'assistant' | 'system' {
-  if (m.messageType === 2 || m.messageType === 3) return 'system' // Activity / Template
-  if (m.messageType === 1) return 'user' // Outgoing
-  return 'assistant' // Incoming
+  if (m.messageType === 2 || m.messageType === 3) return 'system'
+  if (m.messageType === 1) return 'user'
+  return 'assistant'
+}
+
+function messageVariant(m: Message): 'solid' | 'naked' {
+  if (m.messageType === 2 || m.messageType === 3) return 'naked'
+  return 'solid'
+}
+
+function isPrivate(m: Message): boolean {
+  return !!(m.contentAttributes as Record<string, unknown>)?.private
+}
+
+function statusIcon(m: Message): string {
+  if (m.status === 'read') return 'i-lucide-check-check'
+  if (m.status === 'delivered') return 'i-lucide-check-check'
+  if (m.status === 'sent') return 'i-lucide-check'
+  if (m.status === 'failed') return 'i-lucide-alert-circle'
+  return 'i-lucide-clock'
+}
+
+function messageStatusColor(m: Message): string {
+  if (m.status === 'read') return 'text-primary'
+  if (m.status === 'failed') return 'text-error'
+  return 'text-muted'
 }
 
 const statusItems = computed(() => {
@@ -150,12 +173,13 @@ const statusColor = computed(() => {
     >
       <UChatMessage
         v-for="m in list"
-        :id="m.id"
+        :id="String(m.id)"
         :key="m.id"
         :role="messageRole(m)"
+        :variant="messageVariant(m)"
         :parts="[{ type: 'text', text: m.content ?? '' }]"
         :avatar="messageRole(m) === 'assistant' ? { alt: contactName(conversation), src: conversation.meta?.sender?.thumbnail ?? undefined } : undefined"
-        :variant="messageRole(m) === 'system' ? 'naked' : undefined"
+        :compact="true"
       >
         <template v-if="messageRole(m) === 'system'" #content>
           <p class="text-xs text-muted italic text-center w-full">
@@ -167,20 +191,27 @@ const statusColor = computed(() => {
             {{ t('conversations.message.deleted') }}
           </p>
         </template>
+        <template v-else-if="isPrivate(m)" #content>
+          <div class="flex items-center gap-1.5 mb-1">
+            <UIcon name="i-lucide-lock" class="size-3 text-warning" />
+            <span class="text-[10px] text-warning font-medium">{{ t('conversations.message.private') }}</span>
+          </div>
+          <p>{{ m.content }}</p>
+        </template>
         <template #actions>
-          <div class="flex justify-between items-center gap-3">
-            <span class="text-[10px] opacity-60">
-              {{ format(new Date(m.createdAt), 'HH:mm') }}
-            </span>
-            <span v-if="m.messageType === 1" class="text-[10px] opacity-60">
-              {{ t(`conversations.message.status.${m.status}`) }}
-            </span>
+          <div class="flex items-center gap-1.5 text-[10px] text-muted">
+            <span>{{ format(new Date(m.createdAt), 'HH:mm') }}</span>
+            <UIcon
+              v-if="m.messageType === 1"
+              :name="statusIcon(m)"
+              :class="['size-3', messageStatusColor(m)]"
+            />
           </div>
         </template>
       </UChatMessage>
     </UChatMessages>
 
     <!-- Composer -->
-    <ConversationComposer :conversation="conversation" />
+    <ConversationsConversationComposer :conversation="conversation" />
   </UDashboardPanel>
 </template>

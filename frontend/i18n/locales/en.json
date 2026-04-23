@@ -152,42 +152,13 @@
   "home": {
     "title": "Home",
     "stats": {
-      "sessions": "Sessions",
-      "connected": "Connected",
-      "conversations": "Conversations",
+      "inboxes": "Inboxes",
+      "open": "Open",
+      "pending": "Pending",
       "unread": "Unread"
     },
     "recent": "Recent conversations",
     "empty": "No recent activity."
-  },
-  "sessions": {
-    "title": "WhatsApp sessions",
-    "new": "New session",
-    "empty": "No sessions yet — click \"New session\" to connect.",
-    "status": {
-      "DISCONNECTED": "Disconnected",
-      "CONNECTING": "Connecting…",
-      "QR": "Waiting for QR",
-      "CONNECTED": "Connected",
-      "LOGGED_OUT": "Session expired",
-      "ERROR": "Error"
-    },
-    "qr": {
-      "title": "Scan the QR in WhatsApp",
-      "expires": "Expires in {sec}s",
-      "waiting": "Waiting for pairing…"
-    },
-    "actions": {
-      "disconnect": "Disconnect",
-      "reconnect": "Reconnect",
-      "delete": "Delete"
-    },
-    "name": "Session name",
-    "createFailed": "Failed to create session",
-    "credentials": {
-      "title": "Connection credentials",
-      "warning": "Copy these credentials now. They will not be shown again."
-    }
   },
   "inboxes": {
     "title": "Inboxes",

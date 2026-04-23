@@ -132,54 +132,25 @@
     "appearance": "Aparência",
     "light": "Claro",
     "dark": "Escuro",
-    "settingsGroupWorkspace": "Workspace",
-    "settingsGroupTeam": "Team",
-    "settingsGroupProductivity": "Productivity",
-    "settingsGroupAdministration": "Administration",
-    "profileSettings": "Profile settings",
-    "keyboardShortcuts": "Keyboard shortcuts",
-    "readDocs": "Read documentation",
-    "changelog": "Release notes"
+    "settingsGroupWorkspace": "Espaço de trabalho",
+    "settingsGroupTeam": "Equipe",
+    "settingsGroupProductivity": "Produtividade",
+    "settingsGroupAdministration": "Administração",
+    "profileSettings": "Configurações do perfil",
+    "keyboardShortcuts": "Atalhos de teclado",
+    "readDocs": "Ler documentação",
+    "changelog": "Notas de versão"
   },
   "home": {
     "title": "Início",
     "stats": {
-      "sessions": "Sessões",
-      "connected": "Conectadas",
-      "conversations": "Conversas",
+      "inboxes": "Inboxes",
+      "open": "Abertas",
+      "pending": "Pendentes",
       "unread": "Não lidas"
     },
     "recent": "Conversas recentes",
     "empty": "Sem atividade recente."
-  },
-  "sessions": {
-    "title": "Sessões WhatsApp",
-    "new": "Nova sessão",
-    "empty": "Nenhuma sessão — clique em \"Nova sessão\" para conectar.",
-    "status": {
-      "DISCONNECTED": "Desconectado",
-      "CONNECTING": "Conectando…",
-      "QR": "Aguardando QR",
-      "CONNECTED": "Conectado",
-      "LOGGED_OUT": "Sessão expirada",
-      "ERROR": "Erro"
-    },
-    "qr": {
-      "title": "Escaneie o QR no WhatsApp",
-      "expires": "Expira em {sec}s",
-      "waiting": "Aguardando pareamento…"
-    },
-    "actions": {
-      "disconnect": "Desconectar",
-      "reconnect": "Reconectar",
-      "delete": "Excluir"
-    },
-    "name": "Nome da sessão",
-    "createFailed": "Não foi possível criar a sessão",
-    "credentials": {
-      "title": "Credenciais de conexão",
-      "warning": "Copie estas credenciais agora. Elas não serão exibidas novamente."
-    }
   },
   "inboxes": {
     "title": "Inboxes",
@@ -293,8 +264,8 @@
         "zenvia": {
           "apiToken": "API Token"
         },
-        "twilioMovedTitle": "Twilio has moved",
-        "twilioMovedDescription": "Twilio SMS now lives under the Twilio channel. Use the Twilio tile on the channel list."
+        "twilioMovedTitle": "Twilio foi movido",
+        "twilioMovedDescription": "O SMS Twilio agora fica no canal Twilio. Use o cartão Twilio na lista de canais."
       },
       "instagram": {
         "description": "Conecte seu Instagram Business via Direct Messages.",
@@ -346,38 +317,38 @@
         "authorize": "Autorizar",
         "setup": "Configuração"
       },
-      "setup": "Setup",
-      "credentials": "Credentials",
-      "providerConfig": "Provider config",
-      "appearance": "Appearance",
+      "setup": "Configuração",
+      "credentials": "Credenciais",
+      "providerConfig": "Configuração do provedor",
+      "appearance": "Aparência",
       "line": {
-        "description": "Connect a LINE Official Account via Messaging API.",
-        "lineChannelId": "Channel ID",
-        "lineChannelSecret": "Channel Secret",
-        "lineChannelToken": "Channel Access Token"
+        "description": "Conecte uma conta oficial LINE via Messaging API.",
+        "lineChannelId": "ID do canal",
+        "lineChannelSecret": "Segredo do canal",
+        "lineChannelToken": "Token de acesso do canal"
       },
       "tiktok": {
-        "description": "Connect a TikTok Business account for Business Messaging.",
-        "connect": "Connect with TikTok",
-        "requiresApproval": "Requires an approved TikTok Business account",
-        "requiresApprovalDescription": "TikTok Business Messaging is gated. Make sure your app has been approved before connecting."
+        "description": "Conecte uma conta TikTok Business para Business Messaging.",
+        "connect": "Conectar com TikTok",
+        "requiresApproval": "Requer uma conta TikTok Business aprovada",
+        "requiresApprovalDescription": "O TikTok Business Messaging é restrito. Certifique-se de que seu app foi aprovado antes de conectar."
       },
       "twilio": {
-        "description": "Connect Twilio for WhatsApp or SMS.",
-        "medium": "Medium",
+        "description": "Conecte Twilio para WhatsApp ou SMS.",
+        "medium": "Meio",
         "accountSid": "Account SID",
         "authToken": "Auth Token",
-        "apiKeySid": "API Key SID (optional)",
-        "sender": "Sender",
-        "phoneNumber": "Phone number",
+        "apiKeySid": "API Key SID (opcional)",
+        "sender": "Remetente",
+        "phoneNumber": "Número de telefone",
         "messagingServiceSid": "Messaging Service SID",
-        "senderXorHint": "Provide EITHER a phone number OR a Messaging Service SID — not both."
+        "senderXorHint": "Forneça UM número de telefone OU um Messaging Service SID — não ambos."
       },
       "twitter": {
-        "description": "Connect Twitter / X for direct messages.",
-        "connect": "Connect with Twitter / X",
-        "costWarning": "Twitter API v2 requires a paid subscription",
-        "costWarningDescription": "Make sure your Twitter developer app has Account Activity access enabled before connecting."
+        "description": "Conecte Twitter / X para mensagens diretas.",
+        "connect": "Conectar com Twitter / X",
+        "costWarning": "A API v2 do Twitter requer uma assinatura paga",
+        "costWarningDescription": "Certifique-se de que seu app no Twitter Developer tenha acesso Account Activity habilitado antes de conectar."
       }
     },
     "settingsPlaceholder": "Configurações específicas do canal {channel} — em breve.",
@@ -514,10 +485,10 @@
     "search": "Buscar por nome ou telefone…",
     "new": "Novo contato",
     "import": {
-      "success": "Import complete",
-      "successDescription": "{inserted} inserted, {updated} updated",
-      "failed": "Import failed",
-      "failedDescription": "Could not process the CSV file"
+      "success": "Importação concluída",
+      "successDescription": "{inserted} inseridos, {updated} atualizados",
+      "failed": "Falha na importação",
+      "failedDescription": "Não foi possível processar o arquivo CSV"
     },
     "importDrop": "Arraste um arquivo CSV aqui ou clique para selecionar",
     "bulk": {
@@ -525,9 +496,9 @@
       "removeLabel": "Remover label",
       "delete": "Excluir",
       "export": "Exportar",
-      "selected": "{count} of {total} contacts selected",
-      "selectAll": "Select all",
-      "clearSelection": "Clear selection"
+      "selected": "{count} de {total} contatos selecionados",
+      "selectAll": "Selecionar todos",
+      "clearSelection": "Limpar seleção"
     },
     "tabs": {
       "overview": "Visão geral",
@@ -535,120 +506,120 @@
       "notes": "Notas",
       "events": "Eventos"
     },
-    "add": "Add contact",
-    "sendMessage": "Send message",
+    "add": "Adicionar contato",
+    "sendMessage": "Enviar mensagem",
     "create": {
-      "success": "Contact created",
-      "successDescription": "{name} added successfully",
-      "failed": "Failed to create contact"
+      "success": "Contato criado",
+      "successDescription": "{name} adicionado com sucesso",
+      "failed": "Falha ao criar contato"
     },
     "delete": {
-      "success": "Contact deleted",
+      "success": "Contato excluído",
       "one": {
-        "title": "Delete contact",
-        "description": "Are you sure you want to delete {name}? This action cannot be undone."
+        "title": "Excluir contato",
+        "description": "Tem certeza que deseja excluir {name}? Esta ação não pode ser desfeita."
       },
       "bulk": {
-        "success": "{count} contact(s) deleted",
-        "partial": "Partial deletion: {success} succeeded, {failure} failed",
-        "partialDescription": "Some contacts could not be deleted",
+        "success": "{count} contato(s) excluído(s)",
+        "partial": "Exclusão parcial: {success} sucesso(s), {failure} falha(s)",
+        "partialDescription": "Alguns contatos não puderam ser excluídos",
         "title": "Excluir contatos",
         "description": "Excluir {count} contato(s) selecionado(s)? Esta ação não pode ser desfeita."
       }
     },
     "actions": {
-      "title": "Actions",
-      "block": "Block contact",
-      "unblock": "Unblock contact",
-      "blocked": "Contact blocked",
-      "unblocked": "Contact unblocked",
-      "merge": "Merge",
-      "delete": "Delete contact"
+      "title": "Ações",
+      "block": "Bloquear contato",
+      "unblock": "Desbloquear contato",
+      "blocked": "Contato bloqueado",
+      "unblocked": "Contato desbloqueado",
+      "merge": "Mesclar",
+      "delete": "Excluir contato"
     },
     "avatar": {
-      "upload": "Upload avatar",
-      "delete": "Remove avatar",
-      "uploaded": "Avatar updated",
-      "removed": "Avatar removed",
-      "invalidType": "Please select an image file",
-      "tooLarge": "Image must be under 2 MB"
+      "upload": "Enviar avatar",
+      "delete": "Remover avatar",
+      "uploaded": "Avatar atualizado",
+      "removed": "Avatar removido",
+      "invalidType": "Selecione um arquivo de imagem",
+      "tooLarge": "A imagem deve ter menos de 2 MB"
     },
     "merge": {
-      "title": "Merge contact",
-      "description": "Merging moves conversations and data into the primary contact and deletes this one.",
-      "child": "Source",
-      "primary": "Primary",
-      "searchLabel": "Primary contact",
-      "searchPlaceholder": "Search by name, email or phone…",
-      "selectPrimary": "Select primary contact",
-      "submit": "Merge contacts",
-      "success": "Contacts merged"
+      "title": "Mesclar contato",
+      "description": "A mesclagem move conversas e dados para o contato primário e exclui este.",
+      "child": "Origem",
+      "primary": "Primário",
+      "searchLabel": "Contato primário",
+      "searchPlaceholder": "Buscar por nome, e-mail ou telefone…",
+      "selectPrimary": "Selecionar contato primário",
+      "submit": "Mesclar contatos",
+      "success": "Contatos mesclados"
     },
-    "importCsv": "Import CSV",
-    "export": "Export CSV",
-    "actionsLabel": "Actions",
+    "importCsv": "Importar CSV",
+    "export": "Exportar CSV",
+    "actionsLabel": "Ações",
     "card": {
-      "noName": "No name",
-      "viewDetails": "View details",
-      "updateButton": "Update",
-      "cancelButton": "Cancel",
-      "deleteButton": "Delete contact",
-      "dangerZone": "Danger Zone",
-      "dangerZoneDescription": "This action cannot be undone.",
-      "updateSuccess": "Contact updated successfully",
-      "updateError": "Error updating contact",
+      "noName": "Sem nome",
+      "viewDetails": "Ver detalhes",
+      "updateButton": "Atualizar",
+      "cancelButton": "Cancelar",
+      "deleteButton": "Excluir contato",
+      "dangerZone": "Zona de perigo",
+      "dangerZoneDescription": "Esta ação não pode ser desfeita.",
+      "updateSuccess": "Contato atualizado com sucesso",
+      "updateError": "Erro ao atualizar contato",
       "form": {
-        "name": "Name",
-        "namePlaceholder": "Contact name",
-        "nameRequired": "Name is required",
-        "email": "Email",
-        "emailPlaceholder": "email{'@'}example.com",
-        "emailInvalid": "Invalid email",
-        "phone": "Phone",
-        "phonePlaceholder": "+1 555 123-4567"
+        "name": "Nome",
+        "namePlaceholder": "Nome do contato",
+        "nameRequired": "Nome é obrigatório",
+        "email": "E-mail",
+        "emailPlaceholder": "email{'@'}exemplo.com",
+        "emailInvalid": "E-mail inválido",
+        "phone": "Telefone",
+        "phonePlaceholder": "+55 11 91234-5678"
       },
       "confirmDeleteButton": "Confirmar exclusão"
     },
     "pagination": {
-      "showing": "Showing {start}-{end} of {total} contacts"
+      "showing": "Exibindo {start}-{end} de {total} contatos"
     },
     "filters": {
-      "button": "Filters",
-      "activeCount": "{count} active filters",
-      "clear": "Clear filters"
+      "button": "Filtros",
+      "activeCount": "{count} filtros ativos",
+      "clear": "Limpar filtros"
     },
     "form": {
-      "save": "Save contact",
+      "save": "Salvar contato",
       "sections": {
-        "personal": "Personal information",
-        "address": "Address",
-        "professional": "Professional"
+        "personal": "Informações pessoais",
+        "address": "Endereço",
+        "professional": "Profissional"
       },
-      "firstName": "First name",
-      "lastName": "Last name",
-      "email": "Email",
-      "phone": "Phone",
-      "city": "City",
-      "country": "Country",
+      "firstName": "Nome",
+      "lastName": "Sobrenome",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "city": "Cidade",
+      "country": "País",
       "bio": "Bio",
-      "company": "Company",
-      "firstNameRequired": "First name is required",
-      "emailInvalid": "Invalid email",
-      "urlInvalid": "Invalid URL",
-      "firstNamePlaceholder": "Enter first name",
-      "lastNamePlaceholder": "Enter last name",
-      "emailPlaceholder": "Enter email address",
-      "phonePlaceholder": "Enter phone number",
-      "cityPlaceholder": "Enter city name",
-      "countryPlaceholder": "Select country",
-      "bioPlaceholder": "Enter a bio",
-      "companyPlaceholder": "Enter company name",
-      "socialProfiles": "Social profiles",
-      "linkedinPlaceholder": "LinkedIn URL",
-      "facebookPlaceholder": "Facebook URL",
-      "instagramPlaceholder": "Instagram URL",
-      "twitterPlaceholder": "Twitter/X URL",
-      "githubPlaceholder": "GitHub URL"
+      "company": "Empresa",
+      "firstNameRequired": "Nome é obrigatório",
+      "emailInvalid": "E-mail inválido",
+      "urlInvalid": "URL inválida",
+      "firstNamePlaceholder": "Digite o nome",
+      "lastNamePlaceholder": "Digite o sobrenome",
+      "emailPlaceholder": "Digite o e-mail",
+      "phonePlaceholder": "Digite o telefone",
+      "cityPlaceholder": "Digite a cidade",
+      "countryPlaceholder": "Selecione o país",
+      "bioPlaceholder": "Digite uma bio",
+      "companyPlaceholder": "Digite o nome da empresa",
+      "socialProfiles": "Redes sociais",
+      "linkedinPlaceholder": "URL do LinkedIn",
+      "facebookPlaceholder": "URL do Facebook",
+      "instagramPlaceholder": "URL do Instagram",
+      "twitterPlaceholder": "URL do Twitter/X",
+      "githubPlaceholder": "URL do GitHub"
     },
     "loadMore": "Carregar mais",
     "deleteError": "Não foi possível excluir o contato",
@@ -700,14 +671,14 @@
       "currentPassword": "Senha atual",
       "newPassword": "Nova senha",
       "confirmPassword": "Confirmar senha",
-      "accessToken": "Access Token",
-      "accessTokenDesc": "Use this token to authenticate API requests from external integrations.",
-      "copyToken": "Copy",
-      "resetToken": "Reset",
-      "tokenCopied": "Token copied to clipboard",
-      "resetTokenConfirm": "Reset access token?",
-      "resetTokenConfirmDesc": "This will invalidate the current token. Any integrations using it will need to be updated.",
-      "resetTokenSuccess": "Access token reset successfully"
+      "accessToken": "Token de acesso",
+      "accessTokenDesc": "Use este token para autenticar requisições API de integrações externas.",
+      "copyToken": "Copiar",
+      "resetToken": "Resetar",
+      "tokenCopied": "Token copiado para a área de transferência",
+      "resetTokenConfirm": "Resetar token de acesso?",
+      "resetTokenConfirmDesc": "Isso invalidará o token atual. Integrações que o utilizam precisarão ser atualizadas.",
+      "resetTokenSuccess": "Token de acesso resetado com sucesso"
     },
     "agents": {
       "title": "Agentes",
@@ -740,8 +711,8 @@
       "newWebhook": "Novo webhook",
       "testSend": "Testar envio",
       "empty": "Nenhuma integração configurada.",
-      "webhookSaved": "Webhook saved successfully",
-      "webhookSaveFailed": "Failed to save webhook"
+      "webhookSaved": "Webhook salvo com sucesso",
+      "webhookSaveFailed": "Falha ao salvar webhook"
     },
     "auditLogs": {
       "title": "Audit Logs",
@@ -849,55 +820,55 @@
     "save": "Salvar filtro atual",
     "apply": "Aplicar",
     "empty": "Nenhum filtro salvo.",
-    "remove": "Remove condition",
-    "saveOption": "Save as filter",
-    "saveAndApply": "Save and apply",
-    "saved": "Filter saved",
-    "advancedFilter": "Advanced filter",
-    "advancedFilterActive": "Advanced filter · {count} conditions",
-    "clearFilter": "Clear filter",
-    "addCondition": "Add condition",
-    "noValueNeeded": "No value needed",
+    "remove": "Remover condição",
+    "saveOption": "Salvar como filtro",
+    "saveAndApply": "Salvar e aplicar",
+    "saved": "Filtro salvo",
+    "advancedFilter": "Filtro avançado",
+    "advancedFilterActive": "Filtro avançado · {count} condições",
+    "clearFilter": "Limpar filtro",
+    "addCondition": "Adicionar condição",
+    "noValueNeeded": "Sem valor necessário",
     "connector": {
-      "and": "AND",
-      "or": "OR"
+      "and": "E",
+      "or": "OU"
     },
     "attributes": {
       "status": "Status",
-      "priority": "Priority",
-      "assignee": "Assignee",
-      "team": "Team",
+      "priority": "Prioridade",
+      "assignee": "Responsável",
+      "team": "Equipe",
       "inbox": "Inbox",
-      "contact": "Contact",
+      "contact": "Contato",
       "labels": "Labels",
-      "createdAt": "Created at",
-      "updatedAt": "Updated at",
-      "lastActivity": "Last activity",
-      "name": "Name",
-      "email": "Email",
-      "phone": "Phone",
-      "identifier": "Identifier",
-      "blocked": "Blocked"
+      "createdAt": "Criado em",
+      "updatedAt": "Atualizado em",
+      "lastActivity": "Última atividade",
+      "name": "Nome",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "identifier": "Identificador",
+      "blocked": "Bloqueado"
     },
     "operators": {
-      "equal_to": "Equal to",
-      "not_equal_to": "Not equal to",
-      "contains": "Contains",
-      "starts_with": "Starts with",
-      "greater_than": "Greater than",
-      "less_than": "Less than",
-      "in": "Is in",
-      "between": "Between",
-      "is_null": "Is empty",
-      "is_not_null": "Is not empty"
+      "equal_to": "Igual a",
+      "not_equal_to": "Diferente de",
+      "contains": "Contém",
+      "starts_with": "Começa com",
+      "greater_than": "Maior que",
+      "less_than": "Menor que",
+      "in": "Está em",
+      "between": "Entre",
+      "is_null": "Está vazio",
+      "is_not_null": "Não está vazio"
     },
     "placeholders": {
-      "attribute": "Select an attribute",
-      "value": "Enter a value",
-      "multiValue": "Comma separated",
-      "from": "From",
-      "to": "To",
-      "name": "E.g.: Open with no reply"
+      "attribute": "Selecione um atributo",
+      "value": "Digite um valor",
+      "multiValue": "Separado por vírgula",
+      "from": "De",
+      "to": "Até",
+      "name": "Ex.: Aberta sem resposta"
     }
   },
   "contactDetail": {
@@ -913,25 +884,25 @@
     "attributes": "Atributos",
     "conversations": "Conversas",
     "viewContact": "Ver contato",
-    "sendMessage": "Send message",
+    "sendMessage": "Enviar mensagem",
     "sections": {
-      "details": "Edit details"
+      "details": "Editar detalhes"
     },
     "meta": {
-      "createdAt": "Created {date}",
-      "lastActivity": "last seen {date}"
+      "createdAt": "Criado em {date}",
+      "lastActivity": "visto por último {date}"
     },
     "sidebar": {
-      "attributes": "Attributes",
-      "history": "History",
-      "notes": "Notes",
-      "merge": "Merge",
-      "noAttributes": "No custom attributes defined."
+      "attributes": "Atributos",
+      "history": "Histórico",
+      "notes": "Notas",
+      "merge": "Mesclar",
+      "noAttributes": "Nenhum atributo customizado definido."
     },
     "delete": {
-      "title": "Delete contact",
-      "description": "Deleting this contact will remove all associated conversations and data.",
-      "action": "Delete contact"
+      "title": "Excluir contato",
+      "description": "Excluir este contato removerá todas as conversas e dados associados.",
+      "action": "Excluir contato"
     }
   },
   "assignment": {
@@ -961,7 +932,7 @@
     "refresh": "Atualizar",
     "yes": "Sim",
     "no": "Não",
-    "retry": "Retry",
+    "retry": "Tentar novamente",
     "next": "Próximo"
   },
   "reports": {
@@ -981,61 +952,61 @@
       "avgResolution": "Tempo médio de resolução",
       "resolvedRate": "Taxa de resolução"
     },
-    "open": "Open",
-    "resolved": "Resolved",
-    "firstResponse": "First response",
-    "resolution": "Resolution",
-    "topAgents": "Top agents",
-    "noAgentsData": "No agent data available",
-    "statusBreakdown": "Status breakdown",
+    "open": "Abertas",
+    "resolved": "Resolvidas",
+    "firstResponse": "Primeira resposta",
+    "resolution": "Resolução",
+    "topAgents": "Top agentes",
+    "noAgentsData": "Sem dados de agentes",
+    "statusBreakdown": "Distribuição por status",
     "volume": "Volume",
-    "noVolumeData": "No volume data available",
-    "from": "From",
-    "to": "To",
-    "daily": "Daily",
-    "weekly": "Weekly",
-    "monthly": "Monthly"
+    "noVolumeData": "Sem dados de volume",
+    "from": "De",
+    "to": "Até",
+    "daily": "Diário",
+    "weekly": "Semanal",
+    "monthly": "Mensal"
   },
   "phoneInput": {
-    "placeholder": "Phone number",
-    "searchPlaceholder": "Search country...",
-    "required": "Phone number is required",
-    "invalid": "Invalid phone number",
-    "tooShort": "Number is too short",
-    "tooLong": "Number is too long"
+    "placeholder": "Número de telefone",
+    "searchPlaceholder": "Buscar país...",
+    "required": "Número de telefone é obrigatório",
+    "invalid": "Número de telefone inválido",
+    "tooShort": "Número muito curto",
+    "tooLong": "Número muito longo"
   },
   "contactsSendMessage": {
-    "title": "New conversation",
-    "toLabel": "To",
-    "toPlaceholder": "Select a contact",
-    "searchContactPlaceholder": "Search or type email / phone…",
+    "title": "Nova conversa",
+    "toLabel": "Para",
+    "toPlaceholder": "Selecione um contato",
+    "searchContactPlaceholder": "Buscar ou digitar e-mail / telefone…",
     "viaLabel": "Via",
-    "viaPlaceholder": "Choose an inbox",
-    "messageLabel": "Message",
-    "messagePlaceholder": "Write your message here…",
-    "discard": "Discard",
-    "send": "Send",
-    "success": "Conversation started successfully",
-    "failed": "Failed to start conversation",
-    "createFailed": "Failed to create contact",
-    "createWith": "Create contact \"{value}\"",
-    "createWithEmail": "Create contact with email {value}",
-    "createWithPhone": "Create contact with phone {value}",
-    "noMatch": "No contacts found",
-    "typeToSearch": "Type to search",
-    "emojiAria": "Insert emoji",
+    "viaPlaceholder": "Escolha uma inbox",
+    "messageLabel": "Mensagem",
+    "messagePlaceholder": "Escreva sua mensagem aqui…",
+    "discard": "Descartar",
+    "send": "Enviar",
+    "success": "Conversa iniciada com sucesso",
+    "failed": "Falha ao iniciar conversa",
+    "createFailed": "Falha ao criar contato",
+    "createWith": "Criar contato \"{value}\"",
+    "createWithEmail": "Criar contato com e-mail {value}",
+    "createWithPhone": "Criar contato com telefone {value}",
+    "noMatch": "Nenhum contato encontrado",
+    "typeToSearch": "Digite para buscar",
+    "emojiAria": "Inserir emoji",
     "emoji": {
-      "searchPlaceholder": "Search emoji",
+      "searchPlaceholder": "Buscar emoji",
       "groups": {
-        "smileysPeople": "Smileys & People",
-        "animalsNature": "Animals & Nature",
-        "foodDrink": "Food & Drink",
-        "activities": "Activities",
-        "travelPlaces": "Travel & Places",
-        "objects": "Objects",
-        "symbols": "Symbols",
-        "flags": "Flags",
-        "recent": "Recently used"
+        "smileysPeople": "Smileys e Pessoas",
+        "animalsNature": "Animais e Natureza",
+        "foodDrink": "Comida e Bebida",
+        "activities": "Atividades",
+        "travelPlaces": "Viagem e Lugares",
+        "objects": "Objetos",
+        "symbols": "Símbolos",
+        "flags": "Bandeiras",
+        "recent": "Usados recentemente"
       }
     }
   }

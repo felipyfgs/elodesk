@@ -133,6 +133,9 @@ func processMessage(
 	if err != nil {
 		return err
 	}
+	if conv == nil {
+		return nil
+	}
 
 	content, contentType, contentAttrs := extractContent(evt.Message)
 
@@ -155,10 +158,6 @@ func processMessage(
 		return fmt.Errorf("create message: %w", err)
 	}
 
-	// persist the latest reply token on the conversation for outbound reuse
-	if evt.ReplyToken != "" {
-		_ = conversationRepo // left for future use if we add SetAttribute helper
-	}
 	return nil
 }
 
@@ -190,6 +189,9 @@ func processPostback(
 		api, channelToken, contactRepo, contactInboxRepo, conversationRepo)
 	if err != nil {
 		return err
+	}
+	if conv == nil {
+		return nil
 	}
 
 	content := evt.Postback.Data
@@ -277,28 +279,37 @@ func extractContent(msg *EventMessage) (string, model.MessageContentType, *strin
 	case MessageTypeText:
 		return msg.Text, model.ContentTypeText, nil
 	case MessageTypeImage:
-		attrs := fmt.Sprintf(`{"line_message_id":"%s"}`, msg.ID)
-		return "", model.ContentTypeImage, &attrs
+		attrs := encodeContentAttrs(map[string]any{"line_message_id": msg.ID})
+		return "", model.ContentTypeImage, attrs
 	case MessageTypeVideo:
-		attrs := fmt.Sprintf(`{"line_message_id":"%s","duration":%d}`, msg.ID, msg.Duration)
-		return "", model.ContentTypeVideo, &attrs
+		attrs := encodeContentAttrs(map[string]any{"line_message_id": msg.ID, "duration": msg.Duration})
+		return "", model.ContentTypeVideo, attrs
 	case MessageTypeAudio:
-		attrs := fmt.Sprintf(`{"line_message_id":"%s","duration":%d}`, msg.ID, msg.Duration)
-		return "", model.ContentTypeAudio, &attrs
+		attrs := encodeContentAttrs(map[string]any{"line_message_id": msg.ID, "duration": msg.Duration})
+		return "", model.ContentTypeAudio, attrs
 	case MessageTypeFile:
-		attrs := fmt.Sprintf(`{"line_message_id":"%s","file_name":%q,"file_size":%d}`, msg.ID, msg.FileName, msg.FileSize)
-		return "", model.ContentTypeFile, &attrs
+		attrs := encodeContentAttrs(map[string]any{"line_message_id": msg.ID, "file_name": msg.FileName, "file_size": msg.FileSize})
+		return "", model.ContentTypeFile, attrs
 	case MessageTypeSticker:
 		stickerURL := fmt.Sprintf("https://stickershop.line-scdn.net/stickershop/v1/sticker/%s/android/sticker.png", msg.StickerID)
 		content := fmt.Sprintf("![sticker-%s](%s)", msg.StickerID, stickerURL)
-		attrs := fmt.Sprintf(`{"line_sticker_id":"%s","package_id":"%s"}`, msg.StickerID, msg.PackageID)
-		return content, model.ContentTypeSticker, &attrs
+		attrs := encodeContentAttrs(map[string]any{"line_sticker_id": msg.StickerID, "package_id": msg.PackageID})
+		return content, model.ContentTypeSticker, attrs
 	case MessageTypeLocation:
-		attrs := fmt.Sprintf(`{"latitude":%f,"longitude":%f,"address":%q}`, msg.Latitude, msg.Longitude, msg.Address)
-		return msg.Title, model.ContentTypeText, &attrs
+		attrs := encodeContentAttrs(map[string]any{"latitude": msg.Latitude, "longitude": msg.Longitude, "address": msg.Address})
+		return msg.Title, model.ContentTypeText, attrs
 	}
-	attrs := `{"unsupported":true}`
-	return "[unsupported]", model.ContentTypeText, &attrs
+	attrs := encodeContentAttrs(map[string]any{"unsupported": true})
+	return "[unsupported]", model.ContentTypeText, attrs
+}
+
+func encodeContentAttrs(m map[string]any) *string {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	s := string(data)
+	return &s
 }
 
 func mergeContentAttrs(existing *string, extras map[string]any) *string {
