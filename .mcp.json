@@ -1,8 +1,12 @@
 {
   "mcpServers": {
     "nuxt-ui": {
-      "url": "https://ui.nuxt.com/mcp",
-      "disable": false
+      "type": "http",
+      "url": "https://ui.nuxt.com/mcp"
+    },
+    "nuxt": {
+      "type": "http",
+      "url": "https://nuxt.com/mcp"
     }
   }
 }

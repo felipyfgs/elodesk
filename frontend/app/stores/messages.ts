@@ -17,8 +17,9 @@ export interface Message {
   senderType: 'CONTACT' | 'USER' | 'SYSTEM'
   senderId: string | null
   sourceId: string | null
+  private?: boolean
   status: MessageStatus
-  contentAttributes: Record<string, unknown>
+  contentAttributes: Record<string, unknown> | string | null
   createdAt: string
   updatedAt: string
 }

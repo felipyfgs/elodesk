@@ -15,8 +15,6 @@ export default defineNuxtRouteMiddleware((to) => {
     convs.setFilters({ teamId })
   } else if (path.includes('/conversations/filter/')) {
     convs.setFilters({})
-  } else if (path.endsWith('/conversations/mentions')) {
-    convs.setFilters({ tab: 'mentions' })
   } else if (path.endsWith('/conversations/unattended')) {
     convs.setFilters({ tab: 'unassigned' })
   }

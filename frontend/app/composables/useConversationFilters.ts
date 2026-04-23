@@ -1,5 +1,5 @@
 import { useStorage } from '@vueuse/core'
-import { useConversationsStore, type ConversationSort, type ConversationStatusFilter, type ConversationMeta } from '~/stores/conversations'
+import { useConversationsStore, type ConversationSort, type ConversationStatusFilter, type ConversationMeta, type ConversationTab } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 import { useInboxesStore } from '~/stores/inboxes'
 import { useLabelsStore } from '~/stores/labels'
@@ -19,7 +19,9 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
 
   const persistedSort = useStorage<ConversationSort>('conversations:sort', 'last_activity_desc')
   const persistedStatus = useStorage<ConversationStatusFilter>('conversations:status', 'OPEN')
-  const persistedTab = useStorage<'mine' | 'unassigned' | 'all' | 'mentions'>('conversations:tab', 'mine')
+  const persistedTab = useStorage<ConversationTab>('conversations:tab', 'mine')
+  const validTabs: ConversationTab[] = ['mine', 'unassigned', 'all']
+  if (!validTabs.includes(persistedTab.value)) persistedTab.value = 'mine'
 
   convs.setFilters({ sortBy: persistedSort.value, status: persistedStatus.value, tab: persistedTab.value })
 
@@ -105,8 +107,7 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
   const tabItems = computed(() => [
     { label: t('conversations.sidebar.mine'), value: 'mine', badge: tabBadge(statusBucket.value.mine) },
     { label: t('conversations.sidebar.unassigned'), value: 'unassigned', badge: tabBadge(statusBucket.value.unassigned) },
-    { label: t('conversations.sidebar.all'), value: 'all', badge: tabBadge(statusBucket.value.all) },
-    { label: t('conversations.sidebar.mentions'), value: 'mentions' }
+    { label: t('conversations.sidebar.all'), value: 'all', badge: tabBadge(statusBucket.value.all) }
   ])
 
   const statusItems = computed(() => [

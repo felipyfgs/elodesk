@@ -63,7 +63,7 @@ async function loadMeta() {
 }
 
 const STATUS_CODE: Record<string, string> = { OPEN: '0', RESOLVED: '1', PENDING: '2', SNOOZED: '3' }
-const ASSIGNEE_TYPE: Record<string, string> = { mine: 'mine', unassigned: 'unassigned', all: 'all', mentions: 'all' }
+const ASSIGNEE_TYPE: Record<string, string> = { mine: 'mine', unassigned: 'unassigned', all: 'all' }
 
 async function load() {
   if (!auth.account?.id) return
@@ -82,7 +82,8 @@ async function load() {
         per_page: '100',
         sort_by: convs.filters.sortBy
       }
-      if (convs.filters.status) params.status = STATUS_CODE[convs.filters.status]
+      const statusCode = convs.filters.status ? STATUS_CODE[convs.filters.status] : undefined
+      if (statusCode) params.status = statusCode
       if (convs.filters.inboxId) params.inbox_id = convs.filters.inboxId
       const assigneeType = ASSIGNEE_TYPE[convs.filters.tab]
       if (assigneeType && assigneeType !== 'all') params.assignee_type = assigneeType
@@ -274,17 +275,7 @@ watch(() => convs.filters, () => {
       />
     </div>
 
-    <ConversationsToolbar />
-
-    <div v-if="convs.hasSelection" class="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-default">
-      <label class="flex items-center gap-2 text-sm cursor-pointer">
-        <UCheckbox
-          :model-value="convs.selection.length === displayedList.length && displayedList.length > 0"
-          @update:model-value="(v: boolean | string) => v ? convs.selectAll() : convs.clearSelection()"
-        />
-        <span class="text-muted">{{ t('conversations.bulk.selectAll') }}</span>
-      </label>
-    </div>
+    <ConversationsToolbar :total="displayedList.length" />
 
     <div v-if="convs.loading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-muted" />
@@ -319,7 +310,12 @@ watch(() => convs.filters, () => {
   <ClientOnly>
     <USlideover v-if="isMobile" v-model:open="isPanelOpen">
       <template #content>
-        <ConversationsConversationThread v-if="selected" :conversation="selected" @close="selected = null" />
+        <ConversationsConversationThread
+          v-if="selected"
+          :conversation="selected"
+          show-back
+          @close="selected = null"
+        />
       </template>
     </USlideover>
   </ClientOnly>

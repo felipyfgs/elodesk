@@ -3,12 +3,14 @@ import { format, isToday, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { Conversation } from '~/stores/conversations'
 import { useConversationsStore } from '~/stores/conversations'
+import { resolveContactName, resolveContactAvatar } from '~/utils/chatAdapter'
 
 const props = defineProps<{
   items: Conversation[]
 }>()
 
 const selected = defineModel<Conversation | null>()
+const { t } = useI18n()
 const convs = useConversationsStore()
 
 const itemRefs = ref<Record<string, Element | null>>({})
@@ -30,11 +32,11 @@ const CHANNEL_ICONS: Record<string, string> = {
 }
 
 function contactName(c: Conversation): string {
-  return c.contactInbox?.contact?.name || c.contactInbox?.contact?.phoneNumber || c.contactInbox?.contact?.waJid || '—'
+  return resolveContactName(c)
 }
 
 function contactAvatar(c: Conversation): string | undefined {
-  return c.meta?.sender?.thumbnail ?? c.contactInbox?.contact?.avatarUrl ?? undefined
+  return resolveContactAvatar(c)
 }
 
 function unreadCount(c: Conversation): number {
@@ -46,7 +48,7 @@ function hasUnread(c: Conversation): boolean {
 }
 
 function channelIcon(c: Conversation): string {
-  return CHANNEL_ICONS[c.channelType] ?? 'i-lucide-inbox'
+  return CHANNEL_ICONS[c.inbox?.channelType ?? ''] ?? 'i-lucide-inbox'
 }
 
 function lastMessage(c: Conversation): { text: string, icon: string, isPrivate: boolean } {
@@ -80,6 +82,14 @@ function isActive(c: Conversation): boolean {
   return selected.value?.id === c.id
 }
 
+function selectConversation(c: Conversation) {
+  selected.value = c
+}
+
+function rowAriaLabel(c: Conversation): string {
+  return t('conversations.list.openConversation', { name: contactName(c), id: c.displayId })
+}
+
 watch(selected, () => {
   if (!selected.value) return
   const ref = itemRefs.value[selected.value.id]
@@ -101,99 +111,129 @@ defineShortcuts({
 </script>
 
 <template>
-  <div class="overflow-y-auto">
-    <div
+  <ul
+    class="min-h-0 flex-1 overflow-y-auto p-2"
+    role="listbox"
+    :aria-label="t('conversations.list.ariaLabel')"
+  >
+    <li
       v-for="c in items"
       :key="c.id"
       :ref="(el) => { itemRefs[c.id] = el as Element | null }"
-      class="relative flex items-start gap-3 px-3 py-3 cursor-pointer transition-colors border-b border-default"
-      :class="[
-        isActive(c)
-          ? 'bg-elevated'
-          : 'hover:bg-elevated/50'
-      ]"
-      @click="selected = c"
-      @mouseenter="hoveredId = c.id"
-      @mouseleave="hoveredId = null"
+      class="py-0.5"
     >
-      <!-- Avatar with checkbox overlay -->
-      <div class="relative shrink-0 mt-0.5">
-        <UAvatar
-          :alt="contactName(c)"
-          :src="contactAvatar(c)"
-          size="md"
-        />
-        <!-- Checkbox overlay on hover -->
-        <label
-          v-if="hoveredId === c.id || convs.selection.includes(c.id)"
-          class="absolute inset-0 z-10 flex items-center justify-center rounded-full cursor-pointer bg-default/60 backdrop-blur-sm"
-          @click.stop
-        >
-          <UCheckbox
-            :model-value="convs.selection.includes(c.id)"
-            @update:model-value="() => convs.toggleSelection(c.id)"
+      <div
+        class="group relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-md border px-3 py-2.5 transition outline-none"
+        :class="[
+          isActive(c)
+            ? 'border-primary/30 bg-primary/5 shadow-sm'
+            : 'border-transparent hover:bg-elevated/60 focus-visible:bg-elevated/60'
+        ]"
+        role="option"
+        tabindex="0"
+        :aria-selected="isActive(c)"
+        :aria-label="rowAriaLabel(c)"
+        @click="selectConversation(c)"
+        @keydown.enter.prevent="selectConversation(c)"
+        @keydown.space.prevent="selectConversation(c)"
+        @mouseenter="hoveredId = c.id"
+        @mouseleave="hoveredId = null"
+      >
+        <div class="relative mt-0.5 size-8 shrink-0">
+          <UAvatar
+            :alt="contactName(c)"
+            :src="contactAvatar(c)"
+            size="md"
+            class="size-8"
           />
-        </label>
-      </div>
+          <span class="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-md bg-default ring ring-default">
+            <UIcon :name="channelIcon(c)" class="size-3 text-muted" />
+          </span>
 
-      <!-- Content -->
-      <div class="flex-1 min-w-0">
-        <!-- Row 1: Channel icon + Name + Timestamp -->
-        <div class="flex items-center gap-1.5">
-          <UIcon :name="channelIcon(c)" class="size-3 shrink-0 text-muted" />
-          <span class="text-xs text-muted truncate max-w-[100px]">
-            {{ c.inbox?.name }}
-          </span>
-          <span class="flex-1" />
-          <span class="text-[10px] text-muted shrink-0">
-            {{ timeLabel(c) }}
-          </span>
-          <!-- Unread badge -->
-          <span
-            v-if="hasUnread(c)"
-            class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-[10px] font-semibold text-inverted"
+          <label
+            v-if="hoveredId === c.id || convs.selection.includes(c.id)"
+            class="absolute inset-0 z-10 flex cursor-pointer items-center justify-center rounded-full bg-default/55 backdrop-blur-[1px]"
+            @click.stop
           >
-            {{ unreadCount(c) > 99 ? '99+' : unreadCount(c) }}
-          </span>
+            <UCheckbox
+              :model-value="convs.selection.includes(c.id)"
+              :aria-label="t('conversations.list.selectConversation', { id: c.displayId })"
+              :ui="{
+                root: 'size-4 items-center justify-center',
+                container: 'flex size-4 items-center justify-center',
+                base: 'size-4 rounded-[3px] bg-default shadow-sm ring ring-default',
+                wrapper: 'hidden'
+              }"
+              @update:model-value="() => convs.toggleSelection(c.id)"
+            />
+          </label>
         </div>
 
-        <!-- Row 2: Contact name -->
-        <h4
-          class="text-sm truncate mt-0.5"
-          :class="hasUnread(c) ? 'font-semibold text-highlighted' : 'font-medium text-default'"
-        >
-          {{ contactName(c) }}
-        </h4>
+        <div class="min-w-0">
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <h4
+                class="truncate text-sm leading-5"
+                :class="hasUnread(c) ? 'font-semibold text-highlighted' : 'font-medium text-default'"
+              >
+                {{ contactName(c) }}
+              </h4>
+              <div class="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted">
+                <span class="shrink-0 font-medium">#{{ c.displayId }}</span>
+                <span class="text-dimmed">/</span>
+                <span class="truncate">{{ c.inbox?.name || t('conversations.detail.noInbox') }}</span>
+              </div>
+            </div>
 
-        <!-- Row 3: Message preview -->
-        <div v-if="lastMessage(c).text" class="flex items-center gap-1.5 mt-0.5">
-          <UIcon :name="lastMessage(c).icon" class="size-3 shrink-0 text-dimmed" />
+            <div class="flex shrink-0 flex-col items-end gap-1">
+              <span class="text-[11px] text-muted">
+                {{ timeLabel(c) }}
+              </span>
+              <span
+                v-if="hasUnread(c)"
+                class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-inverted"
+                :aria-label="t('conversations.list.unreadCount', { count: unreadCount(c) })"
+              >
+                {{ unreadCount(c) > 99 ? '99+' : unreadCount(c) }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="lastMessage(c).text" class="mt-2 flex min-w-0 items-center gap-1.5">
+            <UIcon
+              :name="lastMessage(c).icon"
+              class="size-3.5 shrink-0"
+              :class="lastMessage(c).isPrivate ? 'text-warning' : 'text-dimmed'"
+            />
+            <p
+              class="min-w-0 flex-1 truncate text-xs"
+              :class="hasUnread(c) ? 'text-default font-medium' : 'text-muted'"
+            >
+              {{ lastMessage(c).text }}
+            </p>
+          </div>
           <p
-            class="text-xs truncate flex-1 min-w-0"
-            :class="hasUnread(c) ? 'text-default font-medium' : 'text-muted'"
+            v-else
+            class="mt-2 truncate text-xs italic text-dimmed"
           >
-            {{ lastMessage(c).text }}
+            {{ t('conversations.list.noPreview') }}
           </p>
-        </div>
-        <p v-else class="text-xs text-dimmed mt-0.5 italic">
-          {{ $t('conversations.empty') }}
-        </p>
 
-        <!-- Row 4: Labels -->
-        <div v-if="c.labels?.length" class="flex items-center gap-1 mt-1 flex-wrap">
-          <span
-            v-for="label in c.labels.slice(0, 3)"
-            :key="label.id"
-            class="inline-flex items-center text-[10px] rounded-full px-2 py-0.5 font-medium truncate max-w-[80px]"
-            :style="{ backgroundColor: label.color + '18', color: label.color }"
-          >
-            {{ label.title }}
-          </span>
-          <span v-if="c.labels.length > 3" class="text-[10px] text-muted">
-            +{{ c.labels.length - 3 }}
-          </span>
+          <div v-if="c.labels?.length" class="mt-2 flex flex-wrap items-center gap-1">
+            <span
+              v-for="label in c.labels.slice(0, 2)"
+              :key="label.id"
+              class="inline-flex max-w-[7rem] items-center truncate rounded-md px-2 py-0.5 text-[10px] font-medium"
+              :style="{ backgroundColor: `${label.color}20`, color: label.color }"
+            >
+              {{ label.title }}
+            </span>
+            <span v-if="c.labels.length > 2" class="text-[10px] text-muted">
+              +{{ c.labels.length - 2 }}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </li>
+  </ul>
 </template>

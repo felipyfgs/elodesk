@@ -389,7 +389,6 @@
       "mine": "Minhas",
       "unassigned": "Sem agente",
       "all": "Todas",
-      "mentions": "Menções",
       "unattended": "Não atendidas",
       "status": "Status",
       "inboxes": "Caixas de entrada",
@@ -419,8 +418,30 @@
     },
     "compose": {
       "placeholder": "Digite uma mensagem…",
+      "privatePlaceholder": "Escreva uma nota privada…",
+      "replyContext": "Responder ao contato",
+      "privateContext": "Nota privada",
+      "replyTab": "Responder",
+      "privateTab": "Mensagem Privada",
       "send": "Enviar",
-      "attach": "Anexar arquivo"
+      "attach": "Anexar arquivo",
+      "expand": "Expandir editor",
+      "emoji": "Emoji",
+      "voice": "Mensagem de voz",
+      "canned": "Resposta pronta",
+      "toolbar": {
+        "bold": "Negrito",
+        "italic": "Itálico",
+        "link": "Link",
+        "undo": "Desfazer",
+        "redo": "Refazer",
+        "list": "Lista",
+        "orderedList": "Lista numerada",
+        "code": "Código"
+      }
+    },
+    "thread": {
+      "empty": "Nenhuma mensagem nesta conversa."
     },
     "select": "Selecione uma conversa",
     "actions": {
@@ -429,6 +450,42 @@
       "resolve": "Resolver",
       "snooze": "Adiar",
       "changeStatus": "Alterar status"
+    },
+    "list": {
+      "ariaLabel": "Lista de conversas",
+      "openConversation": "Abrir conversa {id} de {name}",
+      "selectConversation": "Selecionar conversa {id}",
+      "unreadCount": "{count} mensagem(ns) não lida(s)",
+      "noPreview": "Sem mensagem"
+    },
+    "detail": {
+      "contacts": "Contatos",
+      "openDetails": "Abrir detalhes de {name}",
+      "more": "Mais ações",
+      "noInbox": "Sem caixa de entrada",
+      "noIdentifier": "Identificador indisponível",
+      "identifier": "Identificador",
+      "phone": "Telefone",
+      "inbox": "Caixa de entrada",
+      "conversation": "Conversa",
+      "channel": "Canal",
+      "message": "Mensagem",
+      "actions": "Ações da conversa",
+      "assignToMe": "Atribuir a mim",
+      "assignedAgent": "Agente atribuído",
+      "assignedTeam": "Time atribuído",
+      "priority": "Prioridade",
+      "none": "Nenhuma",
+      "labels": "Etiquetas da conversa",
+      "addLabels": "Adicionar etiquetas",
+      "macros": "Macros",
+      "conversationInfo": "Informação da conversa",
+      "contactAttributes": "Atributos do contato",
+      "contactNotes": "Notas do contato",
+      "previousConversations": "Conversas anteriores",
+      "participants": "Participantes da conversa",
+      "linkedIssues": "Problemas do Linear vinculados",
+      "emptySection": "Sem informações para exibir."
     },
     "message": {
       "status": {
@@ -439,7 +496,8 @@
         "FAILED": "Falhou"
       },
       "edited": "editada",
-      "deleted": "Mensagem apagada"
+      "deleted": "Mensagem apagada",
+      "private": "Nota privada"
     },
     "bulk": {
       "selected": "{count} selecionada(s)",

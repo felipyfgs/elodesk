@@ -54,14 +54,14 @@ export interface Conversation {
     lastNonActivityMessage?: {
       content: string
       contentType: string
-      messageType: string
+      messageType: number
       createdAt: string
       attachments?: { fileUrl: string, fileType: string }[]
     }
   }
 }
 
-export type ConversationTab = 'mine' | 'unassigned' | 'all' | 'mentions'
+export type ConversationTab = 'mine' | 'unassigned' | 'all'
 
 export type ConversationSort
   = | 'last_activity_desc'

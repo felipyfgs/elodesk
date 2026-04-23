@@ -5,6 +5,10 @@ import { useLabelsStore } from '~/stores/labels'
 import { useTeamsStore } from '~/stores/teams'
 import { ConfirmModal } from '#components'
 
+const props = defineProps<{
+  total?: number
+}>()
+
 const { t } = useI18n()
 const api = useApi()
 const toast = useToast()
@@ -22,6 +26,12 @@ const labelAction = ref<'add' | 'remove'>('add')
 const loading = ref(false)
 
 const selectedIds = computed(() => convs.selection)
+const allSelected = computed(() => (props.total ?? 0) > 0 && selectedIds.value.length === props.total)
+
+function toggleSelectAll(value: boolean | string) {
+  if (value) convs.selectAll()
+  else convs.clearSelection()
+}
 
 async function bulkToggleStatus(status: string) {
   const accountId = auth.account?.id
@@ -132,127 +142,165 @@ const snoozeItems = computed(() => [[
 </script>
 
 <template>
-  <UDashboardToolbar v-if="convs.hasSelection">
-    <template #leading>
-      <span class="text-sm font-medium">
-        {{ t('conversations.bulk.selected', { count: selectedIds.length }) }}
-      </span>
+  <UDashboardToolbar
+    v-if="convs.hasSelection"
+    class="!min-h-9 !px-2 sm:!px-2"
+  >
+    <template #left>
+      <div class="flex items-center gap-2">
+        <UTooltip :text="t('conversations.bulk.selectAll')">
+          <UCheckbox
+            :model-value="allSelected"
+            :aria-label="t('conversations.bulk.selectAll')"
+            size="sm"
+            @update:model-value="toggleSelectAll"
+          />
+        </UTooltip>
+        <UTooltip :text="t('conversations.bulk.selected', { count: selectedIds.length })">
+          <UBadge
+            :label="String(selectedIds.length)"
+            color="primary"
+            variant="subtle"
+            size="sm"
+          />
+        </UTooltip>
+      </div>
     </template>
 
-    <template #trailing>
+    <template #right>
       <div class="flex items-center gap-1">
-        <UButton
-          :label="t('conversations.bulk.resolve')"
-          icon="i-lucide-check-circle"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :loading="loading"
-          @click="bulkToggleStatus('RESOLVED')"
-        />
-
-        <UDropdownMenu :items="snoozeItems">
+        <UTooltip :text="t('conversations.bulk.resolve')">
           <UButton
-            :label="t('conversations.bulk.snooze.label')"
-            icon="i-lucide-clock"
+            icon="i-lucide-check-circle"
             color="neutral"
             variant="ghost"
             size="xs"
+            :aria-label="t('conversations.bulk.resolve')"
+            :loading="loading"
+            @click="bulkToggleStatus('RESOLVED')"
           />
+        </UTooltip>
+
+        <UDropdownMenu :items="snoozeItems" :content="{ align: 'start' }">
+          <UTooltip :text="t('conversations.bulk.snooze.label')">
+            <UButton
+              icon="i-lucide-clock"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :aria-label="t('conversations.bulk.snooze.label')"
+            />
+          </UTooltip>
         </UDropdownMenu>
 
-        <UButton
-          :label="t('conversations.bulk.open')"
-          icon="i-lucide-message-circle"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :loading="loading"
-          @click="bulkToggleStatus('OPEN')"
-        />
-
-        <UDropdownMenu :items="[[{ label: t('conversations.bulk.addLabel'), icon: 'i-lucide-tag', click: () => { labelAction = 'add'; labelOpen = true } }, { label: t('conversations.bulk.removeLabel'), icon: 'i-lucide-tag-x', click: () => { labelAction = 'remove'; labelOpen = true } }]]">
+        <UTooltip :text="t('conversations.bulk.open')">
           <UButton
-            :label="t('conversations.bulk.labels')"
-            icon="i-lucide-tag"
+            icon="i-lucide-message-circle"
             color="neutral"
             variant="ghost"
             size="xs"
+            :aria-label="t('conversations.bulk.open')"
+            :loading="loading"
+            @click="bulkToggleStatus('OPEN')"
           />
+        </UTooltip>
+
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.addLabel'), icon: 'i-lucide-tag', click: () => { labelAction = 'add'; labelOpen = true } }, { label: t('conversations.bulk.removeLabel'), icon: 'i-lucide-tag-x', click: () => { labelAction = 'remove'; labelOpen = true } }]]" :content="{ align: 'start' }">
+          <UTooltip :text="t('conversations.bulk.labels')">
+            <UButton
+              icon="i-lucide-tag"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :aria-label="t('conversations.bulk.labels')"
+            />
+          </UTooltip>
         </UDropdownMenu>
 
-        <UDropdownMenu :items="[[{ label: t('conversations.bulk.assignAgent'), icon: 'i-lucide-user-plus', click: () => { assignAgentOpen = true } }, { label: t('conversations.bulk.assignTeam'), icon: 'i-lucide-users', click: () => { assignTeamOpen = true } }]]">
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.assignAgent'), icon: 'i-lucide-user-plus', click: () => { assignAgentOpen = true } }, { label: t('conversations.bulk.assignTeam'), icon: 'i-lucide-users', click: () => { assignTeamOpen = true } }]]" :content="{ align: 'start' }">
+          <UTooltip :text="t('conversations.bulk.assign')">
+            <UButton
+              icon="i-lucide-user-plus"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :aria-label="t('conversations.bulk.assign')"
+            />
+          </UTooltip>
+        </UDropdownMenu>
+
+        <UTooltip :text="t('conversations.bulk.delete')">
           <UButton
-            :label="t('conversations.bulk.assign')"
-            icon="i-lucide-user-plus"
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            size="xs"
+            :aria-label="t('conversations.bulk.delete')"
+            :loading="loading"
+            @click="bulkDelete()"
+          />
+        </UTooltip>
+        <UTooltip :text="t('conversations.bulk.clearSelection')">
+          <UButton
             color="neutral"
             variant="ghost"
             size="xs"
+            icon="i-lucide-x"
+            :aria-label="t('conversations.bulk.clearSelection')"
+            @click="convs.clearSelection()"
           />
-        </UDropdownMenu>
-
-        <UButton
-          :label="t('conversations.bulk.delete')"
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="ghost"
-          size="xs"
-          :loading="loading"
-          @click="bulkDelete()"
-        />
-        <UButton
-          :label="t('conversations.bulk.clearSelection')"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          icon="i-lucide-x"
-          @click="convs.clearSelection()"
-        />
+        </UTooltip>
       </div>
     </template>
   </UDashboardToolbar>
 
   <template v-if="convs.hasSelection">
     <UModal v-model:open="assignAgentOpen" :title="t('conversations.bulk.assignAgent')">
-      <div class="p-4 flex flex-col gap-2">
-        <p class="text-sm text-muted">
-          {{ t('conversations.bulk.assignAgentDesc', { count: selectedIds.length }) }}
-        </p>
-        <p class="text-sm text-dimmed">
-          {{ t('conversations.bulk.agentsComingSoon') }}
-        </p>
-      </div>
+      <template #body>
+        <div class="flex flex-col gap-2">
+          <p class="text-sm text-muted">
+            {{ t('conversations.bulk.assignAgentDesc', { count: selectedIds.length }) }}
+          </p>
+          <p class="text-sm text-dimmed">
+            {{ t('conversations.bulk.agentsComingSoon') }}
+          </p>
+        </div>
+      </template>
     </UModal>
 
     <UModal v-model:open="assignTeamOpen" :title="t('conversations.bulk.assignTeam')">
-      <div class="p-4 flex flex-col gap-2">
-        <p class="text-sm text-muted">
-          {{ t('conversations.bulk.assignTeamDesc', { count: selectedIds.length }) }}
-        </p>
-        <div
-          v-for="team in teams.list"
-          :key="team.id"
-          class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
-          @click="bulkAssignTeam(team.id)"
-        >
-          <UIcon name="i-lucide-users" class="size-4 text-muted" />
-          <span class="text-sm">{{ team.name }}</span>
+      <template #body>
+        <div class="flex flex-col gap-2">
+          <p class="text-sm text-muted">
+            {{ t('conversations.bulk.assignTeamDesc', { count: selectedIds.length }) }}
+          </p>
+          <div
+            v-for="team in teams.list"
+            :key="team.id"
+            class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
+            @click="bulkAssignTeam(team.id)"
+          >
+            <UIcon name="i-lucide-users" class="size-4 text-muted" />
+            <span class="text-sm">{{ team.name }}</span>
+          </div>
         </div>
-      </div>
+      </template>
     </UModal>
 
     <UModal v-model:open="labelOpen" :title="labelAction === 'add' ? t('conversations.bulk.addLabel') : t('conversations.bulk.removeLabel')">
-      <div class="p-4 flex flex-col gap-2">
-        <div
-          v-for="label in labels.list"
-          :key="label.id"
-          class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
-          @click="bulkToggleLabel(label.id, labelAction)"
-        >
-          <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
-          <span class="text-sm">{{ label.title }}</span>
+      <template #body>
+        <div class="flex flex-col gap-2">
+          <div
+            v-for="label in labels.list"
+            :key="label.id"
+            class="flex items-center gap-2 p-2 rounded hover:bg-elevated cursor-pointer"
+            @click="bulkToggleLabel(label.id, labelAction)"
+          >
+            <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
+            <span class="text-sm">{{ label.title }}</span>
+          </div>
         </div>
-      </div>
+      </template>
     </UModal>
   </template>
 </template>

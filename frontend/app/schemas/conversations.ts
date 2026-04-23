@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const conversationFiltersSchema = z.object({
-  tab: z.enum(['mine', 'unassigned', 'all', 'mentions'] as const).default('mine'),
+  tab: z.enum(['mine', 'unassigned', 'all'] as const).default('mine'),
   inbox_id: z.string().optional(),
   label_id: z.string().optional(),
   team_id: z.string().optional(),

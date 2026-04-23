@@ -392,7 +392,6 @@
       "mine": "Mine",
       "unassigned": "Unassigned",
       "all": "All",
-      "mentions": "Mentions",
       "unattended": "Unattended",
       "status": "Status",
       "inboxes": "Inboxes",
@@ -422,8 +421,30 @@
     },
     "compose": {
       "placeholder": "Type a message…",
+      "privatePlaceholder": "Write a private note…",
+      "replyContext": "Reply to contact",
+      "privateContext": "Private note",
+      "replyTab": "Reply",
+      "privateTab": "Private Message",
       "send": "Send",
-      "attach": "Attach file"
+      "attach": "Attach file",
+      "expand": "Expand editor",
+      "emoji": "Emoji",
+      "voice": "Voice message",
+      "canned": "Canned response",
+      "toolbar": {
+        "bold": "Bold",
+        "italic": "Italic",
+        "link": "Link",
+        "undo": "Undo",
+        "redo": "Redo",
+        "list": "List",
+        "orderedList": "Ordered list",
+        "code": "Code"
+      }
+    },
+    "thread": {
+      "empty": "No messages in this conversation."
     },
     "select": "Select a conversation",
     "actions": {
@@ -432,6 +453,42 @@
       "resolve": "Resolve",
       "snooze": "Snooze",
       "changeStatus": "Change status"
+    },
+    "list": {
+      "ariaLabel": "Conversation list",
+      "openConversation": "Open conversation {id} with {name}",
+      "selectConversation": "Select conversation {id}",
+      "unreadCount": "{count} unread message(s)",
+      "noPreview": "No message"
+    },
+    "detail": {
+      "contacts": "Contacts",
+      "openDetails": "Open details for {name}",
+      "more": "More actions",
+      "noInbox": "No inbox",
+      "noIdentifier": "Identifier unavailable",
+      "identifier": "Identifier",
+      "phone": "Phone",
+      "inbox": "Inbox",
+      "conversation": "Conversation",
+      "channel": "Channel",
+      "message": "Message",
+      "actions": "Conversation actions",
+      "assignToMe": "Assign to me",
+      "assignedAgent": "Assigned agent",
+      "assignedTeam": "Assigned team",
+      "priority": "Priority",
+      "none": "None",
+      "labels": "Conversation labels",
+      "addLabels": "Add labels",
+      "macros": "Macros",
+      "conversationInfo": "Conversation information",
+      "contactAttributes": "Contact attributes",
+      "contactNotes": "Contact notes",
+      "previousConversations": "Previous conversations",
+      "participants": "Conversation participants",
+      "linkedIssues": "Linked Linear issues",
+      "emptySection": "No information to display."
     },
     "message": {
       "status": {
@@ -442,7 +499,8 @@
         "FAILED": "Failed"
       },
       "edited": "edited",
-      "deleted": "Message deleted"
+      "deleted": "Message deleted",
+      "private": "Private note"
     },
     "bulk": {
       "selected": "{count} selected",

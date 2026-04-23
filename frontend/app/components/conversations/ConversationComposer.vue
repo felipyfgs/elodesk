@@ -22,14 +22,10 @@ const canned = useCannedResponsesStore()
 
 const reply = ref('')
 const sending = ref(false)
+const mode = ref<'reply' | 'private'>('reply')
 const attachments = ref<UploadedFile[]>([])
 const selectedFiles = ref<File[]>([])
 const fileUploadRef = ref<HTMLElement | null>(null)
-
-const chatStatus = computed<'ready' | 'submitted' | 'error'>(() => {
-  if (sending.value) return 'submitted'
-  return 'ready'
-})
 
 const maxChars = computed(() => {
   const channelType = props.conversation.inbox?.channelType
@@ -43,13 +39,37 @@ const maxChars = computed(() => {
 const charCount = computed(() => reply.value.length)
 const charExceeded = computed(() => maxChars.value > 0 && charCount.value > maxChars.value)
 
+const promptPlaceholder = computed(() => (
+  mode.value === 'private'
+    ? t('conversations.compose.privatePlaceholder')
+    : t('conversations.compose.placeholder')
+))
+
+const contextLabel = computed(() => {
+  if (mode.value === 'private') return t('conversations.compose.privateContext')
+  return props.conversation.inbox?.name || t('conversations.compose.replyContext')
+})
+
+const formattingActions = computed(() => [
+  { icon: 'i-lucide-bold', label: t('conversations.compose.toolbar.bold') },
+  { icon: 'i-lucide-italic', label: t('conversations.compose.toolbar.italic') },
+  { icon: 'i-lucide-link', label: t('conversations.compose.toolbar.link') },
+  { icon: 'i-lucide-undo-2', label: t('conversations.compose.toolbar.undo') },
+  { icon: 'i-lucide-redo-2', label: t('conversations.compose.toolbar.redo') },
+  { icon: 'i-lucide-list', label: t('conversations.compose.toolbar.list') },
+  { icon: 'i-lucide-list-ordered', label: t('conversations.compose.toolbar.orderedList') },
+  { icon: 'i-lucide-code-2', label: t('conversations.compose.toolbar.code') }
+])
+
 async function send() {
-  if (!auth.account?.id || (!reply.value.trim() && !attachments.value.length)) return
+  const text = reply.value.trim()
+  if (!auth.account?.id || (!text && !attachments.value.length)) return
   if (charExceeded.value) return
   sending.value = true
   try {
     const body: Record<string, unknown> = {
-      content: reply.value.trim() || null
+      message: text,
+      private: mode.value === 'private'
     }
     if (attachments.value.length) {
       body.attachments = attachments.value
@@ -118,7 +138,8 @@ function removeAttachment(id: string) {
 }
 
 function openFilePicker() {
-  const el = fileUploadRef.value?.$el ?? fileUploadRef.value
+  const comp = fileUploadRef.value as { $el?: HTMLElement } | null
+  const el = comp?.$el ?? null
   const input = el?.querySelector?.('input[type="file"]') as HTMLInputElement | null
   input?.click()
 }
@@ -146,79 +167,186 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="pb-4 px-4 sm:px-6 shrink-0">
+  <div class="shrink-0 border-t border-default/80 bg-default/95 px-2 py-2 sm:px-4">
     <UChatPrompt
       v-model="reply"
-      :placeholder="t('conversations.compose.placeholder')"
-      :rows="3"
+      :placeholder="promptPlaceholder"
+      :rows="1"
+      :autoresize="true"
+      :maxrows="6"
       :disabled="sending"
       variant="outline"
+      class="mx-auto max-w-3xl"
+      :ui="{
+        root: 'gap-3 rounded-lg bg-elevated/85 px-3 py-2 shadow-lg ring ring-default',
+        header: 'w-full',
+        body: 'min-h-12',
+        base: 'min-h-12 text-sm leading-5',
+        footer: 'w-full'
+      }"
       @submit="handleSubmit"
     >
       <template #header>
-        <UFileUpload
-          ref="fileUploadRef"
-          v-model="selectedFiles"
-          multiple
-          :dropzone="false"
-          :interactive="false"
-          :preview="attachments.length > 0"
-          :file-delete="false"
-          accept="image/*,.pdf,.doc,.docx,.txt,.csv"
-          class="w-full"
-          @update:model-value="handleFilesSelected"
-        >
-          <template #file-trailing="{ file }">
-            <template v-for="att in attachments" :key="att.id">
-              <div v-if="att.file === file" class="flex items-center gap-1">
-                <UIcon
-                  v-if="att.uploading"
-                  name="i-lucide-loader-2"
-                  class="size-3.5 text-muted animate-spin"
-                />
-                <UIcon
-                  v-else-if="att.error"
-                  name="i-lucide-alert-circle"
-                  class="size-3.5 text-error"
-                />
-                <button
-                  type="button"
-                  class="text-muted hover:text-error transition-colors"
-                  @click.stop="removeAttachment(att.id)"
-                >
-                  <UIcon name="i-lucide-x" class="size-3.5" />
-                </button>
-              </div>
+        <div class="flex w-full flex-col gap-2">
+          <UFileUpload
+            ref="fileUploadRef"
+            v-model="selectedFiles"
+            multiple
+            :dropzone="false"
+            :interactive="false"
+            :preview="attachments.length > 0"
+            :file-delete="false"
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+            :class="attachments.length ? 'w-full' : 'h-0 overflow-hidden opacity-0'"
+            @update:model-value="handleFilesSelected"
+          >
+            <template #file-trailing="{ file }">
+              <template v-for="att in attachments" :key="att.id">
+                <div v-if="att.file === file" class="flex items-center gap-1">
+                  <UIcon
+                    v-if="att.uploading"
+                    name="i-lucide-loader-2"
+                    class="size-3.5 animate-spin text-muted"
+                  />
+                  <UIcon
+                    v-else-if="att.error"
+                    name="i-lucide-alert-circle"
+                    class="size-3.5 text-error"
+                  />
+                  <button
+                    type="button"
+                    class="text-muted transition-colors hover:text-error"
+                    @click.stop="removeAttachment(att.id)"
+                  >
+                    <UIcon name="i-lucide-x" class="size-3.5" />
+                  </button>
+                </div>
+              </template>
             </template>
-          </template>
-        </UFileUpload>
+          </UFileUpload>
+
+          <div class="flex items-center justify-between gap-2">
+            <div class="inline-flex min-w-0 items-center gap-1 rounded-lg bg-default p-0.5 ring ring-default">
+              <UButton
+                :label="t('conversations.compose.replyTab')"
+                color="neutral"
+                :variant="mode === 'reply' ? 'soft' : 'ghost'"
+                size="xs"
+                class="min-w-0"
+                @click="mode = 'reply'"
+              />
+              <UButton
+                :label="t('conversations.compose.privateTab')"
+                color="neutral"
+                :variant="mode === 'private' ? 'soft' : 'ghost'"
+                size="xs"
+                class="min-w-0"
+                @click="mode = 'private'"
+              />
+            </div>
+
+            <UTooltip :text="t('conversations.compose.expand')">
+              <UButton
+                icon="i-lucide-maximize-2"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                disabled
+                :aria-label="t('conversations.compose.expand')"
+              />
+            </UTooltip>
+          </div>
+        </div>
       </template>
 
-      <template #leading>
-        <UTooltip :text="t('conversations.compose.attach')">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-paperclip"
-            size="xs"
-            @click="openFilePicker"
-          />
-        </UTooltip>
+      <template #footer>
+        <div class="flex w-full flex-col gap-3">
+          <div class="flex items-center gap-1 overflow-x-auto">
+            <UTooltip
+              v-for="action in formattingActions"
+              :key="action.icon"
+              :text="action.label"
+            >
+              <UButton
+                :icon="action.icon"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                disabled
+                :aria-label="action.label"
+              />
+            </UTooltip>
+          </div>
 
-        <span
-          v-if="maxChars > 0"
-          class="text-xs"
-          :class="charExceeded ? 'text-error font-medium' : 'text-dimmed'"
-        >
-          {{ charCount }}/{{ maxChars }}
-        </span>
-      </template>
+          <div class="flex items-end justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-1.5 text-xs text-muted">
+              <UIcon
+                :name="mode === 'private' ? 'i-lucide-lock' : 'i-lucide-message-square'"
+                class="size-3.5 shrink-0"
+              />
+              <span class="truncate">{{ contextLabel }}</span>
+              <span
+                v-if="maxChars > 0"
+                class="shrink-0"
+                :class="charExceeded ? 'font-medium text-error' : 'text-dimmed'"
+              >
+                {{ charCount }}/{{ maxChars }}
+              </span>
+            </div>
 
-      <template #trailing>
-        <UChatPromptSubmit
-          :status="chatStatus"
-          :disabled="charExceeded || (!reply.trim() && !attachments.length)"
-        />
+            <div class="flex shrink-0 items-center gap-1.5">
+              <UTooltip :text="t('conversations.compose.emoji')">
+                <UButton
+                  icon="i-lucide-smile"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  disabled
+                  :aria-label="t('conversations.compose.emoji')"
+                />
+              </UTooltip>
+              <UTooltip :text="t('conversations.compose.attach')">
+                <UButton
+                  icon="i-lucide-paperclip"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  :aria-label="t('conversations.compose.attach')"
+                  @click="openFilePicker"
+                />
+              </UTooltip>
+              <UTooltip :text="t('conversations.compose.voice')">
+                <UButton
+                  icon="i-lucide-mic"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  disabled
+                  :aria-label="t('conversations.compose.voice')"
+                />
+              </UTooltip>
+              <UTooltip :text="t('conversations.compose.canned')">
+                <UButton
+                  icon="i-lucide-quote"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  disabled
+                  :aria-label="t('conversations.compose.canned')"
+                />
+              </UTooltip>
+              <UButton
+                type="submit"
+                :label="t('conversations.compose.send')"
+                trailing-icon="i-lucide-corner-down-left"
+                color="primary"
+                size="sm"
+                :loading="sending"
+                :disabled="charExceeded || (!reply.trim() && !attachments.length)"
+              />
+            </div>
+          </div>
+        </div>
       </template>
     </UChatPrompt>
   </div>
