@@ -75,6 +75,28 @@ func (r *AttachmentRepo) FindByMessageID(ctx context.Context, messageID int64) (
 	return attachments, rows.Err()
 }
 
+func (r *AttachmentRepo) FindByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.Attachment, error) {
+	if len(messageIDs) == 0 {
+		return map[int64][]model.Attachment{}, nil
+	}
+	query := `SELECT ` + attachmentSelectColumns + ` FROM attachments WHERE message_id = ANY($1) ORDER BY id`
+	rows, err := r.pool.Query(ctx, query, messageIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find attachments by message ids: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[int64][]model.Attachment)
+	for rows.Next() {
+		var m model.Attachment
+		if err := scanAttachment(rows, &m); err != nil {
+			return nil, fmt.Errorf("failed to scan attachment: %w", err)
+		}
+		result[m.MessageID] = append(result[m.MessageID], m)
+	}
+	return result, rows.Err()
+}
+
 func (r *AttachmentRepo) UpdateFileKey(ctx context.Context, id int64, fileKey string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE attachments SET file_key = $1, updated_at = NOW() WHERE id = $2`,

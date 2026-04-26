@@ -14,6 +14,7 @@ import (
 	"backend/internal/crypto"
 	"backend/internal/logger"
 	"backend/internal/model"
+	"backend/internal/phone"
 	"backend/internal/repo"
 	"backend/internal/service"
 )
@@ -48,6 +49,7 @@ type Service struct {
 	messageRepo         *repo.MessageRepo
 	conversationRepo    *repo.ConversationRepo
 	contactService      *service.ContactService
+	messageSvc          *service.MessageService
 	realtimeSvc         *service.RealtimeService
 	cipher              *crypto.Cipher
 	dedup               *appchannel.DedupLock
@@ -62,6 +64,7 @@ func NewService(
 	messageRepo *repo.MessageRepo,
 	conversationRepo *repo.ConversationRepo,
 	contactService *service.ContactService,
+	messageSvc *service.MessageService,
 	realtimeSvc *service.RealtimeService,
 	cipher *crypto.Cipher,
 	dedup *appchannel.DedupLock,
@@ -78,6 +81,7 @@ func NewService(
 		messageRepo:         messageRepo,
 		conversationRepo:    conversationRepo,
 		contactService:      contactService,
+		messageSvc:          messageSvc,
 		realtimeSvc:         realtimeSvc,
 		cipher:              cipher,
 		dedup:               dedup,
@@ -192,27 +196,22 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 		content = &im.Content
 	}
 
+	senderType := "Contact"
+	contactID := contact.ID
 	msg := &model.Message{
-		AccountID:    ch.AccountID,
-		InboxID:      inbox.ID,
 		MessageType:  msgType,
 		ContentType:  contentType,
 		Content:      content,
 		SourceID:     &im.SourceID,
 		Status:       model.MessageSent,
 		ContentAttrs: contentAttrs,
+		SenderType:   &senderType,
+		SenderID:     &contactID,
 	}
 
-	created, err := s.messageRepo.Create(ctx, msg)
-	if err != nil {
+	if _, err := s.messageSvc.Create(ctx, ch.AccountID, inbox.ID, convo.ID, msg); err != nil {
 		return fmt.Errorf("create message: %w", err)
 	}
-
-	if err := s.messageRepo.UpdateConversationID(ctx, created.ID, ch.AccountID, convo.ID); err != nil {
-		logger.Error().Str("component", "channel.whatsapp").Err(err).Msg("link message to conversation")
-	}
-
-	s.realtimeSvc.BroadcastConversationEvent(convo.ID, "message.created", created)
 
 	return nil
 }
@@ -228,28 +227,30 @@ func (s *Service) processStatusUpdate(ctx context.Context, ch *model.ChannelWhat
 		extErr = &su.ExternalError
 	}
 
-	updated, err := s.messageRepo.UpdateStatus(ctx, msg.ID, ch.AccountID, su.Status, extErr)
-	if err != nil {
+	if _, err := s.messageSvc.UpdateStatus(ctx, msg.ID, ch.AccountID, su.Status, extErr); err != nil {
 		return fmt.Errorf("update message status: %w", err)
 	}
-
-	s.realtimeSvc.BroadcastConversationEvent(msg.ConversationID, "message.status_changed", updated)
 
 	return nil
 }
 
 func (s *Service) upsertContact(ctx context.Context, accountID, inboxID int64, im appchannel.InboundMessage) (*model.Contact, error) {
-	phone := normalizePhone(im.From)
+	canonical := normalizeWaSourceID(im.From)
+	phoneStr := normalizePhone(canonical)
 	contact := &model.Contact{
-		PhoneNumber: &phone,
-		Identifier:  &phone,
+		PhoneNumber: &phoneStr,
+		Identifier:  &phoneStr,
 		Name:        "",
+	}
+	if e164, valid := phone.NormalizeE164(phoneStr); valid {
+		v := e164
+		contact.PhoneE164 = &v
 	}
 	created, err := s.contactService.Create(ctx, accountID, contact)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.contactService.EnsureContactInbox(ctx, created.ID, inboxID, im.From); err != nil {
+	if err := s.contactService.EnsureContactInbox(ctx, created.ID, inboxID, canonical); err != nil {
 		return nil, fmt.Errorf("ensure contact inbox: %w", err)
 	}
 	return created, nil

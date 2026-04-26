@@ -20,9 +20,9 @@ type IngestService struct {
 	contactRepo      *repo.ContactRepo
 	conversationRepo *repo.ConversationRepo
 	messageRepo      *repo.MessageRepo
+	messageSvc       *service.MessageService
 	dedup            *appchannel.DedupLock
 	media            *MediaHandler
-	realtimeSvc      *service.RealtimeService
 }
 
 func NewIngestService(
@@ -32,9 +32,9 @@ func NewIngestService(
 	contactRepo *repo.ContactRepo,
 	conversationRepo *repo.ConversationRepo,
 	messageRepo *repo.MessageRepo,
+	messageSvc *service.MessageService,
 	dedup *appchannel.DedupLock,
 	media *MediaHandler,
-	realtimeSvc *service.RealtimeService,
 ) *IngestService {
 	return &IngestService{
 		channelSMSRepo:   channelSMSRepo,
@@ -43,9 +43,9 @@ func NewIngestService(
 		contactRepo:      contactRepo,
 		conversationRepo: conversationRepo,
 		messageRepo:      messageRepo,
+		messageSvc:       messageSvc,
 		dedup:            dedup,
 		media:            media,
-		realtimeSvc:      realtimeSvc,
 	}
 }
 
@@ -115,27 +115,23 @@ func (s *IngestService) IngestInbound(ctx context.Context, channel *model.Channe
 		content = &inbound.Content
 	}
 
+	senderType := "Contact"
+	contactID := contact.ID
 	msg := &model.Message{
-		AccountID:    channel.AccountID,
-		InboxID:      inboxID,
 		MessageType:  model.MessageIncoming,
 		ContentType:  contentType,
 		Content:      content,
 		SourceID:     &inbound.SourceID,
 		Status:       model.MessageSent,
 		ContentAttrs: contentAttrs,
+		SenderType:   &senderType,
+		SenderID:     &contactID,
 	}
 
-	created, err := s.messageRepo.Create(ctx, msg)
+	created, err := s.messageSvc.Create(ctx, channel.AccountID, inboxID, convo.ID, msg)
 	if err != nil {
 		return fmt.Errorf("sms ingest: create message: %w", err)
 	}
-
-	if err := s.messageRepo.UpdateConversationID(ctx, created.ID, channel.AccountID, convo.ID); err != nil {
-		logger.Error().Str("component", "sms.ingest").Err(err).Msg("link message to conversation")
-	}
-
-	s.realtimeSvc.BroadcastConversationEvent(convo.ID, "message.created", created)
 
 	if len(inbound.MediaURLs) > 0 {
 		go func() {

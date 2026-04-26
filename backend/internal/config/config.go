@@ -26,12 +26,15 @@ type Config struct {
 
 	BackendKEK string
 
-	MinioEndpoint  string
-	MinioPort      string
-	MinioAccessKey string
-	MinioSecretKey string
-	MinioBucket    string
-	MinioUseSSL    bool
+	MinioEndpoint       string
+	MinioPort           string
+	MinioAccessKey      string
+	MinioSecretKey      string
+	MinioBucket         string
+	MinioUseSSL         bool
+	MinioPublicEndpoint string
+	MinioPublicPort     string
+	MinioPublicUseSSL   bool
 
 	APIURL      string
 	CORSOrigins string
@@ -76,12 +79,15 @@ func Load() *Config {
 
 		BackendKEK: getEnv("BACKEND_KEK", ""),
 
-		MinioEndpoint:  getEnv("MINIO_ENDPOINT", "localhost"),
-		MinioPort:      getEnv("MINIO_PORT", "9000"),
-		MinioAccessKey: getEnv("MINIO_ACCESS_KEY", ""),
-		MinioSecretKey: getEnv("MINIO_SECRET_KEY", ""),
-		MinioBucket:    getEnv("MINIO_BUCKET", "backend-media"),
-		MinioUseSSL:    getEnvAsBool("MINIO_USE_SSL", false),
+		MinioEndpoint:       getEnv("MINIO_ENDPOINT", "localhost"),
+		MinioPort:           getEnv("MINIO_PORT", "9000"),
+		MinioAccessKey:      getEnv("MINIO_ACCESS_KEY", ""),
+		MinioSecretKey:      getEnv("MINIO_SECRET_KEY", ""),
+		MinioBucket:         getEnv("MINIO_BUCKET", "backend-media"),
+		MinioUseSSL:         getEnvAsBool("MINIO_USE_SSL", false),
+		MinioPublicEndpoint: getEnv("MINIO_PUBLIC_ENDPOINT", ""),
+		MinioPublicPort:     getEnv("MINIO_PUBLIC_PORT", ""),
+		MinioPublicUseSSL:   getEnvAsBool("MINIO_PUBLIC_USE_SSL", false),
 
 		APIURL:      getEnv("API_URL", "http://localhost:3001"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "*"),

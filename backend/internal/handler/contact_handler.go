@@ -223,6 +223,14 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 		Email:       req.Email,
 		PhoneNumber: req.Phone,
 		Identifier:  req.Identifier,
+		AvatarURL:   req.AvatarURL,
+	}
+	if len(req.AdditionalAttributes) > 0 && string(req.AdditionalAttributes) != "null" {
+		if !json.Valid(req.AdditionalAttributes) {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "additional_attributes must be valid JSON"))
+		}
+		s := string(req.AdditionalAttributes)
+		attrs.AdditionalAttrs = &s
 	}
 
 	ci, err := h.svc.CreateOrReuseContactInbox(c.Context(), inbox, attrs, req.SourceID, hmacVerified)
@@ -334,6 +342,7 @@ func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
 	params := service.ContactIdentifyParams{
 		Email:       req.Email,
 		PhoneNumber: req.Phone,
+		AvatarURL:   req.AvatarURL,
 	}
 
 	updated, err := h.svc.Identify(c.Context(), accountID, contact, params)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"backend/internal/audit"
 	"backend/internal/dto"
@@ -18,7 +19,25 @@ func handleNotFound(c *fiber.Ctx, err error) error {
 	if repo.IsErrNotFound(err) {
 		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "resource not found"))
 	}
-	logger.Error().Str("component", "handler").Err(err).Msg("inbox handler error")
+	logger.Error().Str("component", "handler").Err(err).Msg("handler error")
+	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
+}
+
+// handleError maps domain errors to standard HTTP status codes. Callers
+// SHOULD pass the error from service/repo layers; the function checks known
+// sentinel errors via errors.Is and maps to 404, 409, 422, or 500.
+func handleError(c *fiber.Ctx, err error) error {
+	if repo.IsErrNotFound(err) {
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "resource not found"))
+	}
+	if errors.Is(err, repo.ErrConflict) {
+		return c.Status(fiber.StatusConflict).JSON(dto.ErrorResp("Conflict", "resource already exists"))
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return c.Status(fiber.StatusConflict).JSON(dto.ErrorResp("Conflict", "duplicate resource"))
+	}
+	logger.Error().Str("component", "handler").Err(err).Msg("handler error")
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 }
 

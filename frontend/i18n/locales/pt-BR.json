@@ -247,14 +247,9 @@
         "apiKey": "API Key"
       },
       "sms": {
-        "description": "Envie e receba SMS via Twilio, Bandwidth ou Zenvia.",
+        "description": "Envie e receba SMS via Bandwidth ou Zenvia.",
         "provider": "Provedor",
         "phoneNumber": "Número de telefone",
-        "twilio": {
-          "accountSid": "Account SID",
-          "authToken": "Auth Token",
-          "messagingServiceSid": "Messaging Service SID"
-        },
         "bandwidth": {
           "accountId": "Account ID",
           "applicationId": "Application ID",
@@ -384,6 +379,17 @@
   "conversations": {
     "title": "Conversas",
     "empty": "Sem conversas ainda.",
+    "audio": {
+      "play": "Reproduzir",
+      "pause": "Pausar",
+      "error": "Erro",
+      "speed": "Velocidade",
+      "mute": "Silenciar",
+      "unmute": "Ativar som",
+      "download": "Baixar",
+      "playing": "Reproduzindo áudio",
+      "stop": "Encerrar"
+    },
     "sidebar": {
       "title": "Filtros",
       "mine": "Minhas",
@@ -425,10 +431,34 @@
       "privateTab": "Mensagem Privada",
       "send": "Enviar",
       "attach": "Anexar arquivo",
+      "removeAttachment": "Remover anexo",
       "expand": "Expandir editor",
+      "collapse": "Recolher editor",
       "emoji": "Emoji",
       "voice": "Mensagem de voz",
+      "voiceRecording": "Gravando",
+      "voiceStop": "Parar e anexar",
+      "voiceCancel": "Cancelar",
+      "voicePause": "Pausar",
+      "voiceResume": "Retomar",
+      "voicePermissionDenied": "Permissão de microfone negada",
+      "voiceUnavailable": "Microfone indisponível",
+      "voiceUnsupported": "Navegador não suporta gravação de áudio",
       "canned": "Resposta pronta",
+      "cannedEmpty": "Nenhuma resposta pronta",
+      "format": "Formatação",
+      "linkPrompt": "URL do link",
+      "emojiGroups": {
+        "smileysPeople": "Pessoas e rostos",
+        "animalsNature": "Animais e natureza",
+        "foodDrink": "Comida e bebida",
+        "activities": "Atividades",
+        "travelPlaces": "Viagens e lugares",
+        "objects": "Objetos",
+        "symbols": "Símbolos",
+        "flags": "Bandeiras",
+        "recent": "Recentes"
+      },
       "toolbar": {
         "bold": "Negrito",
         "italic": "Itálico",
@@ -464,7 +494,9 @@
       "more": "Mais ações",
       "noInbox": "Sem caixa de entrada",
       "noIdentifier": "Identificador indisponível",
+      "noContact": "Sem contato",
       "identifier": "Identificador",
+      "email": "E-mail",
       "phone": "Telefone",
       "inbox": "Caixa de entrada",
       "conversation": "Conversa",
@@ -497,7 +529,19 @@
       },
       "edited": "editada",
       "deleted": "Mensagem apagada",
-      "private": "Nota privada"
+      "private": "Nota privada",
+      "copied": "Mensagem copiada",
+      "copyFailed": "Falha ao copiar",
+      "confirmDelete": "Apagar esta mensagem?",
+      "deleteFailed": "Falha ao apagar",
+      "actions": {
+        "more": "Mais ações",
+        "reply": "Responder",
+        "copy": "Copiar",
+        "download": "Baixar",
+        "delete": "Apagar",
+        "attachment": "Anexo"
+      }
     },
     "bulk": {
       "selected": "{count} selecionada(s)",

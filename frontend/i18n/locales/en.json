@@ -387,6 +387,17 @@
   "conversations": {
     "title": "Conversations",
     "empty": "No conversations yet.",
+    "audio": {
+      "play": "Play",
+      "pause": "Pause",
+      "error": "Error",
+      "speed": "Speed",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "download": "Download",
+      "playing": "Playing audio",
+      "stop": "Stop"
+    },
     "sidebar": {
       "title": "Filters",
       "mine": "Mine",
@@ -428,10 +439,34 @@
       "privateTab": "Private Message",
       "send": "Send",
       "attach": "Attach file",
+      "removeAttachment": "Remove attachment",
       "expand": "Expand editor",
+      "collapse": "Collapse editor",
       "emoji": "Emoji",
       "voice": "Voice message",
+      "voiceRecording": "Recording",
+      "voiceStop": "Stop and attach",
+      "voiceCancel": "Cancel",
+      "voicePause": "Pause",
+      "voiceResume": "Resume",
+      "voicePermissionDenied": "Microphone permission denied",
+      "voiceUnavailable": "Microphone unavailable",
+      "voiceUnsupported": "Browser does not support audio recording",
       "canned": "Canned response",
+      "cannedEmpty": "No canned responses",
+      "format": "Formatting",
+      "linkPrompt": "Link URL",
+      "emojiGroups": {
+        "smileysPeople": "Smileys & people",
+        "animalsNature": "Animals & nature",
+        "foodDrink": "Food & drink",
+        "activities": "Activities",
+        "travelPlaces": "Travel & places",
+        "objects": "Objects",
+        "symbols": "Symbols",
+        "flags": "Flags",
+        "recent": "Recent"
+      },
       "toolbar": {
         "bold": "Bold",
         "italic": "Italic",
@@ -467,7 +502,9 @@
       "more": "More actions",
       "noInbox": "No inbox",
       "noIdentifier": "Identifier unavailable",
+      "noContact": "No contact",
       "identifier": "Identifier",
+      "email": "Email",
       "phone": "Phone",
       "inbox": "Inbox",
       "conversation": "Conversation",
@@ -500,7 +537,19 @@
       },
       "edited": "edited",
       "deleted": "Message deleted",
-      "private": "Private note"
+      "private": "Private note",
+      "copied": "Message copied",
+      "copyFailed": "Copy failed",
+      "confirmDelete": "Delete this message?",
+      "deleteFailed": "Delete failed",
+      "actions": {
+        "more": "More actions",
+        "reply": "Reply",
+        "copy": "Copy",
+        "download": "Download",
+        "delete": "Delete",
+        "attachment": "Attachment"
+      }
     },
     "bulk": {
       "selected": "{count} selected",

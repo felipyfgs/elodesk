@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useConversationsStore } from '~/stores/conversations'
+import { useConversationsStore, STATUS_MAP } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 import { useLabelsStore } from '~/stores/labels'
 import { useTeamsStore } from '~/stores/teams'
@@ -33,7 +33,7 @@ function toggleSelectAll(value: boolean | string) {
   else convs.clearSelection()
 }
 
-async function bulkToggleStatus(status: string) {
+async function bulkToggleStatus(status: keyof typeof STATUS_MAP) {
   const accountId = auth.account?.id
   if (!accountId || loading.value) return
   loading.value = true
@@ -42,7 +42,7 @@ async function bulkToggleStatus(status: string) {
       selectedIds.value.map(id =>
         api(`/accounts/${accountId}/conversations/${id}/status`, {
           method: 'PATCH',
-          body: { status }
+          body: { status: STATUS_MAP[status] }
         })
       )
     )
@@ -120,7 +120,7 @@ async function bulkDelete() {
       selectedIds.value.map(id =>
         api(`/accounts/${accountId}/conversations/${id}/status`, {
           method: 'PATCH',
-          body: { status: 'RESOLVED' }
+          body: { status: STATUS_MAP.RESOLVED }
         })
       )
     )

@@ -126,8 +126,10 @@ type Contact struct {
 	Identifier      *string    `json:"identifier,omitempty"`
 	AdditionalAttrs *string    `json:"additionalAttributes,omitempty"`
 	AvatarURL       *string    `json:"avatarUrl,omitempty"`
+	AvatarHash      *string    `json:"avatarHash,omitempty"`
 	Blocked         bool       `json:"blocked"`
 	LastActivityAt  *time.Time `json:"lastActivityAt,omitempty"`
+	DeletedAt       *time.Time `json:"deletedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
@@ -217,10 +219,12 @@ type Message struct {
 	ContentAttrs      *string            `json:"contentAttributes,omitempty"`
 	SenderType        *string            `json:"senderType,omitempty"`
 	SenderID          *int64             `json:"senderId,omitempty"`
+	SenderContactID   *int64             `json:"senderContactId,omitempty"`
 	ExternalSourceIDs *string            `json:"externalSourceIds,omitempty"`
 	CreatedAt         time.Time          `json:"createdAt"`
 	UpdatedAt         time.Time          `json:"updatedAt"`
 	DeletedAt         *time.Time         `json:"deletedAt,omitempty"`
+	Attachments       []Attachment       `json:"attachments,omitempty"`
 }
 
 type AttachmentFileType int

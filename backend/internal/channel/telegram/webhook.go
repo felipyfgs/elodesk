@@ -124,6 +124,8 @@ func processMessage(
 
 	content, contentType, contentAttrs := extractContent(msg)
 
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      accountID,
 		InboxID:        inbox.ID,
@@ -133,6 +135,8 @@ func processMessage(
 		Content:        &content,
 		SourceID:       &sourceID,
 		ContentAttrs:   contentAttrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 
 	if _, err := messageRepo.Create(ctx, dbMsg); err != nil {
@@ -286,6 +290,8 @@ func processCallbackQuery(
 	content := cq.Data
 	attrs := fmt.Sprintf(`{"callback_query_id":"%s","button_text":"%s"}`, cq.ID, cq.Data)
 
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      accountID,
 		InboxID:        inbox.ID,
@@ -295,6 +301,8 @@ func processCallbackQuery(
 		Content:        &content,
 		SourceID:       &sourceID,
 		ContentAttrs:   &attrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 
 	_ = time.Now()

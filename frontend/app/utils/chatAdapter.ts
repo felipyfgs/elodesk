@@ -5,25 +5,23 @@ import type { Conversation } from '~/stores/conversations'
 // --- Contact helpers (S3.1) ---
 
 export function resolveContactName(c: Conversation): string {
-  const contact = c.contactInbox?.contact
-  if (contact?.name) return contact.name
-  if (contact?.phoneNumber) return contact.phoneNumber
-  if (contact?.waJid) return contact.waJid
-  if (contact?.email) return contact.email
-  if (c.meta?.sender?.name) return c.meta.sender.name
-  return `#${c.displayId}`
+  return c.meta?.sender?.name
+    ?? c.meta?.sender?.phoneNumber
+    ?? c.meta?.sender?.email
+    ?? ''
 }
 
 export function resolveContactIdentifier(c: Conversation): string {
-  const contact = c.contactInbox?.contact
-  if (contact?.phoneNumber) return contact.phoneNumber
-  if (contact?.waJid) return contact.waJid
-  if (contact?.email) return contact.email
-  return ''
+  return c.meta?.sender?.phoneNumber
+    ?? c.meta?.sender?.email
+    ?? c.meta?.sender?.identifier
+    ?? ''
 }
 
 export function resolveContactAvatar(c: Conversation): string | undefined {
-  return c.meta?.sender?.thumbnail ?? c.contactInbox?.contact?.avatarUrl ?? undefined
+  return c.meta?.sender?.thumbnail
+    ?? c.meta?.sender?.avatarUrl
+    ?? undefined
 }
 
 // --- Message role mapping (S1.3) ---
@@ -77,17 +75,47 @@ export function messageBubbleKind(m: Message): BubbleKind {
 // --- Attachment helpers (S1.2) ---
 
 export interface MessageAttachment {
-  fileUrl: string
+  fileUrl?: string
+  path?: string
   fileType: string
+  size?: number
 }
 
 export function hasAttachments(m: Message): boolean {
+  if (m.attachments && m.attachments.length > 0) return true
   const ca = messageContentAttributes(m)
   const attachments = ca?.attachments as MessageAttachment[] | undefined
   return !!(attachments && attachments.length > 0)
 }
 
+// Backend AttachmentFileType enum: 0=image, 1=audio, 2=video, 3=file,
+// 4=location, 5=fallback. When the server-side contentType (MIME) is
+// absent we fall back to mapping the numeric enum to a string token the
+// UI can pattern-match against.
+const FILE_TYPE_MAP: Record<number, string> = {
+  0: 'image',
+  1: 'audio',
+  2: 'video',
+  3: 'file',
+  4: 'location',
+  5: 'file'
+}
+
+function normalizeFileType(contentType: string | undefined | null, rawFileType: unknown): string {
+  if (contentType) return contentType
+  if (typeof rawFileType === 'string') return rawFileType
+  if (typeof rawFileType === 'number') return FILE_TYPE_MAP[rawFileType] ?? 'file'
+  return 'file'
+}
+
 export function getAttachments(m: Message): MessageAttachment[] {
+  if (m.attachments && m.attachments.length > 0) {
+    return m.attachments.map(a => ({
+      path: a.fileKey,
+      fileType: normalizeFileType(a.contentType, a.fileType),
+      size: a.size
+    }))
+  }
   const ca = messageContentAttributes(m)
   return (ca?.attachments as MessageAttachment[] | undefined) ?? []
 }
@@ -112,8 +140,15 @@ export function messageStatusDisplay(m: Message, t: (key: string) => string): St
 
 // --- Message grouping (S2.9) ---
 
+function senderKey(m: Message): string {
+  // Prefer the hydrated `sender` struct (new Chatwoot shape); fall back to the
+  // legacy senderType/senderId pair used by optimistic composer messages.
+  if (m.sender?.id != null) return `${m.sender.type ?? ''}:${m.sender.id}`
+  return `${m.senderType ?? ''}:${m.senderId ?? ''}`
+}
+
 export function shouldGroupWith(prev: Message, curr: Message): boolean {
-  if (prev.senderId !== curr.senderId) return false
+  if (senderKey(prev) !== senderKey(curr)) return false
   if (prev.messageType !== curr.messageType) return false
   if (curr.status === 3 || prev.status === 3) return false // failed
   const prevTime = new Date(prev.createdAt).getTime()
@@ -134,5 +169,8 @@ export function messageParts(m: Message) {
 // --- Time formatting ---
 
 export function messageTime(m: Message): string {
-  return format(new Date(m.createdAt), 'HH:mm')
+  if (!m.createdAt) return ''
+  const d = new Date(m.createdAt)
+  if (Number.isNaN(d.getTime())) return ''
+  return format(d, 'HH:mm')
 }

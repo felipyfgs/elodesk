@@ -172,6 +172,8 @@ func ProcessWebhook(
 
 	messageContent, contentType, attrs := extractContent(&content, outgoingEcho)
 
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inbox.ID,
@@ -181,6 +183,8 @@ func ProcessWebhook(
 		Content:        &messageContent,
 		SourceID:       &content.MessageID,
 		ContentAttrs:   attrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	if _, err := messageRepo.Create(ctx, dbMsg); err != nil {
 		return fmt.Errorf("create message: %w", err)

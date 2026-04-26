@@ -157,7 +157,7 @@ func (h *SavedFilterHandler) FilterConversations(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to list conversations"))
 	}
 
-	return c.JSON(dto.SuccessResp(dto.ConversationListResp{
+	return c.JSON(dto.SuccessResp(dto.PaginatedResp[dto.ConversationResp]{
 		Meta:    dto.NewMetaResp(total, page, perPage),
 		Payload: dto.ConversationsToResp(convos),
 	}))

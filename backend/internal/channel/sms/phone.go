@@ -1,72 +1,32 @@
 package sms
 
 import (
-	"fmt"
-
 	"github.com/nyaruka/phonenumbers"
+
+	"backend/internal/phone"
 )
 
-var defaultRegion = "BR"
+// Thin re-exports of backend/internal/phone so existing callers under
+// channel/sms keep working after the helpers were promoted to a shared
+// package (the move was driven by the need to call NormalizeE164 from
+// service/, which couldn't import sms without an import cycle).
 
-func SetDefaultRegion(region string) {
-	defaultRegion = region
-}
+func SetDefaultRegion(region string) { phone.SetDefaultRegion(region) }
 
-func DefaultRegion() string {
-	return defaultRegion
-}
+func DefaultRegion() string { return phone.DefaultRegion() }
 
 func NormalizeE164(raw string, regions ...string) (string, bool) {
-	region := defaultRegion
-	if len(regions) > 0 && regions[0] != "" {
-		region = regions[0]
-	}
-
-	num, err := phonenumbers.Parse(raw, region)
-	if err != nil {
-		return raw, false
-	}
-
-	if !phonenumbers.IsValidNumber(num) {
-		return raw, false
-	}
-
-	return phonenumbers.Format(num, phonenumbers.E164), true
+	return phone.NormalizeE164(raw, regions...)
 }
 
 func ParseRegion(raw string, region string) (*phonenumbers.PhoneNumber, error) {
-	return phonenumbers.Parse(raw, region)
+	return phone.ParseRegion(raw, region)
 }
 
-func FormatE164(num *phonenumbers.PhoneNumber) string {
-	return phonenumbers.Format(num, phonenumbers.E164)
-}
+func FormatE164(num *phonenumbers.PhoneNumber) string { return phone.FormatE164(num) }
 
-func IsValidE164(e164 string) bool {
-	num, err := phonenumbers.Parse(e164, "")
-	if err != nil {
-		return false
-	}
-	return phonenumbers.IsValidNumber(num)
-}
+func IsValidE164(e164 string) bool { return phone.IsValidE164(e164) }
 
-func ParseAndNormalize(raw string) (e164 string, valid bool) {
-	for _, region := range []string{defaultRegion, "US", ""} {
-		num, err := phonenumbers.Parse(raw, region)
-		if err != nil {
-			continue
-		}
-		if phonenumbers.IsValidNumber(num) {
-			return phonenumbers.Format(num, phonenumbers.E164), true
-		}
-	}
-	return raw, false
-}
+func ParseAndNormalize(raw string) (string, bool) { return phone.ParseAndNormalize(raw) }
 
-func CountryCode(e164 string) (int, error) {
-	num, err := phonenumbers.Parse(e164, "")
-	if err != nil {
-		return 0, fmt.Errorf("parse phone: %w", err)
-	}
-	return int(num.GetCountryCode()), nil
-}
+func CountryCode(e164 string) (int, error) { return phone.CountryCode(e164) }

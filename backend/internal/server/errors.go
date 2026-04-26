@@ -6,12 +6,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"backend/internal/dto"
+	"backend/internal/repo"
 )
 
+// Sentinel errors. ErrConflict and ErrForbidden are re-exported here as
+// aliases for backwards compatibility — the source of truth lives in
+// `internal/repo/errors.go` to avoid the handler→server→handler import cycle.
 var (
 	ErrNotFound  = errors.New("resource not found")
-	ErrConflict  = errors.New("resource already exists")
-	ErrForbidden = errors.New("access denied")
+	ErrConflict  = repo.ErrConflict
+	ErrForbidden = repo.ErrForbidden
 )
 
 func NotFoundHandler(c *fiber.Ctx) error {

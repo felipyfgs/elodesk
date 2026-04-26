@@ -149,6 +149,8 @@ func (i *Ingester) Ingest(ctx context.Context, ch *model.ChannelTwilio, inbox *m
 		content = &b
 	}
 
+	senderType := "Contact"
+	contactID := contact.ID
 	msg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inbox.ID,
@@ -159,6 +161,8 @@ func (i *Ingester) Ingest(ctx context.Context, ch *model.ChannelTwilio, inbox *m
 		SourceID:       &p.MessageSid,
 		Status:         model.MessageSent,
 		ContentAttrs:   contentAttrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	if _, err := i.messageRepo.Create(ctx, msg); err != nil {
 		return fmt.Errorf("twilio ingest: create message: %w", err)

@@ -277,3 +277,24 @@ func TestNormalizePhone(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeWaSourceID(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"559992032709", "559992032709"},
+		{"559992032709@s.whatsapp.net", "559992032709"},
+		{"559992032709:7@s.whatsapp.net", "559992032709"},
+		{"559992032709:5", "559992032709"},
+		{"5511999999999@g.us", "5511999999999"},
+		{" 559992032709 ", "559992032709"},
+		{"not-a-jid", "not-a-jid"},
+	}
+	for _, tt := range tests {
+		got := normalizeWaSourceID(tt.input)
+		if got != tt.expected {
+			t.Errorf("normalizeWaSourceID(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}

@@ -3,6 +3,7 @@ import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { Contact } from '~/stores/contacts'
 import { countries } from '~/utils/countries'
+import { parseJsonAttrs } from '~/utils/jsonAttrs'
 
 const props = defineProps<{
   contact: Contact
@@ -80,17 +81,8 @@ function splitName(full: string | null): { firstName: string, lastName: string }
   }
 }
 
-function parseAttrs(raw: string | null): Record<string, unknown> {
-  if (!raw) return {}
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return {}
-  }
-}
-
 function hydrate(): Schema {
-  const attrs = parseAttrs(props.contact.additionalAttributes)
+  const attrs = parseJsonAttrs(props.contact.additionalAttributes)
   const social = (attrs.social_profiles ?? {}) as Record<string, string>
   const split = splitName(props.contact.name)
   return {

@@ -104,6 +104,9 @@ JWT access (HS256, 15m) + refresh tokens (48 random bytes, SHA-256 at rest). Rot
 - `GET /realtime` with JWT in query or `Sec-WebSocket-Protocol`
 - Client joins: `join.account|inbox|conversation` with `{id: ...}`
 - Ping every 54s, pong timeout 60s. Frontend: 30s heartbeat, 10 retries.
+- Event names follow `resource.action`: `message.created`, `message.updated`, `message.deleted`, `conversation.created`, `conversation.updated`, `inbox.status`. Legacy `message.new` / `conversation.new` removed (see `backend/internal/realtime/events.go`).
+- Message events are emitted from a **single** point: `service.MessageService` (`Create` → `message.created`, `UpdateStatus` → `message.updated`, `SoftDelete` → `message.deleted`). Channels (WhatsApp, SMS, …) delegate message creation to `MessageService` and never broadcast directly.
+- `message.created` / `message.updated` payloads embed a `conversation` summary (`assigneeId`, `teamId`, `unreadCount`, `lastActivityAt`) so clients can reorder lists without an extra fetch, and echo `echoId` (when sent in `POST /messages`) for optimistic reconciliation in the composer.
 
 ### Uploads (MinIO)
 - Presigned PUT/GET (15m expiry). PUT path must begin with `{accountId}/`.

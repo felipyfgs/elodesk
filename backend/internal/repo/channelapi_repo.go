@@ -137,7 +137,7 @@ func (r *ChannelAPIRepo) FindByIdentifier(ctx context.Context, identifier string
 }
 
 func (r *ChannelAPIRepo) FindAccountByChannelID(ctx context.Context, channelID int64) (*model.Account, error) {
-	query := `SELECT a.id, a.name, a.slug, a.created_at, a.updated_at
+	query := `SELECT a.id, a.name, a.slug, a.locale, a.status, a.custom_attributes, a.settings, a.created_at, a.updated_at
 		FROM accounts a JOIN channels_api ca ON ca.account_id = a.id WHERE ca.id = $1`
 	row := r.pool.QueryRow(ctx, query, channelID)
 	var m model.Account

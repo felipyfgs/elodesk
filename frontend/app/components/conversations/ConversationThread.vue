@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { ContextMenuItem, DropdownMenuItem } from '@nuxt/ui'
+import { renderMarkdown } from '~/utils/markdown'
 import { useAuthStore } from '~/stores/auth'
 import { useMessagesStore, type Message } from '~/stores/messages'
 import { STATUS_MAP, type Conversation, type ConversationStatus } from '~/stores/conversations'
@@ -20,10 +21,28 @@ import {
   shouldGroupWith,
   hasAttachments,
   getAttachments,
-  type BubbleKind
+  type BubbleKind,
+  type MessageAttachment
 } from '~/utils/chatAdapter'
 
+const AUDIO_EXT_RE = /\.(mp3|wav|ogg|oga|webm|m4a|aac|opus|weba)(\?|$)/i
+
+function isAudioAttachment(att: MessageAttachment): boolean {
+  if (att.fileType?.toLowerCase().startsWith('audio')) return true
+  if (att.fileUrl && AUDIO_EXT_RE.test(att.fileUrl)) return true
+  if (att.path && AUDIO_EXT_RE.test(att.path)) return true
+  return false
+}
+
 type StatusAction = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+
+// Stores keep IDs as strings, but the backend's BodyParser expects int64 — so
+// JSON `"1"` returns 400. Convert to number (or null) before sending in a body.
+function toNumericId(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : null
+}
 
 const props = withDefaults(defineProps<{
   conversation: Conversation
@@ -59,6 +78,48 @@ async function loadMessages() {
 
 watch(() => props.conversation.id, loadMessages, { immediate: true })
 
+// Scroll-to-bottom: handled at the outer overflow container instead of
+// trusting UChatMessages :auto-scroll. Reactive list updates from the
+// realtime store don't reliably trigger Nuxt UI's internal observer when
+// the scroll element is the parent overflow div.
+const scrollContainerRef = ref<HTMLDivElement | null>(null)
+const STICK_THRESHOLD_PX = 80
+const stickToBottom = ref(true)
+
+function isNearBottom(el: HTMLElement) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_THRESHOLD_PX
+}
+
+function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
+  const el = scrollContainerRef.value
+  if (!el) return
+  el.scrollTo({ top: el.scrollHeight, behavior })
+}
+
+function onScroll() {
+  const el = scrollContainerRef.value
+  if (!el) return
+  // If the agent reads history (scrolls up), don't yank them back when a
+  // new message arrives. Resume auto-stick once they're back near the end.
+  stickToBottom.value = isNearBottom(el)
+}
+
+// Reset to bottom whenever the active conversation changes.
+watch(() => props.conversation.id, () => {
+  stickToBottom.value = true
+  nextTick(() => scrollToBottom('auto'))
+})
+
+// React to new/updated messages. Watching length covers append; watching
+// the last id covers the "pending → real" reconciliation in upsert.
+watch(
+  () => [list.value.length, list.value[list.value.length - 1]?.id] as const,
+  () => {
+    if (!stickToBottom.value) return
+    nextTick(() => scrollToBottom('smooth'))
+  }
+)
+
 onMounted(() => {
   if (!agents.items.length) {
     agents.fetch().catch((err) => {
@@ -67,11 +128,131 @@ onMounted(() => {
   }
 })
 
-const contact = computed(() => props.conversation.contactInbox?.contact)
+async function copyMessage(m: Message) {
+  try {
+    await navigator.clipboard.writeText(m.content ?? '')
+    toast.add({ title: t('conversations.message.copied'), color: 'success' })
+  } catch {
+    toast.add({ title: t('conversations.message.copyFailed'), color: 'error' })
+  }
+}
+
+function replyTo(m: Message) {
+  messages.setReplyTarget(props.conversation.id, m)
+}
+
+async function deleteMessage(m: Message) {
+  if (!auth.account?.id) return
+  if (!confirm(t('conversations.message.confirmDelete'))) return
+  try {
+    await api(`/accounts/${auth.account.id}/conversations/${props.conversation.id}/messages/${m.id}`, {
+      method: 'DELETE'
+    })
+    // Realtime message.deleted will also remove it; this is just an
+    // optimistic UI update for the sender.
+    messages.remove(m.id)
+  } catch (err) {
+    console.error('[ConversationThread] delete failed', err)
+    toast.add({ title: t('conversations.message.deleteFailed'), color: 'error' })
+  }
+}
+
+function downloadFirstAttachment(m: Message) {
+  const att = getAttachments(m)[0]
+  if (!att) return
+  const href = att.fileUrl ?? (att.path ? `${useRuntimeConfig().public.apiUrl}/accounts/${auth.account?.id}/uploads/download?path=${encodeURIComponent(att.path)}` : null)
+  if (!href) return
+  const a = document.createElement('a')
+  a.href = href
+  a.download = att.path?.split('/').pop() ?? 'attachment'
+  a.target = '_blank'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+interface QuotedReply {
+  id?: string | number
+  content?: string
+  author?: string
+}
+
+function messageContentAttrs(m: Message): Record<string, unknown> {
+  const ca = m.contentAttributes
+  if (!ca) return {}
+  if (typeof ca === 'string') {
+    try {
+      return JSON.parse(ca) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return ca
+}
+
+function quotedReply(m: Message): QuotedReply | null {
+  const ca = messageContentAttrs(m)
+  const raw = ca.in_reply_to
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const id = typeof r.id === 'string' || typeof r.id === 'number' ? r.id : undefined
+  const content = typeof r.content === 'string' ? r.content : undefined
+  const author = typeof r.author === 'string' ? r.author : undefined
+  return { id, content, author }
+}
+
+// Chevron-button dropdown shares a single open slot so only one message
+// menu is visible at a time. The right-click context menu is a separate
+// UContextMenu anchored at the cursor.
+const activeMenuId = ref<string | null>(null)
+function isMenuOpen(id: string | number) {
+  return activeMenuId.value === String(id)
+}
+function toggleMenu(id: string | number, open: boolean) {
+  activeMenuId.value = open ? String(id) : null
+}
+
+function messageActionItems(m: Message): DropdownMenuItem[][] {
+  const groups: DropdownMenuItem[][] = []
+  const primary: DropdownMenuItem[] = [
+    {
+      label: t('conversations.message.actions.reply'),
+      icon: 'i-lucide-reply',
+      onSelect: () => replyTo(m)
+    }
+  ]
+  if (m.content) {
+    primary.push({
+      label: t('conversations.message.actions.copy'),
+      icon: 'i-lucide-copy',
+      onSelect: () => copyMessage(m)
+    })
+  }
+  if (hasAttachments(m)) {
+    primary.push({
+      label: t('conversations.message.actions.download'),
+      icon: 'i-lucide-download',
+      onSelect: () => downloadFirstAttachment(m)
+    })
+  }
+  groups.push(primary)
+
+  const isOutgoing = messageSide(m) === 'right'
+  if (isOutgoing && bubbleKind(m) !== 'deleted' && bubbleKind(m) !== 'activity') {
+    groups.push([{
+      label: t('conversations.message.actions.delete'),
+      icon: 'i-lucide-trash-2',
+      color: 'error',
+      onSelect: () => deleteMessage(m)
+    }])
+  }
+  return groups
+}
+
+const contact = computed(() => props.conversation.meta?.sender ?? null)
 const contactName = computed(() => resolveContactName(props.conversation))
 const contactIdentifier = computed(() => resolveContactIdentifier(props.conversation))
 const contactAvatar = computed(() => resolveContactAvatar(props.conversation))
-const headerSubtitle = computed(() => contactIdentifier.value || props.conversation.inbox?.name || t('conversations.detail.noInbox'))
 
 const statusLabel = computed(() => {
   const keys = ['open', 'resolved', 'pending', 'snoozed']
@@ -177,23 +358,38 @@ const detailSections = computed(() => [
   { value: 'linkedIssues', label: t('conversations.detail.linkedIssues'), icon: 'i-lucide-git-pull-request' }
 ])
 
-const contactRows = computed(() => [
-  { icon: 'i-lucide-hash', title: t('conversations.detail.conversation'), value: `#${props.conversation.displayId}` },
-  { icon: 'i-lucide-at-sign', title: t('conversations.detail.identifier'), value: contact.value?.waJid || contact.value?.email || contactIdentifier.value || t('conversations.detail.noIdentifier') },
-  { icon: 'i-lucide-phone', title: t('conversations.detail.phone'), value: contact.value?.phoneNumber },
-  { icon: 'i-lucide-inbox', title: t('conversations.detail.inbox'), value: props.conversation.inbox?.name },
-  { icon: 'i-lucide-radio', title: t('conversations.detail.channel'), value: channelBadge.value }
-].filter(row => row.value))
+// Mostra apenas info que NÃO está visível no header (avatar / nome /
+// identifier / badges de conversa+inbox+canal). Telefone/identifier/inbox/
+// canal já estão acima — exibir de novo na lista é poluição.
+const contactRows = computed(() => {
+  const rows: { icon: string, title: string, value: string }[] = []
+  const phone = contact.value?.phoneNumber
+  const identifier = contactIdentifier.value
+  const email = contact.value?.email
+  if (email) {
+    rows.push({ icon: 'i-lucide-mail', title: t('conversations.detail.email'), value: email })
+  }
+  if (identifier && identifier !== phone && identifier !== email) {
+    rows.push({ icon: 'i-lucide-at-sign', title: t('conversations.detail.identifier'), value: identifier })
+  }
+  return rows
+})
 
 const channelBadge = computed(() => {
   const type = props.conversation.inbox?.channelType || props.conversation.meta?.channel || ''
-  if (type.includes('Whatsapp') || type.includes('Twilio')) return 'WP'
+  if (type.includes('Api')) return 'API'
+  if (type.includes('Whatsapp')) return 'WA'
+  if (type.includes('Twilio')) return 'TW'
   if (type.includes('Sms')) return 'SMS'
   if (type.includes('Email')) return 'EM'
   if (type.includes('Instagram')) return 'IG'
   if (type.includes('Facebook')) return 'FB'
   if (type.includes('Telegram')) return 'TG'
-  return 'CH'
+  if (type.includes('Line')) return 'LI'
+  if (type.includes('Tiktok')) return 'TK'
+  if (type.includes('Twitter')) return 'TW'
+  if (type.includes('WebWidget')) return 'WW'
+  return type.split('::').pop() || ''
 })
 
 function unwrapConversation(res: Conversation | { payload?: Conversation } | undefined): Conversation | undefined {
@@ -209,7 +405,7 @@ async function updateStatus(status: StatusAction) {
   try {
     const res = await api<Conversation | { payload?: Conversation }>(`/accounts/${accountId}/conversations/${props.conversation.id}/status`, {
       method: 'PATCH',
-      body: { status }
+      body: { status: STATUS_MAP[status] }
     })
     const conv = unwrapConversation(res)
     conversations.upsert(conv ?? { ...props.conversation, status: STATUS_MAP[status] as ConversationStatus })
@@ -227,7 +423,7 @@ async function updateAssignment(assigneeId: string | null, teamId: string | null
   try {
     const res = await api<Conversation | { payload?: Conversation }>(`/accounts/${accountId}/conversations/${props.conversation.id}/assignments`, {
       method: 'POST',
-      body: { assignee_id: assigneeId, team_id: teamId }
+      body: { assignee_id: toNumericId(assigneeId), team_id: toNumericId(teamId) }
     })
     const conv = unwrapConversation(res)
     if (conv) {
@@ -259,28 +455,62 @@ function bubbleKind(m: Message): BubbleKind {
   return messageBubbleKind(m)
 }
 
+function isMarkdown(m: Message): boolean {
+  const attrs = m.contentAttributes
+  if (!attrs) return false
+  if (typeof attrs === 'string') {
+    try {
+      return (JSON.parse(attrs) as { format?: string }).format === 'markdown'
+    } catch {
+      return false
+    }
+  }
+  return (attrs as { format?: string }).format === 'markdown'
+}
+
 function messageUi(m: Message) {
   const kind = bubbleKind(m)
   if (kind === 'activity' || kind === 'template') {
     return {
-      root: 'flex justify-center',
+      root: 'flex justify-center [--last-message-height:0px]',
       container: 'justify-center pb-2',
       content: '!w-fit min-h-0 rounded-lg bg-elevated px-3 py-1 text-xs text-muted',
       actions: 'hidden'
     }
   }
 
+  if (kind === 'private') {
+    return {
+      root: '[--last-message-height:0px]',
+      container: 'justify-end pb-4',
+      content: '!p-0 !bg-transparent !ring-0 !shadow-none !rounded-none max-w-[34rem]',
+      actions: 'right-1 text-warning/70'
+    }
+  }
+
   const outgoing = messageSide(m) === 'right'
   return {
+    root: '[--last-message-height:0px]',
     container: outgoing ? 'justify-end pb-4' : 'justify-start pb-4',
-    content: [
-      'max-w-[34rem] whitespace-pre-wrap break-words px-3.5 py-2 text-sm shadow-sm ring-0',
-      outgoing
-        ? 'rounded-lg rounded-br-sm bg-primary text-inverted'
-        : 'rounded-lg rounded-bl-sm bg-elevated text-highlighted'
-    ],
+    content: '!p-0 !bg-transparent !ring-0 !shadow-none !rounded-none max-w-[34rem]',
     actions: outgoing ? 'right-1 text-dimmed' : 'left-1 text-dimmed'
   }
+}
+
+function bubbleClass(m: Message): string {
+  const kind = bubbleKind(m)
+  // Reserve space on the top-right for the chevron action button so text
+  // never renders underneath it. Deleted/activity bubbles skip the button
+  // and can use uniform padding.
+  const hasActions = kind !== 'deleted' && kind !== 'activity'
+  const padding = hasActions ? 'pl-3.5 pr-8 py-2' : 'px-3.5 py-2'
+  if (kind === 'private') {
+    return `${padding} text-sm shadow-sm whitespace-pre-wrap break-words rounded-lg rounded-br-sm bg-warning/10 text-highlighted ring-1 ring-warning/25`
+  }
+  const outgoing = messageSide(m) === 'right'
+  return outgoing
+    ? `${padding} text-sm shadow-sm whitespace-pre-wrap break-words rounded-lg rounded-br-sm bg-primary text-inverted`
+    : `${padding} text-sm shadow-sm whitespace-pre-wrap break-words rounded-lg rounded-bl-sm bg-elevated text-highlighted`
 }
 </script>
 
@@ -301,34 +531,7 @@ function messageUi(m: Message) {
               />
             </UTooltip>
 
-            <div class="-ms-1 flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5">
-              <UAvatar
-                :alt="contactName"
-                :src="contactAvatar"
-                size="md"
-                class="shrink-0"
-              />
-              <div class="min-w-0 flex-1">
-                <div class="flex min-w-0 items-center gap-2">
-                  <p class="truncate text-sm font-semibold text-highlighted">
-                    {{ contactName }}
-                  </p>
-                  <span class="hidden shrink-0 text-xs font-medium text-muted sm:inline">
-                    #{{ conversation.displayId }}
-                  </span>
-                </div>
-                <div class="mt-0.5 flex min-w-0 items-center gap-1.5">
-                  <span class="truncate text-xs text-muted">{{ headerSubtitle }}</span>
-                  <UBadge
-                    :label="statusLabel"
-                    :color="statusColor"
-                    variant="subtle"
-                    size="xs"
-                    class="shrink-0"
-                  />
-                </div>
-              </div>
-            </div>
+            <ChatHeader :conversation="conversation" class="min-w-0 flex-1" />
           </div>
 
           <div class="flex shrink-0 items-center gap-1">
@@ -366,12 +569,16 @@ function messageUi(m: Message) {
         </header>
 
         <div class="flex min-h-0 flex-1 flex-col bg-default">
-          <div class="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4">
+          <div
+            ref="scrollContainerRef"
+            class="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4"
+            @scroll.passive="onScroll"
+          >
             <UChatMessages
-              class="mx-auto w-full max-w-3xl px-0 py-4"
-              :should-scroll-to-bottom="true"
-              :auto-scroll="true"
-              :spacing-offset="160"
+              class="mx-auto w-full max-w-4xl px-0 py-4"
+              :should-scroll-to-bottom="false"
+              :auto-scroll="false"
+              :spacing-offset="0"
             >
               <div v-if="!list.length" class="flex flex-col items-center justify-center py-12 text-muted">
                 <UIcon name="i-lucide-message-circle-off" class="mb-2 size-8 text-dimmed" />
@@ -391,56 +598,127 @@ function messageUi(m: Message) {
                 :compact="isGrouped(i)"
                 :ui="messageUi(m)"
               >
-                <template v-if="bubbleKind(m) === 'deleted'" #content>
-                  <p class="font-semibold">
-                    {{ t('conversations.message.deleted') }}
-                  </p>
-                </template>
+                <template #content>
+                  <UContextMenu
+                    :items="bubbleKind(m) === 'deleted' || bubbleKind(m) === 'activity' ? undefined : (messageActionItems(m) as ContextMenuItem[][])"
+                    :disabled="bubbleKind(m) === 'deleted' || bubbleKind(m) === 'activity'"
+                  >
+                    <div :class="['group/bubble relative', bubbleClass(m)]">
+                      <UDropdownMenu
+                        v-if="bubbleKind(m) !== 'deleted' && bubbleKind(m) !== 'activity'"
+                        :items="messageActionItems(m)"
+                        :open="isMenuOpen(m.id)"
+                        :content="{ align: messageSide(m) === 'right' ? 'end' : 'start' }"
+                        @update:open="v => toggleMenu(m.id, v)"
+                      >
+                        <button
+                          type="button"
+                          class="absolute right-1.5 top-1.5 z-10 grid size-5 place-content-center rounded-full text-current transition-opacity duration-150"
+                          :class="[
+                            isMenuOpen(m.id) ? 'opacity-100' : 'opacity-0 group-hover/bubble:opacity-90 hover:!opacity-100'
+                          ]"
+                          :aria-label="t('conversations.message.actions.more')"
+                        >
+                          <UIcon name="i-lucide-chevron-down" class="size-4" />
+                        </button>
+                      </UDropdownMenu>
 
-                <template v-else-if="bubbleKind(m) === 'private'" #content>
-                  <div class="mb-1 flex items-center gap-1.5">
-                    <UIcon name="i-lucide-lock" class="size-3 text-warning" />
-                    <span class="text-[10px] font-medium text-warning">{{ t('conversations.message.private') }}</span>
-                  </div>
-                  <p>{{ m.content }}</p>
-                </template>
+                      <div
+                        v-if="quotedReply(m)"
+                        class="mb-1.5 border-l-2 border-current/40 bg-black/10 px-2 py-1 text-[11px] leading-tight opacity-80"
+                      >
+                        <div class="font-medium">
+                          {{ quotedReply(m)?.author ?? t('conversations.message.actions.reply') }}
+                        </div>
+                        <div class="line-clamp-2 whitespace-pre-wrap break-words text-xs">
+                          {{ quotedReply(m)?.content || t('conversations.message.actions.attachment') }}
+                        </div>
+                      </div>
 
-                <template v-else-if="bubbleKind(m) === 'activity'" #content>
-                  <p>
-                    {{ m.content }}
-                  </p>
-                </template>
+                      <template v-if="bubbleKind(m) === 'deleted'">
+                        <p class="font-semibold">
+                          {{ t('conversations.message.deleted') }}
+                        </p>
+                      </template>
 
-                <template v-else-if="bubbleKind(m) === 'error'" #content>
-                  <p class="text-error">
-                    {{ m.content }}
-                  </p>
-                </template>
+                      <template v-else-if="bubbleKind(m) === 'private'">
+                        <div
+                          v-if="m.content && isMarkdown(m)"
+                          class="markdown-body"
+                          v-html="renderMarkdown(m.content ?? '')"
+                        /><!-- eslint-disable-line vue/no-v-html -->
+                        <p v-else-if="m.content">
+                          {{ m.content }}
+                        </p>
+                      </template>
 
-                <template v-if="hasAttachments(m)" #files>
-                  <div class="mt-1 flex flex-wrap gap-2">
-                    <a
-                      v-for="(att, ai) in getAttachments(m)"
-                      :key="ai"
-                      :href="att.fileUrl"
-                      target="_blank"
-                      class="inline-flex items-center gap-1.5 rounded-md bg-default px-2 py-1 text-xs text-primary ring ring-default hover:underline"
-                    >
-                      <UIcon name="i-lucide-paperclip" class="size-3" />
-                      {{ att.fileType || 'attachment' }}
-                    </a>
-                  </div>
-                </template>
+                      <template v-else-if="bubbleKind(m) === 'activity'">
+                        <p>
+                          {{ m.content }}
+                        </p>
+                      </template>
 
-                <template #actions>
-                  <div class="flex items-center gap-1.5 text-[10px] text-muted">
-                    <span>{{ messageTime(m) }}</span>
-                    <UIcon
-                      v-if="m.messageType === 1"
-                      :name="messageStatusDisplay(m, t).icon"
-                      :class="['size-3', messageStatusDisplay(m, t).color]"
-                    />
-                  </div>
+                      <template v-else-if="bubbleKind(m) === 'error'">
+                        <p class="text-error">
+                          {{ m.content }}
+                        </p>
+                      </template>
+
+                      <template v-else-if="m.content && isMarkdown(m)">
+                        <!-- eslint-disable-next-line vue/no-v-html -->
+                        <div class="markdown-body" v-html="renderMarkdown(m.content ?? '')" />
+                      </template>
+
+                      <template v-else-if="m.content">
+                        <p class="whitespace-pre-wrap">
+                          {{ m.content }}
+                        </p>
+                      </template>
+
+                      <div v-if="hasAttachments(m)" class="mt-1 flex flex-col gap-2">
+                        <template v-for="(att, ai) in getAttachments(m)" :key="ai">
+                          <ConversationsAudioPlayer
+                            v-if="isAudioAttachment(att)"
+                            :path="att.path"
+                            :src="att.fileUrl"
+                            :variant="messageSide(m) === 'right' ? 'outgoing' : 'incoming'"
+                            :track-id="`msg:${m.id}:${ai}`"
+                            :account-id="conversation.accountId"
+                            :conversation-id="conversation.id"
+                            :title="contactName"
+                          />
+                          <a
+                            v-else-if="att.fileUrl"
+                            :href="att.fileUrl"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 rounded-md bg-default px-2 py-1 text-xs text-primary ring ring-default hover:underline"
+                          >
+                            <UIcon name="i-lucide-paperclip" class="size-3" />
+                            {{ att.fileType || 'attachment' }}
+                          </a>
+                          <span
+                            v-else
+                            class="inline-flex items-center gap-1.5 rounded-md bg-default px-2 py-1 text-xs text-muted ring ring-default"
+                          >
+                            <UIcon name="i-lucide-paperclip" class="size-3" />
+                            {{ att.fileType || 'attachment' }}
+                          </span>
+                        </template>
+                      </div>
+
+                      <div
+                        v-if="bubbleKind(m) !== 'activity'"
+                        class="-mb-0.5 mt-1 flex items-center justify-end gap-1 text-[10px] leading-none opacity-70"
+                      >
+                        <span class="tabular-nums">{{ messageTime(m) }}</span>
+                        <UIcon
+                          v-if="m.messageType === 1"
+                          :name="messageStatusDisplay(m, t).icon"
+                          :class="['size-3', messageStatusDisplay(m, t).color]"
+                        />
+                      </div>
+                    </div>
+                  </UContextMenu>
                 </template>
               </UChatMessage>
             </UChatMessages>
@@ -469,9 +747,9 @@ function messageUi(m: Message) {
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto">
-          <section class="border-b border-default px-4 py-4">
-            <div class="flex items-start gap-3">
-              <div class="relative shrink-0">
+          <section class="border-b border-default px-4 py-3">
+            <div class="flex flex-col items-center text-center">
+              <div class="relative">
                 <UAvatar
                   :alt="contactName"
                   :src="contactAvatar"
@@ -481,48 +759,45 @@ function messageUi(m: Message) {
                   {{ channelBadge }}
                 </span>
               </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-start gap-1.5">
-                  <p class="truncate text-base font-semibold text-highlighted">
-                    {{ contactName }}
-                  </p>
-                  <UBadge
-                    :label="statusLabel"
-                    :color="statusColor"
-                    variant="subtle"
-                    size="xs"
-                    class="mt-0.5 shrink-0"
-                  />
-                </div>
-                <p class="mt-0.5 truncate text-sm text-muted">
-                  {{ contactIdentifier || t('conversations.detail.noIdentifier') }}
-                </p>
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                  <UBadge
-                    :label="`#${conversation.displayId}`"
-                    color="neutral"
-                    variant="soft"
-                    size="xs"
-                  />
-                  <UBadge
-                    v-if="conversation.inbox?.name"
-                    :label="conversation.inbox.name"
-                    color="neutral"
-                    variant="soft"
-                    size="xs"
-                    class="max-w-full truncate"
-                  />
-                </div>
+
+              <p class="mt-2 truncate max-w-full text-base font-semibold text-highlighted">
+                {{ contactName }}
+              </p>
+              <p v-if="contactIdentifier" class="truncate max-w-full text-xs text-muted">
+                {{ contactIdentifier }}
+              </p>
+
+              <div class="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                <UBadge
+                  :label="statusLabel"
+                  :color="statusColor"
+                  variant="subtle"
+                  size="xs"
+                />
+                <UBadge
+                  :label="`#${conversation.displayId}`"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                />
+                <UBadge
+                  v-if="conversation.inbox?.name"
+                  :label="conversation.inbox.name"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                  class="max-w-full truncate"
+                />
               </div>
             </div>
 
-            <div class="mt-4 grid grid-cols-4 gap-2">
+            <div class="mt-3 grid grid-cols-4 gap-1.5">
               <UTooltip :text="t('conversations.detail.message')">
                 <UButton
                   icon="i-lucide-message-circle"
                   color="neutral"
                   variant="soft"
-                  size="sm"
+                  size="xs"
                   block
                   :aria-label="t('conversations.detail.message')"
                 />
@@ -532,7 +807,7 @@ function messageUi(m: Message) {
                   icon="i-lucide-pencil"
                   color="neutral"
                   variant="soft"
-                  size="sm"
+                  size="xs"
                   block
                   :aria-label="t('common.edit')"
                 />
@@ -542,7 +817,7 @@ function messageUi(m: Message) {
                   icon="i-lucide-mic"
                   color="neutral"
                   variant="soft"
-                  size="sm"
+                  size="xs"
                   block
                   :aria-label="t('conversations.compose.voice')"
                 />
@@ -552,28 +827,21 @@ function messageUi(m: Message) {
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="soft"
-                  size="sm"
+                  size="xs"
                   block
                   :aria-label="t('common.delete')"
                 />
               </UTooltip>
             </div>
 
-            <dl class="mt-4 space-y-3">
+            <dl v-if="contactRows.length" class="mt-3 space-y-1.5">
               <div
                 v-for="row in contactRows"
                 :key="`${row.icon}-${row.title}`"
-                class="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-2"
+                class="flex min-w-0 items-center gap-2"
               >
-                <UIcon :name="row.icon" class="mt-0.5 size-4 shrink-0 text-muted" />
-                <div class="min-w-0">
-                  <dt class="text-[11px] font-medium uppercase text-dimmed">
-                    {{ row.title }}
-                  </dt>
-                  <dd class="truncate text-sm text-muted">
-                    {{ row.value }}
-                  </dd>
-                </div>
+                <UIcon :name="row.icon" class="size-3.5 shrink-0 text-dimmed" />
+                <span class="truncate text-xs text-muted" :title="row.value">{{ row.value }}</span>
               </div>
             </dl>
           </section>
@@ -674,11 +942,10 @@ function messageUi(m: Message) {
                   <div v-if="conversation.labels?.length" class="flex flex-wrap gap-1.5">
                     <span
                       v-for="label in conversation.labels"
-                      :key="label.id"
-                      class="rounded-md px-2 py-1 text-xs"
-                      :style="{ backgroundColor: `${label.color}20`, color: label.color }"
+                      :key="label"
+                      class="rounded-md bg-elevated px-2 py-1 text-xs text-muted"
                     >
-                      {{ label.title }}
+                      {{ label }}
                     </span>
                   </div>
                   <UButton
@@ -703,3 +970,12 @@ function messageUi(m: Message) {
     </div>
   </UDashboardPanel>
 </template>
+
+<style>
+.markdown-body p { margin: 0; }
+.markdown-body p + p { margin-top: 0.5rem; }
+.markdown-body ul, .markdown-body ol { margin: 0.25rem 0; padding-left: 1.5rem; }
+.markdown-body code { background: color-mix(in oklch, currentColor 10%, transparent); padding: 0 0.25rem; border-radius: 0.25rem; font-size: 0.85em; }
+.markdown-body pre { background: color-mix(in oklch, currentColor 10%, transparent); padding: 0.5rem; border-radius: 0.375rem; overflow-x: auto; }
+.markdown-body a { text-decoration: underline; }
+</style>

@@ -6,6 +6,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// Sentinel errors used across the repo layer for conditions handlers map to
+// HTTP status codes via errors.Is. Defined here (not in `server`) so handlers
+// can import them without forming the cycle handler→server→handler.
+var (
+	ErrConflict  = errors.New("resource already exists")
+	ErrForbidden = errors.New("access denied")
+)
+
 func IsErrNotFound(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows) ||
 		errors.Is(err, ErrUserNotFound) ||

@@ -148,6 +148,8 @@ func persistInboundMessage(
 	ts := time.Unix(me.Timestamp/1000, 0)
 	_ = ts // stored via created_at default
 
+	senderType := "Contact"
+	contactID := ci.ContactID
 	msg := &model.Message{
 		AccountID:      accountID,
 		InboxID:        inbox.ID,
@@ -157,6 +159,8 @@ func persistInboundMessage(
 		Content:        &content,
 		SourceID:       &sourceID,
 		ContentAttrs:   contentAttrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 
 	if _, err := messageRepo.Create(ctx, msg); err != nil {

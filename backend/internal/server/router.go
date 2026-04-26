@@ -122,12 +122,20 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	conversationSvc := service.NewConversationService(conversationRepo, contactInboxRepo, contactRepo, slaRepo, nil)
 
-	messageSvc := service.NewMessageService(messageRepo)
+	messageSvc := service.NewMessageService(messageRepo, attachmentRepo)
+	messageSvc.SetConversationRepo(conversationRepo)
+	messageSvc.SetContactRepo(contactRepo)
+	messageSvc.SetUserRepo(userRepo)
 	messageHandler := handler.NewMessageHandler(messageSvc, inboxRepo, contactInboxRepo, messageRepo)
 	messageHandler.SetConversationRepo(conversationRepo)
 	messageHandler.SetAttachmentRepo(attachmentRepo)
 
+	conversationSvc.SetMessageService(messageSvc)
 	conversationHandler := handler.NewConversationHandler(conversationSvc, messageSvc, inboxRepo, contactInboxRepo, conversationRepo, agentRepo, teamRepo, auditLogger)
+
+	participantRepo := repo.NewParticipantRepo(db.Pool)
+	participantSvc := service.NewParticipantService(participantRepo)
+	participantHandler := handler.NewParticipantHandler(participantSvc)
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisURL})
 	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient)
@@ -139,6 +147,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	hub := realtime.NewHub()
 	go hub.Run()
 	realtimeSvc := service.NewRealtimeService(hub)
+	messageSvc.SetRealtimeNotifier(realtimeSvc)
+	conversationSvc.SetRealtimeNotifier(realtimeSvc)
 	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub, accountRepo, inboxRepo, conversationRepo)
 
 	notificationSvc := service.NewNotificationService(notificationRepo, hub)
@@ -170,7 +180,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	savedFiltersSvc := service.NewSavedFilterService(customFilterRepo, customAttrDefRepo, contactRepo, conversationRepo)
 	savedFiltersHandler := handler.NewSavedFilterHandler(savedFiltersSvc, customAttrDefRepo, conversationRepo, db.Pool)
 
-	minioClient, err := media.New(cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket)
+	minioClient, err := media.NewWithPublic(cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket, cfg.MinioPublicEndpoint, cfg.MinioPublicPort, cfg.MinioPublicUseSSL)
 	if err != nil {
 		return nil, err
 	}
@@ -243,11 +253,15 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/conversations/:conversationId/messages", agentPlus, messageHandler.CreateAuthenticated)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
 	accounts.Post("/uploads/signed-url", uploadHandler.SignedUploadURL)
+	accounts.Post("/uploads", uploadHandler.ProxyUpload)
+	accounts.Get("/uploads/download", uploadHandler.ProxyDownload)
 	accounts.Get("/uploads/signed-url", uploadHandler.SignedObjectDownloadURL)
 	accounts.Get("/attachments/:id/signed-url", uploadHandler.SignedDownloadURL)
 
-	accounts.Post("/contacts/:id", contactHandler.UpdateContactByID)
+	accounts.Patch("/contacts/:id", contactHandler.UpdateContactByID)
 	accounts.Get("/contacts/:id/conversations", contactHandler.ListContactConversations)
+	accounts.Get("/conversations/:id/participants", participantHandler.List)
+	accounts.Post("/conversations/:id/participants/sync", participantHandler.Sync)
 	accounts.Post("/conversations/:id/assignments", agentPlus, conversationHandler.Assign)
 	accounts.Patch("/conversations/:id/status", agentPlus, conversationHandler.ToggleStatus)
 
@@ -374,7 +388,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	waReauthTracker := reauth.NewTracker(redisClient)
 	waSvc := whatsappchan.NewService(
 		channelWhatsAppRepo, inboxRepo, messageRepo, conversationRepo,
-		contactSvc, realtimeSvc, cipher, dedupLock, waReauthTracker,
+		contactSvc, messageSvc, realtimeSvc, cipher, dedupLock, waReauthTracker,
 		asynqClient, defaultHTTPClient,
 	)
 	waChannel := whatsappchan.NewWhatsApp(channelWhatsAppRepo, inboxRepo, cipher, defaultHTTPClient)
@@ -499,7 +513,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	smsMediaHandler := smschan.NewMediaHandler(minioClient, attachmentRepo)
 	smsIngestSvc := smschan.NewIngestService(
 		channelSMSRepo, inboxRepo, contactSvc, contactRepo,
-		conversationRepo, messageRepo, dedupLock, smsMediaHandler, realtimeSvc,
+		conversationRepo, messageRepo, messageSvc, dedupLock, smsMediaHandler,
 	)
 	smsDedupLock := appchannel.NewDedupLock(redisClient)
 
@@ -511,7 +525,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	channelRegistry.Register(appchannel.KindSms, smsChannel)
 
 	smsWebhookHandler := handler.NewSMSWebhookHandler(
-		channelSMSRepo, messageRepo, smsRegistry, smsIngestSvc, realtimeSvc,
+		channelSMSRepo, messageRepo, smsRegistry, smsIngestSvc, messageSvc,
 	)
 
 	smsBaseURL := cfg.APIURL

@@ -243,6 +243,17 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		}
 	}
 
+	if teamIDStr := c.Query("team_id"); teamIDStr != "" {
+		teamID, err := strconv.ParseInt(teamIDStr, 10, 64)
+		if err == nil {
+			filter.TeamID = &teamID
+		}
+	}
+
+	if q := c.Query("q"); q != "" {
+		filter.Query = q
+	}
+
 	filter.AssigneeType = parseAssigneeType(c.Query("assignee_type"))
 
 	// assignee_type takes precedence; assignee_id is only honored when no
@@ -256,14 +267,14 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		}
 	}
 
-	convos, total, err := h.svc.ListByAccount(c.Context(), filter)
+	payload, meta, err := h.svc.ListWithMeta(c.Context(), filter)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ConversationListResp{
-		Meta:    dto.NewMetaResp(total, page, perPage),
-		Payload: dto.ConversationsToResp(convos),
+		Meta:    meta,
+		Payload: payload,
 	}))
 }
 
@@ -326,12 +337,16 @@ func (h *ConversationHandler) Get(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
 	}
 
-	convo, err := h.svc.GetByID(c.Context(), int64(id), accountID)
+	hydrated, err := h.svc.FindByIDFull(c.Context(), accountID, int64(id))
 	if err != nil {
 		return handleNotFound(c, err)
 	}
-
-	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+	row := repo.ConversationHydratedToFullRow(hydrated)
+	if row.LastNonActivityMessage != nil && h.messageSvc != nil {
+		senders := h.messageSvc.HydrateMessageSenders(c.Context(), []model.Message{*row.LastNonActivityMessage}, accountID)
+		row.LastNonActivitySender = senders[row.LastNonActivityMessage.ID]
+	}
+	return c.JSON(dto.SuccessResp(dto.ConversationToRespFull(&row)))
 }
 
 func (h *ConversationHandler) Assign(c *fiber.Ctx) error {
@@ -353,12 +368,24 @@ func (h *ConversationHandler) Assign(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
 	}
 
-	convo, err := h.svc.Assign(c.Context(), int64(id), accountID, req.AssigneeID, req.TeamID)
-	if err != nil {
+	if _, err := h.svc.Assign(c.Context(), int64(id), accountID, req.AssigneeID, req.TeamID); err != nil {
 		return handleNotFound(c, err)
 	}
 
-	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
+	// Re-fetch the hydrated conversation so the response carries the same
+	// `meta`, `inbox`, and `last_non_activity_message` shape the frontend
+	// store relies on. Without this, `upsert` would strip those fields.
+	hydrated, err := h.svc.FindByIDFull(c.Context(), accountID, int64(id))
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+	row := repo.ConversationHydratedToFullRow(hydrated)
+	if row.LastNonActivityMessage != nil && h.messageSvc != nil {
+		senders := h.messageSvc.HydrateMessageSenders(c.Context(), []model.Message{*row.LastNonActivityMessage}, accountID)
+		row.LastNonActivitySender = senders[row.LastNonActivityMessage.ID]
+	}
+
+	return c.JSON(dto.SuccessResp(dto.ConversationToRespFull(&row)))
 }
 
 func (h *ConversationHandler) ToggleStatus(c *fiber.Ctx) error {
@@ -440,7 +467,7 @@ func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	return c.JSON(dto.SuccessResp(dto.ConversationListResp{
+	return c.JSON(dto.SuccessResp(dto.PaginatedResp[dto.ConversationResp]{
 		Meta:    dto.NewMetaResp(total, page, perPage),
 		Payload: dto.ConversationsToResp(convos),
 	}))

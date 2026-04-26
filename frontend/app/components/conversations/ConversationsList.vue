@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale'
 import type { Conversation } from '~/stores/conversations'
 import { useConversationsStore } from '~/stores/conversations'
 import { resolveContactName, resolveContactAvatar } from '~/utils/chatAdapter'
+import { useLabelsStore } from '~/stores/labels'
 
 const props = defineProps<{
   items: Conversation[]
@@ -12,6 +13,14 @@ const props = defineProps<{
 const selected = defineModel<Conversation | null>()
 const { t } = useI18n()
 const convs = useConversationsStore()
+const labelsStore = useLabelsStore()
+
+interface LabelChip { title: string, color: string }
+
+function labelChip(title: string): LabelChip {
+  const found = labelsStore.list.find(l => l.title === title)
+  return { title, color: found?.color ?? '#94a3b8' }
+}
 
 const itemRefs = ref<Record<string, Element | null>>({})
 const hoveredId = ref<string | null>(null)
@@ -40,7 +49,7 @@ function contactAvatar(c: Conversation): string | undefined {
 }
 
 function unreadCount(c: Conversation): number {
-  return c.meta?.unreadCount ?? 0
+  return c.unreadCount ?? 0
 }
 
 function hasUnread(c: Conversation): boolean {
@@ -52,10 +61,10 @@ function channelIcon(c: Conversation): string {
 }
 
 function lastMessage(c: Conversation): { text: string, icon: string, isPrivate: boolean } {
-  const msg = c.meta?.lastNonActivityMessage
+  const msg = c.lastNonActivityMessage
   if (!msg) return { text: '', icon: 'i-lucide-info', isPrivate: false }
 
-  const isPrivate = !!(msg as Record<string, unknown>).private
+  const isPrivate = !!msg.private
   const isOutgoing = msg.messageType === 1
   const isActivity = msg.messageType === 2
 
@@ -73,7 +82,9 @@ function lastMessage(c: Conversation): { text: string, icon: string, isPrivate: 
 }
 
 function timeLabel(c: Conversation): string {
+  if (!c.lastActivityAt) return ''
   const d = new Date(c.lastActivityAt)
+  if (Number.isNaN(d.getTime())) return ''
   if (isToday(d)) return format(d, 'HH:mm')
   return formatDistanceToNow(d, { addSuffix: false, locale: ptBR })
 }
@@ -221,12 +232,12 @@ defineShortcuts({
 
           <div v-if="c.labels?.length" class="mt-2 flex flex-wrap items-center gap-1">
             <span
-              v-for="label in c.labels.slice(0, 2)"
-              :key="label.id"
+              v-for="title in c.labels.slice(0, 2)"
+              :key="title"
               class="inline-flex max-w-[7rem] items-center truncate rounded-md px-2 py-0.5 text-[10px] font-medium"
-              :style="{ backgroundColor: `${label.color}20`, color: label.color }"
+              :style="{ backgroundColor: `${labelChip(title).color}20`, color: labelChip(title).color }"
             >
-              {{ label.title }}
+              {{ labelChip(title).title }}
             </span>
             <span v-if="c.labels.length > 2" class="text-[10px] text-muted">
               +{{ c.labels.length - 2 }}

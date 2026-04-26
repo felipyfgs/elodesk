@@ -141,6 +141,8 @@ func (p *EmailPoller) processMessage(ctx context.Context, fm FetchedMessage) err
 	if body == "" {
 		body = env.HTML
 	}
+	senderType := "Contact"
+	contactID := conv.ContactID
 	msg := &model.Message{
 		AccountID:      p.ch.AccountID,
 		InboxID:        p.deps.InboxID,
@@ -150,6 +152,8 @@ func (p *EmailPoller) processMessage(ctx context.Context, fm FetchedMessage) err
 		Content:        &body,
 		SourceID:       srcID,
 		Status:         model.MessageSent,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 
 	created, err := p.deps.MessageRepo.Create(ctx, msg)

@@ -169,7 +169,7 @@ func processDM(
 		screenName = u.ScreenName
 	}
 
-	_, conv, err := ensureContactAndConversation(ctx, create.SenderID, displayName, screenName,
+	ci, conv, err := ensureContactAndConversation(ctx, create.SenderID, displayName, screenName,
 		ch.AccountID, inbox.ID, contactRepo, contactInboxRepo, conversationRepo)
 	if err != nil {
 		return err
@@ -180,6 +180,8 @@ func processDM(
 
 	sourceID := evt.ID
 	content := create.MessageData.Text
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inbox.ID,
@@ -188,6 +190,8 @@ func processDM(
 		ContentType:    model.ContentTypeText,
 		Content:        &content,
 		SourceID:       &sourceID,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	if _, err := messageRepo.Create(ctx, dbMsg); err != nil {
 		return fmt.Errorf("create message: %w", err)

@@ -30,8 +30,10 @@ export interface ContactRow {
   id: string
   name: string | null
   phoneNumber: string | null
-  waJid: string | null
+  identifier: string | null
+  email: string | null
   avatarUrl: string | null
+  thumbnail: string | null
   status: ContactStatus
   createdAt: string
 }

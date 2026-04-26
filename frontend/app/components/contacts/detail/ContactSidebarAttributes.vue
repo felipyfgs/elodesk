@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Contact } from '~/stores/contacts'
 import { useCustomAttributesStore } from '~/stores/customAttributes'
+import { parseJsonAttrs } from '~/utils/jsonAttrs'
 
 const props = defineProps<{
   contact: Contact
@@ -9,14 +10,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const attrsStore = useCustomAttributesStore()
 
-const values = computed<Record<string, unknown>>(() => {
-  if (!props.contact.additionalAttributes) return {}
-  try {
-    return JSON.parse(props.contact.additionalAttributes) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-})
+const values = computed<Record<string, unknown>>(() => parseJsonAttrs(props.contact.additionalAttributes))
 </script>
 
 <template>

@@ -46,7 +46,7 @@ onMounted(load)
 
 const openCount = computed(() => convs.list.filter(c => c.status === 0).length)
 const pendingCount = computed(() => convs.list.filter(c => c.status === 2).length)
-const unreadCount = computed(() => convs.list.reduce((acc, c) => acc + (c.meta?.unreadCount ?? 0), 0))
+const unreadCount = computed(() => convs.list.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0))
 
 const liveStats = computed(() => [
   { icon: 'i-lucide-inbox', title: t('home.stats.inboxes'), value: inboxes.list.length, to: `/accounts/${aid}/inboxes` },

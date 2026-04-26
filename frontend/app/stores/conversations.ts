@@ -1,19 +1,68 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from '~/stores/auth'
 
-export interface ConversationContact {
-  id: string
-  name?: string | null
-  phoneNumber?: string | null
-  waJid?: string | null
-  email?: string | null
-  avatarUrl?: string | null
-}
+// Conversation shape mirrors Chatwoot's `_conversation.json.jbuilder` (see
+// backend/internal/dto/conversation.go::ConversationResp). Field names below
+// are camelCase because `utils/apiAdapter.ts` rewrites every snake_case key on
+// response. Anything that was nested under `contactInbox.contact` now lives at
+// `meta.sender`; the legacy field has been removed.
 
 export interface ConversationInbox {
   id: string
   name: string
   channelType: string
+  channelId?: string
+  avatarUrl?: string | null
+  provider?: string | null
+}
+
+export interface ConversationMessageSender {
+  id?: string
+  name?: string
+  type?: 'contact' | 'user' | 'agent_bot'
+  thumbnail?: string | null
+  avatarUrl?: string | null
+}
+
+export interface ConversationLastMessage {
+  id?: string
+  content?: string | null
+  contentType?: string
+  messageType: number
+  status?: number
+  private?: boolean
+  createdAt: string | number
+  attachments?: { fileUrl?: string, fileType: string | number }[]
+  sender?: ConversationMessageSender
+}
+
+// ConversationSender mirrors backend ContactResp: it's the contact who started
+// the conversation, embedded in `meta.sender`.
+export interface ConversationSender {
+  id?: string
+  name?: string
+  phoneNumber?: string | null
+  email?: string | null
+  identifier?: string | null
+  availabilityStatus?: string
+  blocked?: boolean
+  avatarUrl?: string | null
+  thumbnail?: string | null
+  additionalAttributes?: Record<string, unknown> | null
+  customAttributes?: Record<string, unknown> | null
+}
+
+export interface ConversationAssignee {
+  id?: string
+  name: string
+  email?: string
+  avatarUrl?: string | null
+  thumbnail?: string | null
+}
+
+export interface ConversationTeam {
+  id?: string
+  name: string
 }
 
 // Backend sends status as int: 0=Open, 1=Resolved, 2=Pending, 3=Snoozed
@@ -31,33 +80,40 @@ export interface Conversation {
   accountId: string
   inboxId: string
   status: ConversationStatus
+  statusName?: string
   assigneeId?: string | null
   teamId?: string | null
   contactId: string
   contactInboxId?: string | null
   displayId: number
   uuid: string
-  lastActivityAt: string
-  additionalAttributes?: string | null
-  createdAt: string
-  updatedAt: string
-  contactInbox?: {
-    contact?: ConversationContact
-  }
+  timestamp?: number
+  lastActivityAt: string | number
+  firstReplyCreatedAt?: number | null
+  agentLastSeenAt?: number | null
+  assigneeLastSeenAt?: number | null
+  contactLastSeenAt?: number | null
+  waitingSince?: number | null
+  snoozedUntil?: number | null
+  priority?: string | null
+  canReply?: boolean
+  muted?: boolean
+  createdAt: string | number
+  updatedAt: string | number
   inbox?: ConversationInbox
-  labels?: { id: string, title: string, color: string }[]
+  labels?: string[]
+  unreadCount?: number
+  additionalAttributes?: Record<string, unknown> | null
+  customAttributes?: Record<string, unknown> | null
+  messages?: ConversationLastMessage[]
+  lastNonActivityMessage?: ConversationLastMessage | null
   meta?: {
-    unreadCount?: number
-    assignee?: { name: string, avatarUrl?: string | null }
-    sender?: { name: string, avatarUrl?: string | null, thumbnail?: string | null }
+    sender?: ConversationSender | null
     channel?: string
-    lastNonActivityMessage?: {
-      content: string
-      contentType: string
-      messageType: number
-      createdAt: string
-      attachments?: { fileUrl: string, fileType: string }[]
-    }
+    assignee?: ConversationAssignee | null
+    assigneeType?: string
+    team?: ConversationTeam | null
+    hmacVerified?: boolean
   }
 }
 
@@ -88,11 +144,28 @@ export interface ConversationMetaBucket {
   unassigned: number
 }
 
+// Legacy meta envelope returned by GET /conversations/meta — open/pending/resolved/snoozed
+// × all/mine/unassigned. Kept until the dashboard tab counters move to the new
+// flat shape (ConversationListMeta).
 export interface ConversationMeta {
   open: ConversationMetaBucket
   pending: ConversationMetaBucket
   resolved: ConversationMetaBucket
   snoozed: ConversationMetaBucket
+}
+
+// New Chatwoot-shape meta returned alongside the conversations list payload.
+// Mirrors backend dto.ConversationListMeta.
+export interface ConversationListMeta {
+  mineCount: number
+  assignedCount: number
+  unassignedCount: number
+  allCount: number
+}
+
+export interface ConversationListResponse {
+  meta: ConversationListMeta
+  payload: Conversation[]
 }
 
 const EMPTY_BUCKET: ConversationMetaBucket = { all: 0, mine: 0, unassigned: 0 }
@@ -106,6 +179,10 @@ function emptyMeta(): ConversationMeta {
   }
 }
 
+function emptyListMeta(): ConversationListMeta {
+  return { mineCount: 0, assignedCount: 0, unassignedCount: 0, allCount: 0 }
+}
+
 export const useConversationsStore = defineStore('conversations', {
   state: () => ({
     list: [] as Conversation[],
@@ -117,20 +194,23 @@ export const useConversationsStore = defineStore('conversations', {
       status: 'OPEN' as ConversationStatusFilter
     } as ConversationFilters,
     meta: emptyMeta() as ConversationMeta,
+    listMeta: emptyListMeta() as ConversationListMeta,
     selection: [] as string[]
   }),
   getters: {
     filteredList(state): Conversation[] {
       let result: Conversation[] = Array.isArray(state.list) ? state.list : []
 
-      // Tab filter — mine/unassigned need the auth store, imported lazily
+      // Tab filter — mine/unassigned need the auth store, imported lazily.
+      // IDs are coerced via String() because backend sends int64 (JS number)
+      // while stores/filters keep them as strings. `1 === "1"` would be false.
       if (state.filters.tab === 'unassigned') {
         result = result.filter(c => !c.assigneeId)
       } else if (state.filters.tab === 'mine') {
         const auth = useAuthStore()
         const myId = auth.user?.id
         if (myId) {
-          result = result.filter(c => c.assigneeId === myId)
+          result = result.filter(c => String(c.assigneeId) === String(myId))
         }
       }
 
@@ -144,17 +224,20 @@ export const useConversationsStore = defineStore('conversations', {
 
       // Inbox filter
       if (state.filters.inboxId) {
-        result = result.filter(c => c.inboxId === state.filters.inboxId)
+        result = result.filter(c => String(c.inboxId) === String(state.filters.inboxId))
       }
 
-      // Label filter
+      // Label filter — backend now sends labels as string titles (Chatwoot
+      // shape). The legacy object form is no longer surfaced here, so the
+      // filterId is interpreted as the label title for backward compat with
+      // saved filters that still reference an id.
       if (state.filters.labelId) {
-        result = result.filter(c => c.labels?.some(l => l.id === state.filters.labelId))
+        result = result.filter(c => c.labels?.includes(state.filters.labelId as string))
       }
 
       // Team filter
       if (state.filters.teamId) {
-        result = result.filter(c => c.teamId === state.filters.teamId)
+        result = result.filter(c => String(c.teamId) === String(state.filters.teamId))
       }
 
       return result
@@ -177,6 +260,10 @@ export const useConversationsStore = defineStore('conversations', {
       const idx = this.list.findIndex(c => c.id === conv.id)
       if (idx >= 0) this.list[idx] = conv
       else this.list.unshift(conv)
+      // `current` is a separate reference from `list[idx]`. Without this,
+      // ConversationsIndex's `selected` computed (which reads `current` first)
+      // returns the stale object after upsert, so child props don't update.
+      if (this.current?.id === conv.id) this.current = conv
     },
     remove(id: string) {
       this.list = this.list.filter(c => c.id !== id)
@@ -191,6 +278,9 @@ export const useConversationsStore = defineStore('conversations', {
     },
     setMeta(meta: ConversationMeta) {
       this.meta = meta
+    },
+    setListMeta(meta: ConversationListMeta) {
+      this.listMeta = meta
     },
     toggleSelection(id: string) {
       const idx = this.selection.indexOf(id)

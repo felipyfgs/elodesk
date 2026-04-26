@@ -11,11 +11,16 @@ import (
 )
 
 type MinioClient struct {
-	client *minio.Client
-	bucket string
+	client       *minio.Client
+	presignClient *minio.Client
+	bucket       string
 }
 
 func New(endpoint, port string, useSSL bool, accessKey, secretKey, bucket string) (*MinioClient, error) {
+	return NewWithPublic(endpoint, port, useSSL, accessKey, secretKey, bucket, "", "", false)
+}
+
+func NewWithPublic(endpoint, port string, useSSL bool, accessKey, secretKey, bucket, publicEndpoint, publicPort string, publicUseSSL bool) (*MinioClient, error) {
 	addr := fmt.Sprintf("%s:%s", endpoint, port)
 
 	client, err := minio.New(addr, &minio.Options{
@@ -26,9 +31,26 @@ func New(endpoint, port string, useSSL bool, accessKey, secretKey, bucket string
 		return nil, fmt.Errorf("failed to create minio client: %w", err)
 	}
 
+	presign := client
+	if publicEndpoint != "" {
+		publicAddr := publicEndpoint
+		if publicPort != "" {
+			publicAddr = fmt.Sprintf("%s:%s", publicEndpoint, publicPort)
+		}
+		presign, err = minio.New(publicAddr, &minio.Options{
+			Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+			Secure: publicUseSSL,
+			Region: "us-east-1",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create minio presign client: %w", err)
+		}
+	}
+
 	return &MinioClient{
-		client: client,
-		bucket: bucket,
+		client:        client,
+		presignClient: presign,
+		bucket:        bucket,
 	}, nil
 }
 
@@ -64,6 +86,13 @@ func (m *MinioClient) EnsureBucket(ctx context.Context) error {
 }
 
 func (m *MinioClient) Client() *minio.Client {
+	return m.client
+}
+
+func (m *MinioClient) PresignClient() *minio.Client {
+	if m.presignClient != nil {
+		return m.presignClient
+	}
 	return m.client
 }
 

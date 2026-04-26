@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 	"backend/internal/logger"
 	"backend/internal/media"
 	"backend/internal/model"
+	"backend/internal/phone"
 	"backend/internal/repo"
 )
 
@@ -60,6 +63,13 @@ func (s *ContactService) WithMinio(m *media.MinioClient) *ContactService {
 
 func (s *ContactService) Create(ctx context.Context, accountID int64, contact *model.Contact) (*model.Contact, error) {
 	contact.AccountID = accountID
+
+	if contact.PhoneE164 == nil && contact.PhoneNumber != nil && *contact.PhoneNumber != "" {
+		if e164, valid := phone.NormalizeE164(*contact.PhoneNumber); valid {
+			v := e164
+			contact.PhoneE164 = &v
+		}
+	}
 
 	if contact.Identifier != nil && *contact.Identifier != "" {
 		existing, err := s.contactRepo.FindByIdentifier(ctx, *contact.Identifier, fmt.Sprintf("%d", accountID))
@@ -402,6 +412,17 @@ func (s *ContactService) Identify(ctx context.Context, accountID int64, target *
 	}
 	if params.AvatarURL != nil {
 		updates["avatar_url"] = params.AvatarURL
+		if result.AvatarURL == nil || *result.AvatarURL != *params.AvatarURL {
+			// URL changed — also recompute hash. Provider (Wzap) cache-buster URLs
+			// already imply content change; we hash the URL itself. v2: HEAD/GET
+			// the URL to hash the actual bytes.
+			hash := avatarHashFromURL(*params.AvatarURL)
+			if err := s.contactRepo.UpdateAvatar(ctx, result.ID, accountID, params.AvatarURL, &hash); err != nil {
+				return nil, err
+			}
+			result.AvatarURL = params.AvatarURL
+			result.AvatarHash = &hash
+		}
 	}
 
 	if len(updates) > 0 {
@@ -431,16 +452,23 @@ func (s *ContactService) Identify(ctx context.Context, accountID int64, target *
 }
 
 type ContactCreateAttrs struct {
-	Name        string
-	Email       *string
-	PhoneNumber *string
-	Identifier  *string
+	Name                 string
+	Email                *string
+	PhoneNumber          *string
+	Identifier           *string
+	AvatarURL            *string
+	// AdditionalAttrs is the raw JSON object as a string (matches the persisted
+	// shape on contacts.additional_attributes). When the caller passes a
+	// non-empty value, it is set on the contact at creation time and merged on
+	// updates of existing contacts.
+	AdditionalAttrs *string
 }
 
 func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *model.Inbox, attrs ContactCreateAttrs, sourceID string, hmacVerified bool) (*model.ContactInbox, error) {
 	if sourceID != "" {
 		existing, err := s.contactInboxRepo.FindBySourceID(ctx, sourceID, inbox.ID)
 		if err == nil {
+			s.applyAvatarUpdate(ctx, existing.ContactID, inbox.AccountID, attrs.AvatarURL)
 			return existing, nil
 		}
 	}
@@ -468,15 +496,37 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 
 	if contact == nil {
 		contact = &model.Contact{
-			AccountID:   inbox.AccountID,
-			Name:        attrs.Name,
-			Email:       attrs.Email,
-			PhoneNumber: attrs.PhoneNumber,
-			Identifier:  attrs.Identifier,
+			AccountID:       inbox.AccountID,
+			Name:            attrs.Name,
+			Email:           attrs.Email,
+			PhoneNumber:     attrs.PhoneNumber,
+			Identifier:      attrs.Identifier,
+			AdditionalAttrs: attrs.AdditionalAttrs,
 		}
 		if err := s.contactRepo.Create(ctx, contact); err != nil {
 			return nil, fmt.Errorf("create contact: %w", err)
 		}
+	} else if attrs.AdditionalAttrs != nil && *attrs.AdditionalAttrs != "" {
+		// Merge incoming JSONB into the existing additional_attributes so callers
+		// can attach metadata (e.g. is_group, test_run_id) without erasing prior keys.
+		merged := mergeAdditionalAttrs(contact.AdditionalAttrs, *attrs.AdditionalAttrs)
+		if merged != "" && (contact.AdditionalAttrs == nil || *contact.AdditionalAttrs != merged) {
+			if _, err := s.contactRepo.UpdateAdditionalAttrs(ctx, contact.ID, inbox.AccountID, merged); err == nil {
+				contact.AdditionalAttrs = &merged
+			}
+		}
+	}
+
+	s.applyAvatarUpdate(ctx, contact.ID, inbox.AccountID, attrs.AvatarURL)
+
+	// Dedupe before minting a fresh source_id: a contact can already have a ci
+	// for this inbox (e.g. matched via email/phone above). Without this guard
+	// we'd accumulate one contact_inbox per visit, which is exactly the
+	// regression seen on production for WhatsApp + widget flows.
+	if existing, err := s.contactInboxRepo.FindByContactAndInbox(ctx, contact.ID, inbox.ID); err != nil {
+		return nil, fmt.Errorf("find contact inbox: %w", err)
+	} else if existing != nil {
+		return existing, nil
 	}
 
 	if sourceID == "" {
@@ -494,4 +544,60 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 	}
 
 	return ci, nil
+}
+
+// applyAvatarUpdate is a best-effort write of avatar_url + avatar_hash.
+// Channels (e.g. Wzap) post the upstream avatar on every contact upsert; we
+// only write when the URL actually changed. avatar_hash is a SHA-256 of the
+// avatar_url string — providers ship cache-buster URLs (WhatsApp embeds a
+// timestamp), so URL inequality already implies content change. Hashing the
+// fetched bytes is deferred to v2 (would add a HEAD/GET round-trip per upsert).
+// Failures are logged and swallowed so a transient DB hiccup does not break
+// message ingestion.
+func (s *ContactService) applyAvatarUpdate(ctx context.Context, contactID, accountID int64, avatarURL *string) {
+	if avatarURL == nil || *avatarURL == "" {
+		return
+	}
+	current, err := s.contactRepo.FindByID(ctx, contactID, accountID)
+	if err != nil {
+		logger.Warn().Str("component", "contacts").Err(err).Int64("contact_id", contactID).Msg("avatar refresh: failed to load contact")
+		return
+	}
+	if current.AvatarURL != nil && *current.AvatarURL == *avatarURL {
+		return
+	}
+	hash := avatarHashFromURL(*avatarURL)
+	if err := s.contactRepo.UpdateAvatar(ctx, contactID, accountID, avatarURL, &hash); err != nil {
+		logger.Warn().Str("component", "contacts").Err(err).Int64("contact_id", contactID).Msg("avatar refresh: failed to update avatar")
+	}
+}
+
+// avatarHashFromURL computes SHA-256(avatar_url) as a hex string. Used as a
+// stable, cheap content-cache invalidation key — see applyAvatarUpdate.
+func avatarHashFromURL(url string) string {
+	sum := sha256.Sum256([]byte(url))
+	return hex.EncodeToString(sum[:])
+}
+
+// mergeAdditionalAttrs merges a new JSON object into an existing one (both
+// stored as raw JSON strings on contacts.additional_attributes). Keys in the
+// incoming object overwrite existing keys; everything else is preserved.
+// Returns "" if the incoming JSON is invalid (caller skips the update).
+func mergeAdditionalAttrs(existing *string, incoming string) string {
+	out := map[string]any{}
+	if existing != nil && *existing != "" {
+		_ = json.Unmarshal([]byte(*existing), &out)
+	}
+	add := map[string]any{}
+	if err := json.Unmarshal([]byte(incoming), &add); err != nil {
+		return ""
+	}
+	for k, v := range add {
+		out[k] = v
+	}
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
 }

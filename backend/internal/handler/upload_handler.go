@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 
 	"backend/internal/dto"
 	"backend/internal/logger"
@@ -48,13 +50,139 @@ func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
 		return err
 	}
 
-	presignedURL, err := h.minio.Client().PresignedPutObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL)
+	logger.Info().Str("component", "uploads").
+		Int64("accountId", accountID).
+		Str("bucket", h.minio.Bucket()).
+		Str("objectPath", objectPath).
+		Msg("generating presigned put URL")
+
+	presignedURL, err := h.minio.PresignClient().PresignedPutObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL)
 	if err != nil {
-		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate presigned put URL")
+		logger.Error().Str("component", "uploads").Err(err).
+			Int64("accountId", accountID).
+			Str("objectPath", objectPath).
+			Msg("failed to generate presigned put URL")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate presigned URL"))
 	}
 
+	logger.Info().Str("component", "uploads").
+		Int64("accountId", accountID).
+		Str("url", presignedURL.String()).
+		Msg("presigned put URL generated")
+
 	return c.JSON(dto.SuccessResp(fiber.Map{"upload_url": presignedURL.String()}))
+}
+
+// ProxyUpload accepts a multipart file from the authenticated user and uploads
+// it to MinIO using the internal client, bypassing CORS and public endpoint
+// concerns. Returns the storage path so the caller can reference it in a
+// subsequent message create.
+func (h *UploadHandler) ProxyUpload(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "file is required"))
+	}
+
+	file, err := fh.Open()
+	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).Msg("failed to open uploaded file")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to read upload"))
+	}
+	defer file.Close()
+
+	safeName := sanitizeFileName(fh.Filename)
+	objectPath := fmt.Sprintf("%d/uploads/%s-%s", accountID, uuid.New().String(), safeName)
+
+	contentType := fh.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 2*time.Minute)
+	defer cancel()
+
+	_, err = h.minio.Client().PutObject(ctx, h.minio.Bucket(), objectPath, file, fh.Size, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).
+			Int64("accountId", accountID).
+			Str("objectPath", objectPath).
+			Msg("failed to upload to minio")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to upload file"))
+	}
+
+	logger.Info().Str("component", "uploads").
+		Int64("accountId", accountID).
+		Str("objectPath", objectPath).
+		Int64("size", fh.Size).
+		Str("contentType", contentType).
+		Msg("proxy upload complete")
+
+	return c.JSON(dto.SuccessResp(fiber.Map{
+		"path":         objectPath,
+		"file_type":    contentType,
+		"size":         fh.Size,
+	}))
+}
+
+func sanitizeFileName(name string) string {
+	replacer := strings.NewReplacer(" ", "_", "/", "_", "\\", "_")
+	s := replacer.Replace(name)
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	out := b.String()
+	if out == "" {
+		return "file"
+	}
+	return out
+}
+
+// ProxyDownload streams an object from MinIO through the backend so the
+// browser can access it without touching MinIO directly. Scoped to the
+// authenticated account's prefix.
+func (h *UploadHandler) ProxyDownload(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	objectPath, err := scopedObjectPath(c, accountID)
+	if err != nil {
+		return err
+	}
+
+	obj, err := h.minio.Client().GetObject(c.Context(), h.minio.Bucket(), objectPath, minio.GetObjectOptions{})
+	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).Msg("failed to get object")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to fetch file"))
+	}
+
+	stat, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		logger.Warn().Str("component", "uploads").Err(err).Str("objectPath", objectPath).Msg("object not found")
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "file not found"))
+	}
+
+	if stat.ContentType != "" {
+		c.Set("Content-Type", stat.ContentType)
+	}
+	c.Set("Content-Length", strconv.FormatInt(stat.Size, 10))
+	c.Set("Cache-Control", "private, max-age=3600")
+	return c.SendStream(obj, int(stat.Size))
 }
 
 // SignedObjectDownloadURL generates a presigned GET URL for an object path
@@ -71,7 +199,7 @@ func (h *UploadHandler) SignedObjectDownloadURL(c *fiber.Ctx) error {
 		return err
 	}
 
-	presignedURL, err := h.minio.Client().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
+	presignedURL, err := h.minio.PresignClient().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
 	if err != nil {
 		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate object download URL")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate download URL"))
@@ -127,7 +255,7 @@ func (h *UploadHandler) SignedDownloadURL(c *fiber.Ctx) error {
 		objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
 	}
 
-	presignedURL, err := h.minio.Client().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
+	presignedURL, err := h.minio.PresignClient().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
 	if err != nil {
 		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate download URL")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate download URL"))

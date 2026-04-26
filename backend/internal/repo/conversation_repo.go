@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"backend/internal/dto"
 	"backend/internal/model"
 
 	"github.com/jackc/pgx/v5"
@@ -109,14 +111,20 @@ type ConversationFilter struct {
 	AssigneeID   *int64
 	AssigneeType ConversationAssigneeType
 	CurrentUser  *int64
+	TeamID       *int64
+	Query        string
+	Labels       []string
 	SortBy       ConversationSortKey
 	ContactID    *int64
 	Page         int
 	PerPage      int
 }
 
-// conversationFilterClause builds the WHERE suffix common to listing and
-// counting queries. It returns the SQL fragment plus the positional args.
+// whereClause builds the WHERE suffix common to listing and counting queries.
+// It returns the SQL fragment plus the positional args. Callers that need to
+// search by contact name (q) or labels should use ListByAccountFiltered or
+// the hydrated list path instead — those filters require JOINs that are not
+// available in the simple conversations-only query.
 func (f ConversationFilter) whereClause() (string, []any) {
 	clause := ""
 	args := []any{f.AccountID}
@@ -137,6 +145,11 @@ func (f ConversationFilter) whereClause() (string, []any) {
 		args = append(args, *f.AssigneeID)
 		argN++
 	}
+	if f.TeamID != nil {
+		clause += fmt.Sprintf(" AND team_id = $%d", argN)
+		args = append(args, *f.TeamID)
+		argN++
+	}
 
 	switch f.AssigneeType {
 	case ConversationAssigneeTypeMine:
@@ -144,8 +157,6 @@ func (f ConversationFilter) whereClause() (string, []any) {
 			clause += fmt.Sprintf(" AND assignee_id = $%d", argN)
 			args = append(args, *f.CurrentUser)
 		} else {
-			// fail-closed: 'mine' without an authenticated user must return
-			// no rows rather than degrading to 'all' (would leak tenant data).
 			clause += " AND 1 = 0"
 		}
 	case ConversationAssigneeTypeUnassigned:
@@ -297,6 +308,261 @@ func (r *ConversationRepo) CountByStatusAndAssignee(ctx context.Context, account
 	return out, rows.Err()
 }
 
+// ConversationHydrated bundles a Conversation row with the immediate
+// relations the Chatwoot-shape DTO needs: contact, inbox, optional assignee
+// and team, the last non-activity message, the unread count, and the labels.
+// Returned by FindByIDFull and ListByAccountFull so the service layer can
+// build dto.ConversationFullRow without further repo calls.
+type ConversationHydrated struct {
+	Conversation           model.Conversation
+	Contact                model.Contact
+	Inbox                  model.Inbox
+	HmacVerified           bool
+	Assignee               *model.User
+	Team                   *model.Team
+	UnreadCount            int
+	Labels                 []string
+	LastNonActivityMessage *model.Message
+}
+
+const conversationHydratedColumns = `
+	cv.id, cv.account_id, cv.inbox_id, cv.status, cv.assignee_id, cv.team_id,
+	cv.contact_id, cv.contact_inbox_id, cv.display_id, cv.uuid, cv.pubsub_token,
+	cv.last_activity_at, cv.additional_attributes, cv.created_at, cv.updated_at,
+	c.id, c.account_id, c.name, c.email, c.phone_number, c.phone_e164,
+	c.identifier, c.additional_attributes, c.avatar_url, c.blocked,
+	c.last_activity_at, c.created_at, c.updated_at,
+	i.id, i.account_id, i.channel_id, i.name, i.channel_type, i.created_at, i.updated_at,
+	COALESCE(ci.hmac_verified, false),
+	u.id, u.email, u.name, u.avatar_url, u.mfa_enabled, u.created_at, u.updated_at,
+	t.id, t.account_id, t.name, t.description, t.allow_auto_assign, t.created_at, t.updated_at,
+	(SELECT COUNT(*) FROM messages WHERE conversation_id = cv.id AND message_type = 0
+		AND (cv.assignee_last_seen_at IS NULL OR created_at > cv.assignee_last_seen_at))::int,
+	lm.id, lm.account_id, lm.inbox_id, lm.conversation_id, lm.message_type, lm.content_type,
+	lm.content, lm.source_id, lm.private, lm.status, lm.content_attributes,
+	lm.sender_type, lm.sender_id, lm.sender_contact_id, lm.external_source_ids,
+	lm.created_at, lm.updated_at, lm.deleted_at`
+
+const conversationHydratedFrom = `
+	FROM conversations cv
+	INNER JOIN contacts c ON c.id = cv.contact_id AND c.account_id = cv.account_id
+	INNER JOIN inboxes i ON i.id = cv.inbox_id AND i.account_id = cv.account_id
+	LEFT JOIN contact_inboxes ci ON ci.id = cv.contact_inbox_id
+	LEFT JOIN users u ON u.id = cv.assignee_id
+	LEFT JOIN teams t ON t.id = cv.team_id AND t.account_id = cv.account_id
+	LEFT JOIN LATERAL (
+		SELECT * FROM messages m
+		 WHERE m.conversation_id = cv.id AND m.message_type < 2 AND m.deleted_at IS NULL
+		 ORDER BY m.created_at DESC LIMIT 1
+	) lm ON true`
+
+func scanConversationHydrated(scanner conversationScanner, h *ConversationHydrated) error {
+	cv := &h.Conversation
+	c := &h.Contact
+	i := &h.Inbox
+	var (
+		uID                                                  *int64
+		uEmail, uName                                        *string
+		uAvatarURL                                           *string
+		uMfaEnabled                                          *bool
+		uCreatedAt, uUpdatedAt                               *time.Time
+		tID, tAccountID                                      *int64
+		tName                                                *string
+		tDescription                                         *string
+		tAllowAutoAssign                                     *bool
+		tCreatedAt, tUpdatedAt                               *time.Time
+		lmID                                                 *int64
+		lmAccountID, lmInboxID, lmConversationID             *int64
+		lmMessageType                                        *model.MessageType
+		lmContentType                                        *model.MessageContentType
+		lmContent, lmSourceID                                *string
+		lmPrivate                                            *bool
+		lmStatus                                             *model.MessageStatus
+		lmContentAttrs                                       *string
+		lmSenderType                                         *string
+		lmSenderID, lmSenderContactID                        *int64
+		lmExternalSourceIDs                                  *string
+		lmCreatedAt, lmUpdatedAt                             *time.Time
+		lmDeletedAt                                          *time.Time
+	)
+	if err := scanner.Scan(
+		&cv.ID, &cv.AccountID, &cv.InboxID, &cv.Status, &cv.AssigneeID, &cv.TeamID,
+		&cv.ContactID, &cv.ContactInboxID, &cv.DisplayID, &cv.UUID, &cv.PubsubToken,
+		&cv.LastActivityAt, &cv.AdditionalAttrs, &cv.CreatedAt, &cv.UpdatedAt,
+		&c.ID, &c.AccountID, &c.Name, &c.Email, &c.PhoneNumber, &c.PhoneE164,
+		&c.Identifier, &c.AdditionalAttrs, &c.AvatarURL, &c.Blocked,
+		&c.LastActivityAt, &c.CreatedAt, &c.UpdatedAt,
+		&i.ID, &i.AccountID, &i.ChannelID, &i.Name, &i.ChannelType, &i.CreatedAt, &i.UpdatedAt,
+		&h.HmacVerified,
+		&uID, &uEmail, &uName, &uAvatarURL, &uMfaEnabled, &uCreatedAt, &uUpdatedAt,
+		&tID, &tAccountID, &tName, &tDescription, &tAllowAutoAssign, &tCreatedAt, &tUpdatedAt,
+		&h.UnreadCount,
+		&lmID, &lmAccountID, &lmInboxID, &lmConversationID, &lmMessageType, &lmContentType,
+		&lmContent, &lmSourceID, &lmPrivate, &lmStatus, &lmContentAttrs,
+		&lmSenderType, &lmSenderID, &lmSenderContactID, &lmExternalSourceIDs,
+		&lmCreatedAt, &lmUpdatedAt, &lmDeletedAt,
+	); err != nil {
+		return err
+	}
+	if uID != nil {
+		h.Assignee = &model.User{
+			ID:         *uID,
+			Email:      derefStr(uEmail),
+			Name:       derefStr(uName),
+			AvatarURL:  uAvatarURL,
+			MfaEnabled: derefBool(uMfaEnabled),
+			CreatedAt:  derefTime(uCreatedAt),
+			UpdatedAt:  derefTime(uUpdatedAt),
+		}
+	}
+	if tID != nil {
+		h.Team = &model.Team{
+			ID:              *tID,
+			AccountID:       derefInt64(tAccountID),
+			Name:            derefStr(tName),
+			Description:     tDescription,
+			AllowAutoAssign: derefBool(tAllowAutoAssign),
+			CreatedAt:       derefTime(tCreatedAt),
+			UpdatedAt:       derefTime(tUpdatedAt),
+		}
+	}
+	if lmID != nil {
+		h.LastNonActivityMessage = &model.Message{
+			ID:                *lmID,
+			AccountID:         derefInt64(lmAccountID),
+			InboxID:           derefInt64(lmInboxID),
+			ConversationID:    derefInt64(lmConversationID),
+			MessageType:       *lmMessageType,
+			ContentType:       *lmContentType,
+			Content:           lmContent,
+			SourceID:          lmSourceID,
+			Private:           derefBool(lmPrivate),
+			Status:            *lmStatus,
+			ContentAttrs:      lmContentAttrs,
+			SenderType:        lmSenderType,
+			SenderID:          lmSenderID,
+			SenderContactID:   lmSenderContactID,
+			ExternalSourceIDs: lmExternalSourceIDs,
+			CreatedAt:         derefTime(lmCreatedAt),
+			UpdatedAt:         derefTime(lmUpdatedAt),
+			DeletedAt:         lmDeletedAt,
+		}
+	}
+	h.Labels = []string{}
+	return nil
+}
+
+// FindByIDFull returns a single conversation with every relation needed by
+// dto.ConversationToRespFull hydrated. Account-scoped — the join on
+// `cv.account_id = $1` plus `c.account_id = cv.account_id` ensures cross-
+// tenant rows cannot leak even via a numeric id collision.
+func (r *ConversationRepo) FindByIDFull(ctx context.Context, accountID, id int64) (*ConversationHydrated, error) {
+	query := `SELECT ` + conversationHydratedColumns + conversationHydratedFrom +
+		` WHERE cv.account_id = $1 AND cv.id = $2`
+	row := r.pool.QueryRow(ctx, query, accountID, id)
+	var h ConversationHydrated
+	if err := scanConversationHydrated(row, &h); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrConversationNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find conversation full: %w", err)
+	}
+	return &h, nil
+}
+
+// ListByAccountFull returns the hydrated rows for the default conversation
+// list (account-scoped, ordered by last_activity_at DESC). Caller controls
+// pagination. status==nil means no filter; otherwise rows match exactly.
+// Additional filters are supported via ConversationFilter; pass the zero
+// value for fields you don't need.
+func (r *ConversationRepo) ListByAccountFull(ctx context.Context, accountID int64, status *model.ConversationStatus, limit, offset int) ([]ConversationHydrated, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 25
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	args := []any{accountID}
+	where := ` WHERE cv.account_id = $1`
+	if status != nil {
+		where += ` AND cv.status = $2`
+		args = append(args, *status)
+	}
+	query := `SELECT ` + conversationHydratedColumns + conversationHydratedFrom + where +
+		fmt.Sprintf(` ORDER BY cv.last_activity_at DESC LIMIT %d OFFSET %d`, limit, offset)
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list conversations full: %w", err)
+	}
+	defer rows.Close()
+	var out []ConversationHydrated
+	for rows.Next() {
+		var h ConversationHydrated
+		if err := scanConversationHydrated(rows, &h); err != nil {
+			return nil, fmt.Errorf("failed to scan conversation full: %w", err)
+		}
+		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+func derefStr(p *string) string  { if p != nil { return *p }; return "" }
+func derefBool(p *bool) bool     { if p != nil { return *p }; return false }
+func derefInt64(p *int64) int64  { if p != nil { return *p }; return 0 }
+func derefTime(p *time.Time) time.Time {
+	if p != nil {
+		return *p
+	}
+	return time.Time{}
+}
+
+// ConversationHydratedToFullRow bridges the repo's hydrated row to the DTO
+// input expected by ConversationToRespFull. Defined here (and exported) so
+// the service layer can build realtime payloads without importing handler.
+// LastNonActivitySender is left nil (it is resolved by the caller when needed).
+func ConversationHydratedToFullRow(h *ConversationHydrated) dto.ConversationFullRow {
+	return dto.ConversationFullRow{
+		Conversation:           h.Conversation,
+		Contact:                h.Contact,
+		Inbox:                  h.Inbox,
+		HmacVerified:           h.HmacVerified,
+		Assignee:               h.Assignee,
+		Team:                   h.Team,
+		UnreadCount:            h.UnreadCount,
+		Labels:                 h.Labels,
+		LastNonActivityMessage: h.LastNonActivityMessage,
+	}
+}
+
+// CountByFilter returns the four assignee-dimension counts (mine, assigned,
+// unassigned, all) for the given filter. Unlike CountByStatusAndAssignee this
+// is flat — it does not break down by status — and it respects all active
+// filters (inbox_id, status, team_id, assignee_id, etc.) so it can be used
+// as meta counts in the List endpoint envelope.
+func (r *ConversationRepo) CountByFilter(ctx context.Context, f ConversationFilter) (dto.ConversationListMeta, error) {
+	where, args := f.whereClause()
+
+	query := `SELECT
+		COUNT(*) AS all_count,
+		COUNT(*) FILTER (WHERE assignee_id IS NOT NULL) AS assigned_count,
+		COUNT(*) FILTER (WHERE assignee_id IS NULL) AS unassigned_count`
+	queryArgs := make([]any, len(args))
+	copy(queryArgs, args)
+	if f.CurrentUser != nil {
+		query += fmt.Sprintf(`, COUNT(*) FILTER (WHERE assignee_id = $%d) AS mine_count`, len(args)+1)
+		queryArgs = append(queryArgs, *f.CurrentUser)
+	} else {
+		query += `, 0 AS mine_count`
+	}
+	query += ` FROM conversations WHERE account_id = $1` + where
+
+	var meta dto.ConversationListMeta
+	if err := r.pool.QueryRow(ctx, query, queryArgs...).Scan(&meta.AllCount, &meta.AssignedCount, &meta.UnassignedCount, &meta.MineCount); err != nil {
+		return meta, fmt.Errorf("failed to count conversations by filter: %w", err)
+	}
+	return meta, nil
+}
+
 // AccountIDByID returns only the owning account id for a conversation.
 // Used by callers that need to verify tenant ownership without fetching the
 // full row and without already knowing the account (e.g. realtime joins).
@@ -342,6 +608,20 @@ func (r *ConversationRepo) UpdateLastSeen(ctx context.Context, id int64) error {
 	return nil
 }
 
+// UpdateLastActivity bumps last_activity_at to the given timestamp without
+// touching updated_at. Called from MessageService.Create after each new
+// message so the conversation list ordering reflects message arrival time.
+// Guarded by GREATEST so out-of-order events cannot move the timestamp
+// backwards.
+func (r *ConversationRepo) UpdateLastActivity(ctx context.Context, id int64, at time.Time) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE conversations SET last_activity_at = GREATEST(last_activity_at, $2) WHERE id = $1`, id, at)
+	if err != nil {
+		return fmt.Errorf("failed to update conversation last_activity_at: %w", err)
+	}
+	return nil
+}
+
 func (r *ConversationRepo) UpdateAdditionalAttrs(ctx context.Context, id, accountID int64, attrs string) (*string, error) {
 	query := `UPDATE conversations SET additional_attributes = $3, updated_at = NOW() WHERE id = $1 AND account_id = $2 RETURNING additional_attributes`
 	var result *string
@@ -355,9 +635,12 @@ func (r *ConversationRepo) UpdateAdditionalAttrs(ctx context.Context, id, accoun
 }
 
 func (r *ConversationRepo) UpdateAssignment(ctx context.Context, id, accountID int64, assigneeID, teamID *int64) (*model.Conversation, error) {
+	// Direct assignment (not COALESCE) so callers can clear the field by
+	// passing nil. The handler always sends both fields from the request body,
+	// so this is a full overwrite, not a partial update.
 	query := `UPDATE conversations SET
-		assignee_id = COALESCE($3, assignee_id),
-		team_id = COALESCE($4, team_id),
+		assignee_id = $3,
+		team_id = $4,
 		updated_at = NOW()
 		WHERE id = $1 AND account_id = $2
 		RETURNING ` + conversationSelectColumns

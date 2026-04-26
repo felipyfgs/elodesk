@@ -128,7 +128,7 @@ func processMessage(
 		}
 	}
 
-	_, conv, err := ensureContactAndConversation(ctx, evt.Source.UserID, ch.AccountID, inbox.ID,
+	ci, conv, err := ensureContactAndConversation(ctx, evt.Source.UserID, ch.AccountID, inbox.ID,
 		api, channelToken, contactRepo, contactInboxRepo, conversationRepo)
 	if err != nil {
 		return err
@@ -144,6 +144,8 @@ func processMessage(
 		lineChannelAttrsKey: ch.LineChannelID,
 	})
 
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inbox.ID,
@@ -153,6 +155,8 @@ func processMessage(
 		Content:        &content,
 		SourceID:       &sourceID,
 		ContentAttrs:   attrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	if _, err := messageRepo.Create(ctx, dbMsg); err != nil {
 		return fmt.Errorf("create message: %w", err)
@@ -185,7 +189,7 @@ func processPostback(
 		}
 	}
 
-	_, conv, err := ensureContactAndConversation(ctx, evt.Source.UserID, ch.AccountID, inbox.ID,
+	ci, conv, err := ensureContactAndConversation(ctx, evt.Source.UserID, ch.AccountID, inbox.ID,
 		api, channelToken, contactRepo, contactInboxRepo, conversationRepo)
 	if err != nil {
 		return err
@@ -200,6 +204,8 @@ func processPostback(
 		replyTokenAttrsKey:  evt.ReplyToken,
 		lineChannelAttrsKey: ch.LineChannelID,
 	})
+	senderType := "Contact"
+	contactID := ci.ContactID
 	dbMsg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inbox.ID,
@@ -209,6 +215,8 @@ func processPostback(
 		Content:        &content,
 		SourceID:       &sourceID,
 		ContentAttrs:   attrs,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	if _, err := messageRepo.Create(ctx, dbMsg); err != nil {
 		return fmt.Errorf("create message: %w", err)

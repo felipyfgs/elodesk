@@ -106,6 +106,8 @@ func (h *EmailWebhookHandler) Inbound(c *fiber.Ctx) error {
 	if body == "" {
 		body = env.HTML
 	}
+	senderType := "Contact"
+	contactID := conv.ContactID
 	msg := &model.Message{
 		AccountID:      ch.AccountID,
 		InboxID:        inboxID,
@@ -115,6 +117,8 @@ func (h *EmailWebhookHandler) Inbound(c *fiber.Ctx) error {
 		Content:        &body,
 		SourceID:       srcID,
 		Status:         model.MessageSent,
+		SenderType:     &senderType,
+		SenderID:       &contactID,
 	}
 	created, err := h.messageRepo.Create(ctx, msg)
 	if err != nil {

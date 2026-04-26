@@ -35,7 +35,7 @@ func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 		2 * time.Minute,
 		10 * time.Minute,
 	}
-	if n-1 < len(delays) {
+	if n >= 1 && n-1 < len(delays) {
 		return delays[n-1]
 	}
 	return 10 * time.Minute

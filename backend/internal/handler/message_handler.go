@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -76,28 +77,27 @@ func (h *MessageHandler) Create(c *fiber.Ctx) error {
 		return nil
 	}
 
-	sourceID := req.SourceID
-	if sourceID == nil && req.EchoID != nil {
-		sourceID = req.EchoID
+	if req.Content == "" && len(req.Attachments) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "message or attachments are required"))
 	}
 
-	contentType := model.ContentTypeText
+	var contentType model.MessageContentType
 	if req.ContentType != nil {
 		contentType = model.MessageContentType(*req.ContentType)
 	}
 
-	var contentAttrs *string
-	if len(req.ContentAttributes) > 0 {
-		s := string(req.ContentAttributes)
-		contentAttrs = &s
-	}
+	contentAttrs := mergeEchoID(req.ContentAttributes, req.EchoID)
+
+	attachments := buildAttachments(req.Attachments)
 
 	msg := &model.Message{
-		Content:      &req.Content,
-		SourceID:     sourceID,
-		Private:      req.Private,
-		ContentType:  contentType,
-		ContentAttrs: contentAttrs,
+		Content:         &req.Content,
+		SourceID:        req.SourceID,
+		Private:         req.Private,
+		ContentType:     contentType,
+		ContentAttrs:    contentAttrs,
+		Attachments:     attachments,
+		SenderContactID: req.SenderContactID,
 	}
 
 	created, err := h.svc.Create(c.Context(), accountID, inbox.ID, conversationID, msg)
@@ -134,28 +134,33 @@ func (h *MessageHandler) CreateAuthenticated(c *fiber.Ctx) error {
 		return nil
 	}
 
-	sourceID := req.SourceID
-	if sourceID == nil && req.EchoID != nil {
-		sourceID = req.EchoID
+	if req.Content == "" && len(req.Attachments) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "message or attachments are required"))
 	}
 
-	contentType := model.ContentTypeText
+	var contentType model.MessageContentType
 	if req.ContentType != nil {
 		contentType = model.MessageContentType(*req.ContentType)
 	}
 
-	var contentAttrs *string
-	if len(req.ContentAttributes) > 0 {
-		s := string(req.ContentAttributes)
-		contentAttrs = &s
-	}
+	contentAttrs := mergeEchoID(req.ContentAttributes, req.EchoID)
+
+	attachments := buildAttachments(req.Attachments)
 
 	msg := &model.Message{
 		Content:      &req.Content,
-		SourceID:     sourceID,
+		MessageType:  model.MessageOutgoing,
+		SourceID:     req.SourceID,
 		Private:      req.Private,
 		ContentType:  contentType,
 		ContentAttrs: contentAttrs,
+		Attachments:  attachments,
+	}
+	if u, ok := c.Locals("user").(*repo.AuthUser); ok && u != nil {
+		senderType := "User"
+		uid := u.ID
+		msg.SenderType = &senderType
+		msg.SenderID = &uid
 	}
 
 	created, err := h.svc.Create(c.Context(), accountID, inbox.ID, conversationID, msg)
@@ -179,21 +184,25 @@ func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conve
 	}
 
 	sourceIDStr := c.FormValue("source_id")
-	if sourceIDStr == "" {
-		sourceIDStr = c.FormValue("echo_id")
-	}
 	var sourceID *string
 	if sourceIDStr != "" {
 		sourceID = &sourceIDStr
 	}
 
+	echoIDStr := c.FormValue("echo_id")
+	var echoID *string
+	if echoIDStr != "" {
+		echoID = &echoIDStr
+	}
+
 	private := c.FormValue("private") == "true"
 
 	msg := &model.Message{
-		Content:     &content,
-		SourceID:    sourceID,
-		Private:     private,
-		ContentType: model.ContentTypeText,
+		Content:      &content,
+		SourceID:     sourceID,
+		Private:      private,
+		ContentType:  model.ContentTypeText,
+		ContentAttrs: mergeEchoID(nil, echoID),
 	}
 
 	created, err := h.svc.Create(c.Context(), accountID, inboxID, conversationID, msg)
@@ -230,9 +239,15 @@ func (h *MessageHandler) ListPublic(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
+	senders := h.svc.HydrateMessageSenders(c.Context(), messages, accountID)
+	payload := make([]dto.MessageResp, len(messages))
+	for i := range messages {
+		payload[i] = dto.MessageToRespWithSender(&messages[i], senders[messages[i].ID])
+	}
+
 	return c.JSON(dto.SuccessResp(dto.MessageListResp{
 		Meta:    dto.NewMetaResp(total, page, perPage),
-		Payload: dto.MessagesToResp(messages),
+		Payload: payload,
 	}))
 }
 
@@ -262,9 +277,15 @@ func (h *MessageHandler) List(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
+	senders := h.svc.HydrateMessageSenders(c.Context(), messages, accountID)
+	payload := make([]dto.MessageResp, len(messages))
+	for i := range messages {
+		payload[i] = dto.MessageToRespWithSender(&messages[i], senders[messages[i].ID])
+	}
+
 	return c.JSON(dto.SuccessResp(dto.MessageListResp{
 		Meta:    dto.NewMetaResp(total, page, perPage),
-		Payload: dto.MessagesToResp(messages),
+		Payload: payload,
 	}))
 }
 
@@ -359,4 +380,51 @@ func (h *MessageHandler) UpdatePublic(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(dto.SuccessResp(dto.MessageToResp(msg)))
+}
+
+// mergeEchoID returns a content_attributes JSON blob with `echo_id`
+// injected. When echoID is nil, the original attrs are returned unchanged
+// (nil if empty). Echo IDs are used by the composer for optimistic
+// reconciliation — persisted here so the realtime broadcast can echo them
+// back without a separate column.
+func mergeEchoID(attrs json.RawMessage, echoID *string) *string {
+	if echoID == nil || *echoID == "" {
+		if len(attrs) == 0 {
+			return nil
+		}
+		s := string(attrs)
+		return &s
+	}
+	merged := map[string]any{}
+	if len(attrs) > 0 {
+		if err := json.Unmarshal(attrs, &merged); err != nil {
+			merged = map[string]any{}
+		}
+	}
+	merged["echo_id"] = *echoID
+	b, err := json.Marshal(merged)
+	if err != nil {
+		return nil
+	}
+	s := string(b)
+	return &s
+}
+
+func buildAttachments(reqs []dto.CreateAttachmentReq) []model.Attachment {
+	if len(reqs) == 0 {
+		return nil
+	}
+	out := make([]model.Attachment, 0, len(reqs))
+	for _, r := range reqs {
+		if r.FileKey == "" {
+			continue
+		}
+		fileKey := r.FileKey
+		att := model.Attachment{
+			FileKey:  &fileKey,
+			FileType: service.FileTypeFromMime(r.FileType),
+		}
+		out = append(out, att)
+	}
+	return out
 }

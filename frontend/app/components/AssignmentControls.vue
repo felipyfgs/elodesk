@@ -65,12 +65,20 @@ const teamItems = computed<DropdownMenuItem[][]>(() => [
   }])
 ])
 
+// Stores keep IDs as strings, but the backend's BodyParser expects int64 — so
+// JSON `"1"` returns 400. Convert to number (or null) before sending in a body.
+function toNumericId(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
 async function assign(assigneeId: string | null) {
   loading.value = true
   try {
     const conv = await api<Conversation>(`/accounts/${auth.account?.id}/conversations/${props.conversationId}/assignments`, {
       method: 'POST',
-      body: { assignee_id: assigneeId, team_id: props.currentTeamId }
+      body: { assignee_id: toNumericId(assigneeId), team_id: toNumericId(props.currentTeamId) }
     })
     conversations.upsert(conv)
     emit('changed')
@@ -84,7 +92,7 @@ async function setTeam(teamId: string | null) {
   try {
     const conv = await api<Conversation>(`/accounts/${auth.account?.id}/conversations/${props.conversationId}/assignments`, {
       method: 'POST',
-      body: { assignee_id: props.currentAssigneeId, team_id: teamId }
+      body: { assignee_id: toNumericId(props.currentAssigneeId), team_id: toNumericId(teamId) }
     })
     conversations.upsert(conv)
     emit('changed')

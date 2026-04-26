@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { formatTimeAgo } from '@vueuse/core'
 import type { Contact } from '~/stores/contacts'
+import { parseJsonAttrs } from '~/utils/jsonAttrs'
 import ContactsEditForm from './ContactsEditForm.vue'
 
 const props = defineProps<{
@@ -29,15 +30,7 @@ const initials = computed(() => {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 })
 
-const extras = computed(() => {
-  const raw = props.contact.additionalAttributes
-  if (!raw) return {} as Record<string, unknown>
-  try {
-    return JSON.parse(raw) as Record<string, unknown>
-  } catch {
-    return {} as Record<string, unknown>
-  }
-})
+const extras = computed(() => parseJsonAttrs(props.contact.additionalAttributes))
 
 const companyName = computed(() => {
   const v = extras.value.company_name ?? extras.value.companyName

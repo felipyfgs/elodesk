@@ -20,7 +20,7 @@ type SMSWebhookHandler struct {
 	messageRepo    *repo.MessageRepo
 	registry       *sms.Registry
 	ingestSvc      *sms.IngestService
-	realtimeSvc    *service.RealtimeService
+	messageSvc     *service.MessageService
 }
 
 func NewSMSWebhookHandler(
@@ -28,14 +28,14 @@ func NewSMSWebhookHandler(
 	messageRepo *repo.MessageRepo,
 	registry *sms.Registry,
 	ingestSvc *sms.IngestService,
-	realtimeSvc *service.RealtimeService,
+	messageSvc *service.MessageService,
 ) *SMSWebhookHandler {
 	return &SMSWebhookHandler{
 		channelSMSRepo: channelSMSRepo,
 		messageRepo:    messageRepo,
 		registry:       registry,
 		ingestSvc:      ingestSvc,
-		realtimeSvc:    realtimeSvc,
+		messageSvc:     messageSvc,
 	}
 }
 
@@ -132,14 +132,9 @@ func (h *SMSWebhookHandler) Status(c *fiber.Ctx) error {
 		extErr = &cb.ExternalError
 	}
 
-	updated, err := h.messageRepo.UpdateStatus(c.Context(), msg.ID, ch.AccountID, cb.Status, extErr)
-	if err != nil {
+	if _, err := h.messageSvc.UpdateStatus(c.Context(), msg.ID, ch.AccountID, cb.Status, extErr); err != nil {
 		logger.Error().Str("component", "sms_webhook_status").Err(err).Msg("update message status failed")
 		return c.SendStatus(200)
-	}
-
-	if h.realtimeSvc != nil {
-		h.realtimeSvc.BroadcastConversationEvent(msg.ConversationID, "message.status_changed", updated)
 	}
 
 	return c.SendStatus(200)

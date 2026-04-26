@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Contact } from '~/stores/contacts'
+import { parseJsonAttrs } from '~/utils/jsonAttrs'
 
 export interface ContactFormState {
   firstName: string
@@ -36,18 +37,9 @@ function splitName(name: string | null): { first: string, last: string } {
   return { first, last: rest.join(' ') }
 }
 
-function parseAttrs(raw: string | null): Record<string, unknown> {
-  if (!raw) return {}
-  try {
-    return JSON.parse(raw) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-}
-
 function initialState(): ContactFormState {
   const { first, last } = splitName(props.contact.name)
-  const attrs = parseAttrs(props.contact.additionalAttributes)
+  const attrs = parseJsonAttrs(props.contact.additionalAttributes)
   const social = (attrs.socialProfiles as Record<string, string> | undefined) ?? {}
   return {
     firstName: first,

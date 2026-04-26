@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"backend/internal/model"
 
@@ -17,14 +18,14 @@ var (
 	ErrSameContactMerge   = errors.New("cannot merge contact with itself")
 )
 
-const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, blocked, last_activity_at, created_at, updated_at"
+const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, avatar_hash, blocked, last_activity_at, created_at, updated_at, deleted_at"
 
 type contactScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanContact(scanner contactScanner, m *model.Contact) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.AvatarURL, &m.Blocked, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.AvatarURL, &m.AvatarHash, &m.Blocked, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt)
 }
 
 type ContactRepo struct {
@@ -67,6 +68,20 @@ func (r *ContactRepo) Upsert(ctx context.Context, m *model.Contact) error {
 }
 
 func (r *ContactRepo) FindByID(ctx context.Context, id, accountID int64) (*model.Contact, error) {
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL`
+	row := r.pool.QueryRow(ctx, query, id, accountID)
+	var m model.Contact
+	if err := scanContact(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrContactNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find contact: %w", err)
+	}
+	return &m, nil
+}
+
+// FindByIDIncludeDeleted finds a contact even if soft-deleted.
+func (r *ContactRepo) FindByIDIncludeDeleted(ctx context.Context, id, accountID int64) (*model.Contact, error) {
 	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE id = $1 AND account_id = $2`
 	row := r.pool.QueryRow(ctx, query, id, accountID)
 	var m model.Contact
@@ -80,7 +95,7 @@ func (r *ContactRepo) FindByID(ctx context.Context, id, accountID int64) (*model
 }
 
 func (r *ContactRepo) FindByIdentifier(ctx context.Context, identifier, accountID string) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE identifier = $1 AND account_id = $2`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE identifier = $1 AND account_id = $2 AND deleted_at IS NULL`
 	row := r.pool.QueryRow(ctx, query, identifier, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -93,7 +108,7 @@ func (r *ContactRepo) FindByIdentifier(ctx context.Context, identifier, accountI
 }
 
 func (r *ContactRepo) FindByEmail(ctx context.Context, email string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE LOWER(email) = LOWER($1) AND account_id = $2 LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE LOWER(email) = LOWER($1) AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, email, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -106,7 +121,7 @@ func (r *ContactRepo) FindByEmail(ctx context.Context, email string, accountID i
 }
 
 func (r *ContactRepo) FindByPhoneE164(ctx context.Context, phoneE164 string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_e164 = $1 AND account_id = $2 LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_e164 = $1 AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, phoneE164, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -119,7 +134,7 @@ func (r *ContactRepo) FindByPhoneE164(ctx context.Context, phoneE164 string, acc
 }
 
 func (r *ContactRepo) FindByPhone(ctx context.Context, phone string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_number = $1 AND account_id = $2 LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_number = $1 AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, phone, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -142,7 +157,7 @@ type ContactFilter struct {
 }
 
 func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Contact, int, error) {
-	countQuery := `SELECT COUNT(*) FROM contacts c WHERE c.account_id = $1`
+	countQuery := `SELECT COUNT(*) FROM contacts c WHERE c.account_id = $1 AND c.deleted_at IS NULL`
 	var args []any
 	args = append(args, f.AccountID)
 	argN := 2
@@ -174,7 +189,7 @@ func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Cont
 		return []model.Contact{}, 0, nil
 	}
 
-	dataQuery := `SELECT c.` + contactSelectColumns + ` FROM contacts c` + joins + ` WHERE c.account_id = $1`
+	dataQuery := `SELECT c.` + contactSelectColumns + ` FROM contacts c` + joins + ` WHERE c.account_id = $1 AND c.deleted_at IS NULL`
 	if f.Query != "" {
 		dataQuery += ` AND (c.name ILIKE $2 OR c.email ILIKE $2 OR c.phone_number ILIKE $2)`
 	}
@@ -245,6 +260,7 @@ func (r *ContactRepo) Filter(ctx context.Context, accountID int64, email, phone 
 	conditions = append(conditions, fmt.Sprintf("account_id = $%d", argN))
 	args = append(args, accountID)
 	argN++
+	conditions = append(conditions, "deleted_at IS NULL")
 
 	if email != "" {
 		conditions = append(conditions, fmt.Sprintf("email = $%d", argN))
@@ -348,12 +364,38 @@ func (r *ContactRepo) ImportBatch(ctx context.Context, accountID int64, batch []
 }
 
 func (r *ContactRepo) Delete(ctx context.Context, id, accountID int64) error {
-	cmd, err := r.pool.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, id, accountID)
+	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL`, id, accountID)
 	if err != nil {
-		return fmt.Errorf("failed to delete contact: %w", err)
+		return fmt.Errorf("failed to soft-delete contact: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return ErrContactNotFound
+	}
+	return nil
+}
+
+// HardDelete permanently removes a contact row. Use sparingly — most callers
+// should use Delete (soft-delete) instead.
+func (r *ContactRepo) HardDelete(ctx context.Context, id, accountID int64) error {
+	cmd, err := r.pool.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, id, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to hard-delete contact: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrContactNotFound
+	}
+	return nil
+}
+
+// UpdateLastActivity bumps last_activity_at to the given timestamp without
+// touching updated_at. Called whenever an incoming message from this contact
+// is created, mirroring Chatwoot's contact activity heuristic.
+func (r *ContactRepo) UpdateLastActivity(ctx context.Context, id, accountID int64, at time.Time) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE contacts SET last_activity_at = GREATEST(COALESCE(last_activity_at, to_timestamp(0)), $3) WHERE id = $1 AND account_id = $2`,
+		id, accountID, at)
+	if err != nil {
+		return fmt.Errorf("failed to update contact last_activity_at: %w", err)
 	}
 	return nil
 }
@@ -371,6 +413,21 @@ func (r *ContactRepo) UpdateBlocked(ctx context.Context, id, accountID int64, bl
 
 func (r *ContactRepo) UpdateAvatarURL(ctx context.Context, id, accountID int64, url *string) error {
 	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET avatar_url = $3, updated_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID, url)
+	if err != nil {
+		return fmt.Errorf("failed to update contact avatar: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrContactNotFound
+	}
+	return nil
+}
+
+// UpdateAvatar stores avatar_url and avatar_hash atomically. When caller
+// resolves the new hash (from an HTTP HEAD or provider callback), both
+// fields are written together so subsequent UpsertContact calls can detect
+// content changes without re-downloading the full payload.
+func (r *ContactRepo) UpdateAvatar(ctx context.Context, id, accountID int64, url, hash *string) error {
+	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET avatar_url = $3, avatar_hash = $4, updated_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID, url, hash)
 	if err != nil {
 		return fmt.Errorf("failed to update contact avatar: %w", err)
 	}
