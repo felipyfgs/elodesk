@@ -18,7 +18,7 @@ export default defineNuxtRouteMiddleware((to) => {
   if (!found) {
     const primary = auth.accounts[0]
     if (primary) {
-      return navigateTo(`/accounts/${primary.id}/conversations`)
+      return navigateTo(`/accounts/${primary.id}`)
     }
     return navigateTo('/login')
   }

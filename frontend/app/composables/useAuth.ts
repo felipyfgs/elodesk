@@ -23,7 +23,6 @@ export interface LoginSuccess {
 export const useAuth = () => {
   const auth = useAuthStore()
   const api = useApi()
-  const runtime = useRuntimeConfig()
 
   async function login(email: string, password: string): Promise<LoginMfaRequired | LoginSuccess> {
     const res = await api<LoginMfaRequired | LoginSuccess>(
@@ -76,16 +75,16 @@ export const useAuth = () => {
       accessToken: string
       refreshToken: string
     }
-    const raw = await $fetch<{ success: boolean, data: RegisterData }>(
-      '/auth/register', { baseURL: runtime.public.apiUrl, method: 'POST', body: payload }
+    const res = await api<RegisterData>(
+      '/auth/register', { method: 'POST', body: payload }
     )
-    const res = raw.data ?? raw as unknown as RegisterData
     auth.setSession({
       user: { id: String(res.user.id), email: res.user.email, name: res.user.name },
       account: { ...res.account, id: String(res.account.id) },
       accessToken: res.accessToken,
       refreshToken: res.refreshToken
     })
+    await refreshMemberships()
   }
 
   async function logout() {

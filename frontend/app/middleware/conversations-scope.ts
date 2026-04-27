@@ -6,12 +6,15 @@ export default defineNuxtRouteMiddleware((to) => {
 
   if (path.includes('/conversations/inbox/')) {
     const inboxId = to.params.id as string
+    if (!inboxId) return
     convs.setFilters({ inboxId })
   } else if (path.includes('/conversations/label/')) {
     const labelName = to.params.name as string
+    if (!labelName) return
     convs.setFilters({ labelId: labelName })
   } else if (path.includes('/conversations/team/')) {
     const teamId = to.params.id as string
+    if (!teamId) return
     convs.setFilters({ teamId })
   } else if (path.includes('/conversations/filter/')) {
     convs.setFilters({})

@@ -59,7 +59,8 @@ func (r *ConversationRepo) FindByID(ctx context.Context, id, accountID int64) (*
 }
 
 func (r *ConversationRepo) ToggleStatus(ctx context.Context, id, accountID int64, newStatus model.ConversationStatus) (*model.Conversation, error) {
-	query := `UPDATE conversations SET status = $1, updated_at = NOW() WHERE id = $2 AND account_id = $3
+	query := `UPDATE conversations SET status = $1, updated_at = NOW()
+		WHERE id = $2 AND account_id = $3
 		RETURNING ` + conversationSelectColumns
 	row := r.pool.QueryRow(ctx, query, newStatus, id, accountID)
 	var m model.Conversation
@@ -70,6 +71,22 @@ func (r *ConversationRepo) ToggleStatus(ctx context.Context, id, accountID int64
 		return nil, fmt.Errorf("failed to toggle conversation status: %w", err)
 	}
 	return &m, nil
+}
+
+// Delete removes the conversation and all its messages/participants via
+// ON DELETE CASCADE. The audit trail survives in audit_logs; the data is
+// permanently gone — there is no soft-delete for conversations.
+func (r *ConversationRepo) Delete(ctx context.Context, id, accountID int64) error {
+	cmd, err := r.pool.Exec(ctx,
+		`DELETE FROM conversations WHERE id = $1 AND account_id = $2`,
+		id, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to delete conversation: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return ErrConversationNotFound
+	}
+	return nil
 }
 
 type ConversationAssigneeType string

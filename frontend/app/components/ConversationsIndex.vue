@@ -63,9 +63,14 @@ const isPanelOpen = computed({
   set: (v: boolean) => { if (!v) selectConversation(null) }
 })
 
+const toast = useToast()
+
 // Deep-link support: when the URL carries a :conversationId that isn't in the
 // currently loaded list (e.g. status filter excludes it, or the user opened a
-// shared link), fetch it directly so the thread can render.
+// shared link), fetch it directly so the thread can render. A 404 means the
+// conversation was deleted (e.g. another tab removed it) — drop it from the
+// store and route back to the bare list so the user isn't stuck on an empty
+// thread panel.
 async function ensureSelectedLoaded(id: string | null) {
   if (!id || !auth.account?.id) return
   if (convs.list.find(c => String(c.id) === id)) return
@@ -78,6 +83,13 @@ async function ensureSelectedLoaded(id: string | null) {
       convs.setCurrent(conv)
     }
   } catch (err) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) {
+      convs.remove(id)
+      toast.add({ title: t('conversations.deletedFallback'), icon: 'i-lucide-trash-2', color: 'warning' })
+      router.replace(`/accounts/${auth.account.id}/conversations`)
+      return
+    }
     if (import.meta.dev) console.warn('[conversations] failed to fetch conversation', id, err)
   }
 }

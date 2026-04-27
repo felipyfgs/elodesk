@@ -112,6 +112,28 @@ func (s *ConversationService) ToggleStatus(ctx context.Context, id, accountID in
 	return convo, nil
 }
 
+// Delete permanently removes the conversation (and all messages/participants
+// via ON DELETE CASCADE). A conversation.deleted realtime event is broadcast
+// so connected clients drop the row. The audit trail lives in audit_logs; the
+// data itself is gone permanently — no soft-delete for conversations.
+func (s *ConversationService) Delete(ctx context.Context, id, accountID int64) error {
+	convo, err := s.conversationRepo.FindByID(ctx, id, accountID)
+	if err != nil {
+		return err
+	}
+	if err := s.conversationRepo.Delete(ctx, id, accountID); err != nil {
+		return err
+	}
+	if s.realtime != nil {
+		payload := map[string]any{
+			"id":       convo.ID,
+			"inbox_id": convo.InboxID,
+		}
+		s.realtime.Broadcast(convo.ID, accountID, realtime.EventConversationDeleted, payload)
+	}
+	return nil
+}
+
 // broadcastUpdated hydrates the conversation and pushes a
 // `conversation.updated` event so connected clients can react without polling.
 // Best-effort: errors are logged and swallowed so the caller's response isn't

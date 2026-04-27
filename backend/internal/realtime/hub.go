@@ -38,7 +38,7 @@ func NewHub() *Hub {
 		clients:    make(map[*Client]struct{}),
 		rooms:      make(map[string]map[*Client]struct{}),
 		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		unregister: make(chan *Client, 256),
 		broadcast:  make(chan broadcastEvent, 256),
 	}
 }
@@ -82,9 +82,10 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- event.message:
 				default:
-					go func(c *Client) {
-						h.unregister <- c
-					}(client)
+					select {
+					case h.unregister <- client:
+					default:
+					}
 				}
 			}
 			h.mu.RUnlock()
@@ -96,6 +97,11 @@ func (h *Hub) Register(client *Client) {
 	h.register <- client
 }
 
+// Unregister enfileira a remoção do cliente do hub. Bloqueia até a remoção
+// ser aceita: dropar aqui significaria deixar o cliente órfão em h.clients
+// quando o websocket já fechou. O fan-out (Run loop) usa envio não-bloqueante
+// e pode dropar com segurança porque o cliente sempre será reciclado pela
+// próxima Unregister explícita do handler de close.
 func (h *Hub) Unregister(client *Client) {
 	h.unregister <- client
 }

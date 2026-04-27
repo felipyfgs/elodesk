@@ -3,6 +3,8 @@ package media
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -98,4 +100,15 @@ func (m *MinioClient) PresignClient() *minio.Client {
 
 func (m *MinioClient) Bucket() string {
 	return m.bucket
+}
+
+// PresignGet gera uma URL temporária GET para o object path indicado,
+// usando o cliente público (presignClient) — assim a URL resultante
+// referencia o endpoint que clientes externos conseguem alcançar.
+func (m *MinioClient) PresignGet(ctx context.Context, objectPath string, ttl time.Duration) (string, error) {
+	u, err := m.PresignClient().PresignedGetObject(ctx, m.bucket, objectPath, ttl, url.Values{})
+	if err != nil {
+		return "", fmt.Errorf("presign get %q: %w", objectPath, err)
+	}
+	return u.String(), nil
 }

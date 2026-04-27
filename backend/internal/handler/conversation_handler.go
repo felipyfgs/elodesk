@@ -429,6 +429,33 @@ func (h *ConversationHandler) ToggleStatus(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
 }
 
+// Delete permanently removes the conversation (and all messages/participants
+// via ON DELETE CASCADE). Restricted to Admin+ at the route layer. The audit
+// trail survives in audit_logs; the data itself is gone permanently. Returns
+// 204 on success, 404 if the conversation is missing.
+func (h *ConversationHandler) Delete(c *fiber.Ctx) error {
+	accountID, ok := c.Locals("accountId").(int64)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
+	}
+
+	if err := h.svc.Delete(c.Context(), int64(id), accountID); err != nil {
+		return handleNotFound(c, err)
+	}
+
+	if h.auditLogger != nil {
+		convID := int64(id)
+		h.auditLogger.LogFromCtx(c, "conversation.deleted", "conversation", &convID, nil)
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
 	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
 	if !ok {

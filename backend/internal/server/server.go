@@ -34,8 +34,9 @@ func New(cfg *config.Config) *Server {
 			code := fiber.StatusInternalServerError
 			if fiberErr, ok := err.(*fiber.Error); ok {
 				code = fiberErr.Code
+				return c.Status(code).JSON(dto.ErrorResp("Error", fiberErr.Message))
 			}
-			return c.Status(code).JSON(dto.ErrorResp("Error", err.Error()))
+			return c.Status(code).JSON(dto.ErrorResp("Error", "internal server error"))
 		},
 	})
 

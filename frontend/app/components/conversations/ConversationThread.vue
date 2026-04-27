@@ -275,6 +275,10 @@ const statusPrimaryLabel = computed(() => (
     : t('conversations.actions.resolve')
 ))
 
+const statusPrimaryAction = computed<StatusAction>(() => (
+  props.conversation.status === STATUS_MAP.RESOLVED ? 'OPEN' : 'RESOLVED'
+))
+
 const statusActions: { status: StatusAction, label: string, icon: string }[] = [
   { status: 'OPEN', label: 'conversations.actions.open', icon: 'i-lucide-message-circle' },
   { status: 'PENDING', label: 'conversations.actions.pending', icon: 'i-lucide-clock' },
@@ -535,16 +539,24 @@ function bubbleClass(m: Message): string {
           </div>
 
           <div class="flex shrink-0 items-center gap-1">
-            <UDropdownMenu :items="statusItems" :content="{ align: 'end' }">
+            <UFieldGroup size="sm">
               <UButton
                 :label="statusPrimaryLabel"
-                trailing-icon="i-lucide-chevron-down"
                 color="neutral"
                 variant="soft"
-                size="sm"
                 :loading="statusLoading"
+                @click="updateStatus(statusPrimaryAction)"
               />
-            </UDropdownMenu>
+              <UDropdownMenu :items="statusItems" :content="{ align: 'end' }">
+                <UButton
+                  icon="i-lucide-chevron-down"
+                  color="neutral"
+                  variant="soft"
+                  :disabled="statusLoading"
+                  :aria-label="t('conversations.actions.changeStatus')"
+                />
+              </UDropdownMenu>
+            </UFieldGroup>
             <UTooltip :text="t('conversations.detail.contacts')">
               <UButton
                 icon="i-lucide-user-round"

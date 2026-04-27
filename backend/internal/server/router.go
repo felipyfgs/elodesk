@@ -138,7 +138,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	participantHandler := handler.NewParticipantHandler(participantSvc)
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisURL})
-	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient)
+	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient, cipher)
 
 	outboundNotifier := service.NewOutboundWebhookNotifier(outboundWebhookSvc, channelApiRepo, inboxRepo, conversationRepo)
 	messageSvc.SetOnOutboundHandler(outboundNotifier)
@@ -184,6 +184,28 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	if err != nil {
 		return nil, err
 	}
+	if err := minioClient.EnsureBucket(context.Background()); err != nil {
+		return nil, err
+	}
+
+	// Liga o presigner do MinIO ao webhook outbound. Quando MINIO_WEBHOOK_*
+	// está configurado, usa um cliente dedicado — evita que URLs presigned
+	// referenciem `127.0.0.1` (válido só pra browser do host) quando o
+	// consumidor do webhook está em outro container.
+	webhookMinioClient := minioClient
+	if cfg.MinioWebhookEndpoint != "" {
+		webhookMinioClient, err = media.NewWithPublic(
+			cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL,
+			cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket,
+			cfg.MinioWebhookEndpoint, cfg.MinioWebhookPort, cfg.MinioWebhookUseSSL,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	outboundWebhookSvc.WithAttachmentPresigner(func(ctx context.Context, fileKey string) (string, error) {
+		return webhookMinioClient.PresignGet(ctx, fileKey, 15*time.Minute)
+	})
 	uploadHandler := handler.NewUploadHandler(minioClient, attachmentRepo)
 	contactSvc.WithMinio(minioClient)
 
@@ -249,6 +271,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Get("/conversations/meta", conversationHandler.Meta)
 	accounts.Post("/conversations", agentPlus, conversationHandler.CreateAuthenticated)
 	accounts.Get("/conversations/:id", conversationHandler.Get)
+	accounts.Delete("/conversations/:id", ownerAdmin, conversationHandler.Delete)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
 	accounts.Post("/conversations/:conversationId/messages", agentPlus, messageHandler.CreateAuthenticated)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)

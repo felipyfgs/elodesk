@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"backend/internal/dto"
 	"backend/internal/logger"
@@ -40,10 +41,20 @@ type RealtimeNotifier interface {
 	Broadcast(conversationID, accountID int64, event string, payload any)
 }
 
+// conversationStore is the minimal contract MessageService needs from the
+// conversation repo. Defined consumer-side so tests can inject a fake without
+// importing pgx.
+type conversationStore interface {
+	FindByID(ctx context.Context, id, accountID int64) (*model.Conversation, error)
+	FindByIDFull(ctx context.Context, accountID, id int64) (*repo.ConversationHydrated, error)
+	ToggleStatus(ctx context.Context, id, accountID int64, status model.ConversationStatus) (*model.Conversation, error)
+	UpdateLastActivity(ctx context.Context, id int64, at time.Time) error
+}
+
 type MessageService struct {
 	messageRepo      *repo.MessageRepo
 	attachmentRepo   *repo.AttachmentRepo
-	conversationRepo *repo.ConversationRepo
+	conversationRepo conversationStore
 	contactRepo      *repo.ContactRepo
 	userRepo         *repo.UserRepo
 	realtime         RealtimeNotifier
@@ -55,7 +66,10 @@ func NewMessageService(messageRepo *repo.MessageRepo, attachmentRepo *repo.Attac
 	return &MessageService{messageRepo: messageRepo, attachmentRepo: attachmentRepo}
 }
 
-func (s *MessageService) SetConversationRepo(r *repo.ConversationRepo) {
+// SetConversationRepo aceita a interface conversationStore (não o *ConversationRepo
+// concreto) para que testes possam injetar fakes sem importar pgx. A produção
+// passa o repo real — *ConversationRepo satisfaz a interface.
+func (s *MessageService) SetConversationRepo(r conversationStore) {
 	s.conversationRepo = r
 }
 
@@ -227,6 +241,10 @@ func (s *MessageService) Create(ctx context.Context, accountID, inboxID, convers
 	}
 
 	s.bumpActivity(ctx, created)
+	// Mirror Chatwoot's Message#reopen_conversation: an incoming message in a
+	// resolved/snoozed conversation reopens it. Must run BEFORE the broadcast
+	// so the summary embedded in `message.created` carries the new status.
+	s.reopenIfClosed(ctx, created)
 
 	s.broadcastMessageEvent(ctx, realtime.EventMessageCreated, created)
 
@@ -238,16 +256,20 @@ func (s *MessageService) Create(ctx context.Context, accountID, inboxID, convers
 }
 
 // resolveSender enforces sender_type/sender_id population for every persisted
-// message. Incoming messages (and their Activity siblings) without an
-// explicit sender are auto-attributed to the conversation's Contact, mirroring
-// Chatwoot's MessageBuilder behaviour. Outgoing/Template paths must carry a
-// sender already (User from JWT in handlers, Contact from channel ingest).
+// message. Incoming messages (and their Activity siblings) without an explicit
+// sender are auto-attributed to the conversation's Contact, mirroring
+// Chatwoot's MessageBuilder behaviour. Outgoing messages ingested from a
+// channel (e.g. wzap forwarding a fromMe WhatsApp message sent from the
+// business's own client) likewise have no agent User to attach, so they are
+// auto-attributed to the conversation's Contact too. Template paths must
+// carry a sender already.
 func (s *MessageService) resolveSender(ctx context.Context, msg *model.Message) error {
 	if msg.SenderType != nil && msg.SenderID != nil {
 		return nil
 	}
 
-	if msg.MessageType == model.MessageIncoming || msg.MessageType == model.MessageActivity {
+	switch msg.MessageType {
+	case model.MessageIncoming, model.MessageActivity, model.MessageOutgoing:
 		if s.conversationRepo == nil {
 			return ErrMessageMissingSender
 		}
@@ -263,6 +285,53 @@ func (s *MessageService) resolveSender(ctx context.Context, msg *model.Message) 
 	}
 
 	return ErrMessageMissingSender
+}
+
+// reopenIfClosed mirrors Chatwoot's Message#reopen_conversation: an incoming
+// (non-private) message in a snoozed or resolved conversation reopens it.
+// Errors are logged but never bubbled — like bumpActivity, this is a derived
+// side-effect that must not roll back a successfully persisted message.
+func (s *MessageService) reopenIfClosed(ctx context.Context, msg *model.Message) {
+	if msg == nil || s.conversationRepo == nil {
+		return
+	}
+	if msg.MessageType != model.MessageIncoming || msg.Private {
+		return
+	}
+	conv, err := s.conversationRepo.FindByID(ctx, msg.ConversationID, msg.AccountID)
+	if err != nil {
+		return
+	}
+	if conv.Status != model.ConversationResolved && conv.Status != model.ConversationSnoozed {
+		return
+	}
+	if _, err := s.conversationRepo.ToggleStatus(ctx, conv.ID, conv.AccountID, model.ConversationOpen); err != nil {
+		logger.Warn().Str("component", "message_service").
+			Int64("conversationId", conv.ID).Err(err).
+			Msg("reopen conversation on inbound message")
+		return
+	}
+	s.broadcastConversationUpdated(ctx, conv.AccountID, conv.ID)
+}
+
+// broadcastConversationUpdated emits `conversation.updated` with the fully
+// hydrated payload — same shape ConversationService.broadcastUpdated produces.
+// Mirrored here (instead of injecting ConversationService) to avoid a cycle
+// between MessageService and ConversationService. Best-effort: hydration or
+// realtime errors are logged and swallowed.
+func (s *MessageService) broadcastConversationUpdated(ctx context.Context, accountID, convID int64) {
+	if s.realtime == nil || s.conversationRepo == nil {
+		return
+	}
+	hydrated, err := s.conversationRepo.FindByIDFull(ctx, accountID, convID)
+	if err != nil {
+		logger.Warn().Str("component", "message_service").
+			Int64("conversationId", convID).Err(err).
+			Msg("hydrate conversation for conversation.updated broadcast")
+		return
+	}
+	row := repo.ConversationHydratedToFullRow(hydrated)
+	s.realtime.Broadcast(convID, accountID, realtime.EventConversationUpdated, dto.ConversationToRespFull(&row))
 }
 
 // bumpActivity propagates the new message's timestamp to the parent

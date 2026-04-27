@@ -177,6 +177,8 @@ export const useRealtime = () => {
 
   function leaveConversation(conversationId: string) {
     state.joined.conversations.delete(conversationId)
+    const inst = ensureConnected()
+    if (inst) sendOrQueue(inst, { type: 'leave.conversation', payload: { id: Number(conversationId) } })
   }
 
   function on<T = unknown>(event: string, handler: (payload: T) => void): () => void {

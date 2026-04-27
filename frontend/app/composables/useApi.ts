@@ -43,6 +43,7 @@ export const useApi = () => {
       }
     },
     onResponse({ response }) {
+      if (!response.ok) return
       if (response._data?.success && response._data?.data !== undefined) {
         response._data = response._data.data
       }

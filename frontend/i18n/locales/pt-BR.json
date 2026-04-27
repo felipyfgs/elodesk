@@ -379,6 +379,7 @@
   "conversations": {
     "title": "Conversas",
     "empty": "Sem conversas ainda.",
+    "deletedFallback": "Esta conversa foi excluída.",
     "audio": {
       "play": "Reproduzir",
       "pause": "Pausar",
@@ -567,7 +568,8 @@
       "removeLabel": "Remover label",
       "delete": "Excluir",
       "deleteConfirm": "Excluir conversas?",
-      "deleteDesc": "Isso resolverá {count} conversa(s). Esta ação não pode ser desfeita.",
+      "deleteDesc": "Isso excluirá {count} conversa(s). Esta ação não pode ser desfeita.",
+      "deleted": "{count} conversa(s) excluída(s).",
       "success": "{count} conversa(s) atualizada(s) com sucesso.",
       "assigned": "{count} conversa(s) atribuída(s).",
       "labelsUpdated": "{count} conversa(s) atualizada(s).",

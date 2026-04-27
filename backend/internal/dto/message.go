@@ -9,6 +9,11 @@ import (
 type CreateMessageReq struct {
 	Content           string                `json:"message,omitempty"`
 	ContentType       *int                  `json:"content_type,omitempty"`
+	// MessageType is accepted from channel-ingest callers (e.g. wzap) that
+	// already know whether a message is "incoming" or "outgoing" (mirrored
+	// from the channel's own from_me flag). Authenticated agent writes
+	// ignore this field and always force outgoing.
+	MessageType       *string               `json:"message_type,omitempty"`
 	SourceID          *string               `json:"source_id,omitempty"`
 	EchoID            *string               `json:"echo_id,omitempty"`
 	SenderContactID   *int64                `json:"sender_contact_id,omitempty"`

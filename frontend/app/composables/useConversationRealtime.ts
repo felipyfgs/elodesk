@@ -52,6 +52,10 @@ export function useConversationRealtime(selected: Ref<Conversation | null>) {
 
     offHandlers.push(rt.on<Conversation>('conversation.created', c => convs.upsert(c)))
     offHandlers.push(rt.on<Conversation>('conversation.updated', c => convs.upsert(c)))
+    // Backend emits numeric IDs (int64 → JSON number) and the store also holds
+    // numeric IDs at runtime even though TS types claim string. Pass-through to
+    // remove() so strict equality matches; coercing here would silently no-op.
+    offHandlers.push(rt.on<{ id: string }>('conversation.deleted', e => convs.remove(e.id)))
     offHandlers.push(rt.on<MessageWithConversation>('message.created', (m) => {
       messages.upsert(m)
       applyConversationSummary(m.conversation)

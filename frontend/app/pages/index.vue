@@ -1,16 +1,8 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
+// Navigation is handled by auth.global.ts middleware.
+// Authenticated users are redirected to /accounts/{primaryId},
+// unauthenticated users to /login.
 definePageMeta({ layout: 'dashboard' })
-
-const auth = useAuthStore()
-const primaryId = auth.accounts[0]?.id
-
-if (primaryId) {
-  navigateTo(`/accounts/${primaryId}/conversations`, { replace: true })
-} else if (!auth.isAuthenticated) {
-  navigateTo('/login', { replace: true })
-}
 </script>
 
 <template>

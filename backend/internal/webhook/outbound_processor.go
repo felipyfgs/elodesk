@@ -42,8 +42,9 @@ func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 }
 
 // OutboundPayload is the task payload enqueued by OutboundWebhookService.
+// Secret holds the channel secret encrypted with BACKEND_KEK (AES-256-GCM).
 // HmacCiphertext carries the per-channel HMAC key encrypted with BACKEND_KEK;
-// the processor decrypts it right before signing so plaintext never lives in
+// the processor decrypts both right before signing so plaintext never lives in
 // Redis. DeliveryID is generated at enqueue time and stays stable across all
 // retries of the same delivery.
 type OutboundPayload struct {
@@ -134,9 +135,17 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 	req.Header.Set("Content-Type", "application/json")
 
 	if payload.Secret != "" {
+		secret, err := p.cipher.Decrypt(payload.Secret)
+		if err != nil {
+			logger.Error().Str("component", "outbound-webhook").
+				Str("eventType", payload.EventType).
+				Int64("accountId", payload.AccountID).
+				Err(err).Msg("failed to decrypt webhook secret, dead-letter")
+			return fmt.Errorf("decrypt webhook secret: %w", asynq.SkipRetry)
+		}
 		ts := strconv.FormatInt(time.Now().Unix(), 10)
 		signedBody := ts + "." + string(body)
-		sig := computeHmacSha256([]byte(signedBody), payload.Secret)
+		sig := computeHmacSha256([]byte(signedBody), secret)
 		upstreamSig := "sha256=" + sig
 
 		req.Header.Set("X-Chatwoot-Delivery", payload.DeliveryID)
@@ -147,8 +156,8 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 		logger.Error().Str("component", "outbound-webhook").
 			Str("eventType", payload.EventType).
 			Int64("accountId", payload.AccountID).
-			Msg("secret is empty, skip retry")
-		return fmt.Errorf("outbound webhook: channel.secret is empty")
+			Msg("secret is empty, dead-letter")
+		return fmt.Errorf("outbound webhook: channel.secret is empty: %w", asynq.SkipRetry)
 	}
 
 	if payload.HmacCiphertext != "" {

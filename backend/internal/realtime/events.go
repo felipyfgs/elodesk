@@ -11,6 +11,7 @@ const (
 	EventMessageDeleted      = "message.deleted"
 	EventConversationCreated = "conversation.created"
 	EventConversationUpdated = "conversation.updated"
+	EventConversationDeleted = "conversation.deleted"
 	EventContactUpdated      = "contact.updated"
 	EventInboxStatus         = "inbox.status"
 )

@@ -18,14 +18,14 @@ var (
 	ErrSameContactMerge   = errors.New("cannot merge contact with itself")
 )
 
-const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, avatar_hash, blocked, last_activity_at, created_at, updated_at, deleted_at"
+const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, avatar_hash, blocked, last_activity_at, created_at, updated_at"
 
 type contactScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanContact(scanner contactScanner, m *model.Contact) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.AvatarURL, &m.AvatarHash, &m.Blocked, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.Name, &m.Email, &m.PhoneNumber, &m.PhoneE164, &m.Identifier, &m.AdditionalAttrs, &m.AvatarURL, &m.AvatarHash, &m.Blocked, &m.LastActivityAt, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type ContactRepo struct {
@@ -68,7 +68,7 @@ func (r *ContactRepo) Upsert(ctx context.Context, m *model.Contact) error {
 }
 
 func (r *ContactRepo) FindByID(ctx context.Context, id, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE id = $1 AND account_id = $2`
 	row := r.pool.QueryRow(ctx, query, id, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -95,7 +95,7 @@ func (r *ContactRepo) FindByIDIncludeDeleted(ctx context.Context, id, accountID 
 }
 
 func (r *ContactRepo) FindByIdentifier(ctx context.Context, identifier, accountID string) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE identifier = $1 AND account_id = $2 AND deleted_at IS NULL`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE identifier = $1 AND account_id = $2`
 	row := r.pool.QueryRow(ctx, query, identifier, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -108,7 +108,7 @@ func (r *ContactRepo) FindByIdentifier(ctx context.Context, identifier, accountI
 }
 
 func (r *ContactRepo) FindByEmail(ctx context.Context, email string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE LOWER(email) = LOWER($1) AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE LOWER(email) = LOWER($1) AND account_id = $2 LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, email, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -121,7 +121,7 @@ func (r *ContactRepo) FindByEmail(ctx context.Context, email string, accountID i
 }
 
 func (r *ContactRepo) FindByPhoneE164(ctx context.Context, phoneE164 string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_e164 = $1 AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_e164 = $1 AND account_id = $2 LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, phoneE164, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -134,7 +134,7 @@ func (r *ContactRepo) FindByPhoneE164(ctx context.Context, phoneE164 string, acc
 }
 
 func (r *ContactRepo) FindByPhone(ctx context.Context, phone string, accountID int64) (*model.Contact, error) {
-	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_number = $1 AND account_id = $2 AND deleted_at IS NULL LIMIT 1`
+	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE phone_number = $1 AND account_id = $2 LIMIT 1`
 	row := r.pool.QueryRow(ctx, query, phone, accountID)
 	var m model.Contact
 	if err := scanContact(row, &m); err != nil {
@@ -157,7 +157,7 @@ type ContactFilter struct {
 }
 
 func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Contact, int, error) {
-	countQuery := `SELECT COUNT(*) FROM contacts c WHERE c.account_id = $1 AND c.deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM contacts c WHERE c.account_id = $1`
 	var args []any
 	args = append(args, f.AccountID)
 	argN := 2
@@ -189,7 +189,7 @@ func (r *ContactRepo) Search(ctx context.Context, f ContactFilter) ([]model.Cont
 		return []model.Contact{}, 0, nil
 	}
 
-	dataQuery := `SELECT c.` + contactSelectColumns + ` FROM contacts c` + joins + ` WHERE c.account_id = $1 AND c.deleted_at IS NULL`
+	dataQuery := `SELECT c.` + contactSelectColumns + ` FROM contacts c` + joins + ` WHERE c.account_id = $1`
 	if f.Query != "" {
 		dataQuery += ` AND (c.name ILIKE $2 OR c.email ILIKE $2 OR c.phone_number ILIKE $2)`
 	}
@@ -260,7 +260,6 @@ func (r *ContactRepo) Filter(ctx context.Context, accountID int64, email, phone 
 	conditions = append(conditions, fmt.Sprintf("account_id = $%d", argN))
 	args = append(args, accountID)
 	argN++
-	conditions = append(conditions, "deleted_at IS NULL")
 
 	if email != "" {
 		conditions = append(conditions, fmt.Sprintf("email = $%d", argN))
@@ -364,9 +363,9 @@ func (r *ContactRepo) ImportBatch(ctx context.Context, accountID int64, batch []
 }
 
 func (r *ContactRepo) Delete(ctx context.Context, id, accountID int64) error {
-	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL`, id, accountID)
+	cmd, err := r.pool.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, id, accountID)
 	if err != nil {
-		return fmt.Errorf("failed to soft-delete contact: %w", err)
+		return fmt.Errorf("failed to delete contact: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return ErrContactNotFound

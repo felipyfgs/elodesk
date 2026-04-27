@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -86,12 +87,18 @@ func (h *MessageHandler) Create(c *fiber.Ctx) error {
 		contentType = model.MessageContentType(*req.ContentType)
 	}
 
+	messageType, err := parseMessageType(req.MessageType)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+	}
+
 	contentAttrs := mergeEchoID(req.ContentAttributes, req.EchoID)
 
 	attachments := buildAttachments(req.Attachments)
 
 	msg := &model.Message{
 		Content:         &req.Content,
+		MessageType:     messageType,
 		SourceID:        req.SourceID,
 		Private:         req.Private,
 		ContentType:     contentType,
@@ -408,6 +415,27 @@ func mergeEchoID(attrs json.RawMessage, echoID *string) *string {
 	}
 	s := string(b)
 	return &s
+}
+
+// parseMessageType maps the wire-format string used by channel-ingest callers
+// (wzap, etc.) to the internal MessageType enum. Returns the zero value when
+// the field is omitted, letting MessageService.Create apply its default.
+func parseMessageType(raw *string) (model.MessageType, error) {
+	if raw == nil || *raw == "" {
+		return 0, nil
+	}
+	switch strings.ToLower(strings.TrimSpace(*raw)) {
+	case "incoming":
+		return model.MessageIncoming, nil
+	case "outgoing":
+		return model.MessageOutgoing, nil
+	case "activity":
+		return model.MessageActivity, nil
+	case "template":
+		return model.MessageTemplate, nil
+	default:
+		return 0, errors.New("invalid message_type: must be incoming, outgoing, activity or template")
+	}
 }
 
 func buildAttachments(reqs []dto.CreateAttachmentReq) []model.Attachment {

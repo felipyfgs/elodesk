@@ -102,6 +102,9 @@ async function bulkToggleLabel(labelId: string, action: 'add' | 'remove') {
   }
 }
 
+const route = useRoute()
+const router = useRouter()
+
 async function bulkDelete() {
   const accountId = auth.account?.id
   if (!accountId || loading.value) return
@@ -115,17 +118,21 @@ async function bulkDelete() {
   if (!confirmed) return
 
   loading.value = true
+  const ids = [...selectedIds.value]
   try {
     await Promise.all(
-      selectedIds.value.map(id =>
-        api(`/accounts/${accountId}/conversations/${id}/status`, {
-          method: 'PATCH',
-          body: { status: STATUS_MAP.RESOLVED }
-        })
+      ids.map(id =>
+        api(`/accounts/${accountId}/conversations/${id}`, { method: 'DELETE' })
       )
     )
-    toast.add({ title: t('conversations.bulk.resolved', { count: selectedIds.value.length }), icon: 'i-lucide-check-circle', color: 'success' })
-    convs.clearSelection()
+    ids.forEach(id => convs.remove(id))
+    // If the open thread was among the deleted ones, drop the URL param so
+    // the right pane doesn't sit on a 404 fetch loop.
+    const openId = String(route.params.conversationId ?? '')
+    if (openId && ids.some(id => String(id) === openId)) {
+      router.replace(`/accounts/${accountId}/conversations`)
+    }
+    toast.add({ title: t('conversations.bulk.deleted', { count: ids.length }), icon: 'i-lucide-check-circle', color: 'success' })
   } catch {
     toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {

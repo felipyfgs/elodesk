@@ -387,6 +387,7 @@
   "conversations": {
     "title": "Conversations",
     "empty": "No conversations yet.",
+    "deletedFallback": "This conversation has been deleted.",
     "audio": {
       "play": "Play",
       "pause": "Pause",
@@ -575,7 +576,8 @@
       "removeLabel": "Remove label",
       "delete": "Delete",
       "deleteConfirm": "Delete conversations?",
-      "deleteDesc": "This will resolve {count} conversation(s). This action cannot be undone.",
+      "deleteDesc": "This will delete {count} conversation(s). This action cannot be undone.",
+      "deleted": "{count} conversation(s) deleted.",
       "success": "{count} conversation(s) updated successfully.",
       "assigned": "{count} conversation(s) assigned.",
       "labelsUpdated": "{count} conversation(s) updated.",
