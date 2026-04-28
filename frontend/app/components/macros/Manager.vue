@@ -3,8 +3,6 @@ import { ConfirmModal } from '#components'
 import type { Macro } from '~/stores/macros'
 import { useMacrosStore } from '~/stores/macros'
 
-definePageMeta({ layout: 'dashboard' })
-
 const { t } = useI18n()
 const store = useMacrosStore()
 const confirm = useOverlay().create(ConfirmModal)
