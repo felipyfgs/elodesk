@@ -71,7 +71,7 @@ const promptPlaceholder = computed(() => (
 
 const composerShellClass = computed(() => [
   'mx-auto w-full rounded-lg px-3 py-2 shadow-lg ring transition-colors',
-  expanded.value ? 'max-w-3xl flex h-[80vh] min-h-0 flex-col' : 'max-w-4xl',
+  expanded.value ? 'max-w-3xl flex h-[80vh] min-h-0 flex-col' : 'max-w-5xl xl:max-w-6xl 2xl:max-w-7xl',
   mode.value === 'private'
     ? 'bg-warning/5 ring-warning/25'
     : 'bg-elevated/85 ring-default'
@@ -196,6 +196,13 @@ async function send() {
     throw err
   } finally {
     sending.value = false
+    // Re-foca o editor após enviar para que o agente possa digitar a
+    // próxima mensagem sem clicar no input. O `setContent('')` que o
+    // RichTextComposer faz no watcher de modelValue (após reply.value = '')
+    // remove o foco; precisamos esperar o ciclo Vue propagar a mudança
+    // antes de re-focar, daí o nextTick.
+    await nextTick()
+    richEditorRef.value?.focus()
   }
 }
 
@@ -234,10 +241,15 @@ onMounted(async () => {
 </script>
 
 <template>
+  <!--
+    `pb-[max(0.375rem,env(safe-area-inset-bottom))]` reserva o espaço da
+    home-indicator no iOS Safari quando o composer está colado no rodapé;
+    `pb-1.5` (0.375rem) é o padding base usado em telas sem notch.
+  -->
   <div
     :class="expanded
       ? 'fixed inset-0 z-40 flex flex-col items-center justify-center bg-default/70 px-4 py-6 backdrop-blur'
-      : 'shrink-0 border-t border-default/80 bg-default/95 px-2 py-1.5 sm:px-4'"
+      : 'shrink-0 border-t border-default/80 bg-default/95 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:px-4'"
     @click.self="expanded && closeExpanded()"
   >
     <ClientOnly>

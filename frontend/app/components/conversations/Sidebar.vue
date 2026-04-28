@@ -83,8 +83,15 @@ const detailSections = computed(() => [
 </script>
 
 <template>
-  <aside class="hidden w-72 shrink-0 flex-col border-l border-default bg-default lg:flex xl:w-80">
-    <div class="flex h-14 shrink-0 items-center justify-between border-b border-default px-4">
+  <!--
+    Sidebar é um wrapper "burro" com flex-col cobrindo 100% do container.
+    O caller (Thread.vue) decide o envólucro: <aside> com largura fixa em
+    ≥lg, ou USlideover.content em <lg. Manter a estrutura interna idêntica
+    nos dois modos garante que o conteúdo (header + scroll) renderize
+    consistente em desktop e mobile.
+  -->
+  <div class="flex h-full w-full min-w-0 flex-col bg-default">
+    <div class="flex h-(--ui-header-height) shrink-0 items-center justify-between border-b border-default px-4">
       <h2 class="text-sm font-semibold text-highlighted">
         {{ t('conversations.detail.contacts') }}
       </h2>
@@ -242,5 +249,5 @@ const detailSections = computed(() => [
         </template>
       </UAccordion>
     </div>
-  </aside>
+  </div>
 </template>

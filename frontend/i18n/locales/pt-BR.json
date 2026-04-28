@@ -101,6 +101,11 @@
     "home": "Início",
     "sessions": "Sessões",
     "conversations": "Conversas",
+    "allConversations": "Todas",
+    "unattended": "Não atendidas",
+    "folders": "Filtros salvos",
+    "channels": "Canais",
+    "teams": "Equipes",
     "contacts": "Contatos",
     "inboxes": "Inboxes",
     "settings": "Configurações",
@@ -118,6 +123,10 @@
     "settingsCanned": "Respostas rápidas",
     "settingsAttributes": "Atributos",
     "settingsMembers": "Membros",
+    "labels": "Etiquetas",
+    "macros": "Macros",
+    "canned": "Respostas rápidas",
+    "attributes": "Atributos",
     "reports": "Relatórios",
     "docs": "Documentação da API",
     "goTo": "Ir para",
@@ -378,6 +387,7 @@
   },
   "conversations": {
     "title": "Conversas",
+    "scopedFilters": "{count} filtros",
     "empty": "Sem conversas ainda.",
     "deletedFallback": "Esta conversa foi excluída.",
     "audio": {
@@ -395,6 +405,7 @@
       "title": "Filtros",
       "mine": "Minhas",
       "unassigned": "Sem agente",
+      "unread": "Não lidas",
       "all": "Todas",
       "unattended": "Não atendidas",
       "status": "Status",
@@ -411,11 +422,16 @@
       "snoozed": "Adiadas"
     },
     "status": {
+      "label": "Status",
       "open": "Abertas",
       "pending": "Pendentes",
       "resolved": "Resolvidas",
       "snoozed": "Adiadas",
       "all": "Todas"
+    },
+    "filtersMenu": "Filtros e ordenação",
+    "scope": {
+      "clear": "Limpar seleção"
     },
     "sort": {
       "label": "Ordenar",
@@ -571,6 +587,7 @@
       "selected": "{count} selecionada(s)",
       "selectAll": "Selecionar todas",
       "clearSelection": "Limpar",
+      "statusLabel": "Status",
       "resolve": "Resolver",
       "open": "Reabrir",
       "snooze": {
@@ -866,8 +883,20 @@
       "saveFailed": "Não foi possível salvar as preferências de notificação"
     }
   },
+  "notifications": {
+    "title": "Notificações",
+    "tabAll": "Todas",
+    "tabUnread": "Não lidas",
+    "markAllRead": "Marcar todas como lidas",
+    "loadMore": "Carregar mais",
+    "empty": "Sem notificações no momento",
+    "emptyDescription": "Quando algo acontecer por aqui, você verá os avisos nesta página.",
+    "emptyUnreadTitle": "Você está em dia",
+    "emptyUnread": "Nenhuma notificação não lida no momento."
+  },
   "labels": {
     "title": "Labels",
+    "subtitle": "Organize conversas e contatos com etiquetas coloridas.",
     "create": "Nova label",
     "edit": "Editar label",
     "delete": "Excluir label",
@@ -876,7 +905,14 @@
     "color": "Cor",
     "description": "Descrição",
     "showOnSidebar": "Mostrar na sidebar",
-    "empty": "Nenhuma label criada."
+    "empty": "Nenhuma label criada.",
+    "createSuccess": "Label criada.",
+    "updateSuccess": "Label atualizada.",
+    "deleteSuccess": "Label excluída.",
+    "createFailed": "Não foi possível criar a label.",
+    "updateFailed": "Não foi possível atualizar a label.",
+    "deleteFailed": "Não foi possível excluir a label.",
+    "fetchFailed": "Não foi possível carregar as labels."
   },
   "teams": {
     "title": "Equipes",

@@ -21,7 +21,20 @@ const messages = useMessagesStore()
 const conversations = useConversationsStore()
 const agents = useAgentsStore()
 
-const detailsOpen = ref(true)
+// Estado da sidebar de detalhes — persistido em localStorage e com default
+// dependente da viewport (aberta em xl+, fechada em <xl). isCompact decide
+// se a sidebar renderiza inline (≥lg) ou dentro do USlideover (<lg).
+const { open: detailsOpen } = useDetailsSidebar()
+const { isCompact } = useResponsive()
+
+// O USlideover precisa ficar montado (evita race de HMR com o Teleport),
+// mas o conteúdo só deve aparecer em viewport compacto. Gate via :open
+// — `v-show` no componente não funciona porque o root é um componente
+// (DialogRoot) e o conteúdo real fica teleportado pro <body>.
+const slideoverOpen = computed({
+  get: () => isCompact.value && detailsOpen.value,
+  set: (v) => { detailsOpen.value = v }
+})
 
 // Forward selection state
 const selectionMode = ref(false)
@@ -153,14 +166,7 @@ onUnmounted(() => {
   <UDashboardPanel id="conversations-thread" class="min-w-0 flex-1">
     <div class="flex min-h-0 flex-1 bg-default">
       <section class="flex min-w-0 flex-1 flex-col bg-default">
-        <ConversationsSelectionToolbar
-          v-if="selectionMode"
-          :count="selectedMessageIds.size"
-          @cancel="cancelSelection"
-          @forward="forwardModalOpen = true"
-        />
         <ConversationsThreadHeader
-          v-else
           v-model:details-open="detailsOpen"
           :conversation="conversation"
           :show-back="showBack"
@@ -173,19 +179,66 @@ onUnmounted(() => {
             class="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4"
             @scroll.passive="onScroll"
           >
-            <ConversationsMessageList :messages="list" :conversation="conversation" />
+            <!--
+              Padrão "stick to bottom" usado por WhatsApp/iMessage: quando há
+              poucas mensagens, elas grudam acima do composer; quando o
+              conteúdo excede o viewport, o scroll funciona normal e o final
+              continua próximo do composer (auto-stick em scrollToBottom).
+
+              `min-h-full + flex flex-col + justify-end` cresce o wrapper até
+              a altura do scroller e empurra os filhos pro fundo. Sem isso, o
+              fluxo normal de bloco renderiza as bolhas a partir do topo,
+              deixando um vazio enorme entre a primeira mensagem e o input.
+            -->
+            <div class="flex min-h-full flex-col justify-end">
+              <ConversationsMessageList :messages="list" :conversation="conversation" />
+            </div>
           </div>
 
-          <ConversationsComposer :conversation="conversation" />
+          <ConversationsSelectionToolbar
+            v-if="selectionMode"
+            :count="selectedMessageIds.size"
+            @cancel="cancelSelection"
+            @forward="forwardModalOpen = true"
+          />
+          <ConversationsComposer v-else :conversation="conversation" />
         </div>
       </section>
 
-      <ConversationsSidebar
-        v-if="detailsOpen"
-        :conversation="conversation"
-        @close="detailsOpen = false"
-      />
+      <!--
+        Inline: só em ≥lg quando há espaço pras 3 colunas (lista|thread|side).
+        Largura fixa para não competir com a Thread; em xl ganha mais 32px.
+      -->
+      <aside
+        v-if="detailsOpen && !isCompact"
+        class="hidden w-72 shrink-0 flex-col border-l border-default bg-default lg:flex xl:w-80"
+      >
+        <ConversationsSidebar
+          :conversation="conversation"
+          @close="detailsOpen = false"
+        />
+      </aside>
     </div>
+
+    <!--
+      Compact (mobile + tablet): a sidebar vira slideover lateral acionado
+      pelo botão "i" do ThreadHeader. Sempre montado para evitar HMR race
+      conditions com Teleport — quando Vite hot-replaces e o slideover está
+      aberto, unmount via v-if corrompe a árvore DOM do Teleport causando
+      "can't access property 'parentNode', node is null". O gate visual é
+      feito pelo :open via slideoverOpen (computed que respeita isCompact).
+    -->
+    <USlideover
+      v-model:open="slideoverOpen"
+      :ui="{ content: 'w-full sm:max-w-sm' }"
+    >
+      <template #content>
+        <ConversationsSidebar
+          :conversation="conversation"
+          @close="detailsOpen = false"
+        />
+      </template>
+    </USlideover>
 
     <ConversationsForwardModal
       v-if="selectionMode"

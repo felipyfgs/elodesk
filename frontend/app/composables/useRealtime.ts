@@ -39,6 +39,53 @@ interface SocketInstance {
 // happened to be.
 let socketInstance: SocketInstance | null = null
 
+// Refresh proativo: o backend rejeita o WS com close 1008 quando o JWT
+// expira (JWT_ACCESS_TTL no servidor; default 15m). Reagir só no close deixa
+// um buraco entre o evento de auth-fail e a reconexão — qualquer
+// message.created que chega nesse intervalo é perdido. Por isso decodificamos
+// o `exp` do token e disparamos `refreshAccessToken` 60s antes da expiração,
+// fechando o socket atual e abrindo um novo com o token recém-emitido.
+let tokenRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+function decodeJwtExp(token: string): number | null {
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  const payload = parts[1]
+  if (!payload) return null
+  try {
+    // JWT usa base64url; converter pra base64 padrão antes de atob.
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = (4 - (b64.length % 4)) % 4
+    const decoded = atob(b64 + '='.repeat(pad))
+    const obj = JSON.parse(decoded) as { exp?: unknown }
+    return typeof obj.exp === 'number' ? obj.exp : null
+  } catch {
+    return null
+  }
+}
+
+function scheduleProactiveRefresh(token: string) {
+  if (tokenRefreshTimer) {
+    clearTimeout(tokenRefreshTimer)
+    tokenRefreshTimer = null
+  }
+  const exp = decodeJwtExp(token)
+  if (!exp) return
+  const refreshInMs = exp * 1000 - Date.now() - 60_000
+  // Token já expirou ou está a <60s de expirar: dispara imediato.
+  const delay = Math.max(0, refreshInMs)
+  tokenRefreshTimer = setTimeout(() => {
+    tokenRefreshTimer = null
+    const auth = useAuthStore()
+    if (!auth.refreshToken) return
+    refreshAccessToken()
+      .then(() => {
+        if (auth.accessToken) getOrCreateSocket(auth.accessToken)
+      })
+      .catch(() => { /* useApi 401 path will redirect to /login */ })
+  }, delay)
+}
+
 function useRealtimeState(): RealtimeState {
   const state = useState<RealtimeState>('realtime-state', () => ({
     joined: { accounts: new Set(), inboxes: new Set(), conversations: new Set() },
@@ -87,6 +134,10 @@ function getOrCreateSocket(token: string): SocketInstance {
         state.joined.inboxes.clear()
         state.joined.conversations.clear()
         socketInstance = null
+        if (tokenRefreshTimer) {
+          clearTimeout(tokenRefreshTimer)
+          tokenRefreshTimer = null
+        }
       }
     },
     onConnected() {
@@ -137,6 +188,7 @@ function getOrCreateSocket(token: string): SocketInstance {
     close,
     token
   }
+  scheduleProactiveRefresh(token)
   return socketInstance
 }
 

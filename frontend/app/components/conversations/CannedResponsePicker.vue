@@ -20,7 +20,7 @@ const filtered = computed(() => {
 </script>
 
 <template>
-  <div class="w-72 py-1">
+  <div class="w-full max-w-72 py-1">
     <p class="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-dimmed">
       {{ t('conversations.compose.canned') }}
     </p>

@@ -12,13 +12,13 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-default bg-elevated px-3 sm:px-4">
-    <div class="flex items-center gap-2">
+  <footer class="flex h-14 shrink-0 items-center justify-between gap-3 border-t border-default bg-elevated px-3 sm:px-4">
+    <div class="flex items-center gap-3">
       <UButton
         icon="i-lucide-x"
         color="neutral"
         variant="ghost"
-        size="sm"
+        size="md"
         :aria-label="t('conversations.forward.cancel')"
         @click="emit('cancel')"
       />
@@ -26,23 +26,14 @@ const { t } = useI18n()
         {{ t('conversations.forward.selectionTitle', { count }) }}
       </span>
     </div>
-    <div class="flex items-center gap-2">
-      <UButton
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        @click="emit('cancel')"
-      >
-        {{ t('conversations.forward.cancel') }}
-      </UButton>
-      <UButton
-        :disabled="count === 0"
-        color="primary"
-        size="sm"
-        @click="emit('forward')"
-      >
-        {{ t('conversations.forward.submitButton', { count }) }}
-      </UButton>
-    </div>
-  </header>
+    <UButton
+      icon="i-lucide-corner-up-right"
+      color="primary"
+      variant="ghost"
+      size="md"
+      :disabled="count === 0"
+      :aria-label="t('conversations.forward.triggerAction')"
+      @click="emit('forward')"
+    />
+  </footer>
 </template>

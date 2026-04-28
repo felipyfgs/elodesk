@@ -72,6 +72,11 @@ export function messageBubbleKind(m: Message): BubbleKind {
   return 'text'
 }
 
+export function messageIsForwardable(m: Message): boolean {
+  if (m.messageType === 2) return false
+  return messageBubbleKind(m) !== 'deleted'
+}
+
 // --- Attachment helpers (S1.2) ---
 
 export interface MessageAttachment {
@@ -175,8 +180,16 @@ export function messageParts(m: Message) {
 
 // --- Forward helpers ---
 
+// Mensagens encaminhadas chegam por dois caminhos:
+//   1. Forward intra-elodesk (agente clica "encaminhar" na UI) — backend grava
+//      forwardedFromMessageId apontando pra mensagem-raiz.
+//   2. Mensagem inbound de canal externo (ex.: WhatsApp via wzap) que veio
+//      marcada como encaminhada do lado do cliente — wzap repassa em
+//      contentAttributes.is_forwarded já que não há mensagem-raiz no elodesk.
 export function messageIsForwarded(m: Message): boolean {
-  return m.forwardedFromMessageId != null
+  if (m.forwardedFromMessageId != null) return true
+  const ca = messageContentAttributes(m)
+  return ca?.is_forwarded === true
 }
 
 // Channel compatibility matrix matching backend service/channel_compat.go.

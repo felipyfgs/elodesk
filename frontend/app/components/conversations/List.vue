@@ -122,8 +122,19 @@ defineShortcuts({
 </script>
 
 <template>
+  <!--
+    Lista segue o padrão visual do template oficial Nuxt UI Dashboard
+    (_refs/dashboard/InboxList.vue): faixa lateral 2px (`border-l-2`) que
+    transita de cor no hover/selected, em vez de uma borda completa
+    arredondada. `divide-y` substitui o gap com bordas finas entre itens —
+    igual ao template, mais limpo visualmente.
+
+    transition-colors em vez de transition genérico: a animação fica só
+    nas cores (border + bg), sem afetar layout/transform — o efeito é
+    instantâneo perceptualmente mas suaviza o hover/click.
+  -->
   <ul
-    class="min-h-0 flex-1 overflow-y-auto p-2"
+    class="min-h-0 flex-1 divide-y divide-default overflow-y-auto"
     role="listbox"
     :aria-label="t('conversations.list.ariaLabel')"
   >
@@ -131,14 +142,13 @@ defineShortcuts({
       v-for="c in items"
       :key="c.id"
       :ref="(el) => { itemRefs[c.id] = el as Element | null }"
-      class="py-0.5"
     >
       <div
-        class="group relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-md border px-3 py-2.5 transition outline-none"
+        class="group relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-l-2 px-3 py-3 transition-colors outline-none"
         :class="[
           isActive(c)
-            ? 'border-primary/30 bg-primary/5 shadow-sm'
-            : 'border-transparent hover:bg-elevated/60 focus-visible:bg-elevated/60'
+            ? 'border-primary bg-primary/10'
+            : 'border-bg hover:border-primary hover:bg-primary/5 focus-visible:border-primary focus-visible:bg-primary/5'
         ]"
         role="option"
         tabindex="0"
@@ -150,7 +160,7 @@ defineShortcuts({
         @mouseenter="hoveredId = c.id"
         @mouseleave="hoveredId = null"
       >
-        <div class="relative mt-0.5 size-8 shrink-0">
+        <div class="relative size-8 shrink-0">
           <UAvatar
             :alt="contactName(c)"
             :src="contactAvatar(c)"

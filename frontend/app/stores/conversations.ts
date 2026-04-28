@@ -117,7 +117,14 @@ export interface Conversation {
   }
 }
 
-export type ConversationTab = 'mine' | 'unassigned' | 'all'
+// `tab` é a dimensão do tab visível na UI. "Sem agente" virou flag separada
+// (ConversationFilters.unassignedOnly) pra não ser apagada ao trocar de tab.
+export type ConversationTab = 'mine' | 'all'
+
+// Filtros ortogonais à tab. `unattended` (Chatwoot): conversas em que o cliente
+// está esperando resposta — `firstReplyCreatedAt IS NULL` OU `waitingSince IS
+// NOT NULL`. Pode coexistir com qualquer tab (ex.: "minhas não atendidas").
+export type ConversationType = 'unattended' | 'mention' | 'participating'
 
 export type ConversationSort
   = | 'last_activity_desc'
@@ -133,10 +140,13 @@ export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZE
 export interface ConversationFilters {
   tab: ConversationTab
   sortBy: ConversationSort
-  inboxId?: string
-  labelId?: string
-  teamId?: string
+  inboxIds?: string[]
+  labelIds?: string[]
+  teamIds?: string[]
   status?: ConversationStatusFilter
+  conversationType?: ConversationType
+  unread?: boolean
+  unassignedOnly?: boolean
   from?: string
   to?: string
 }
@@ -204,17 +214,20 @@ export const useConversationsStore = defineStore('conversations', {
     filteredList(state): Conversation[] {
       let result: Conversation[] = Array.isArray(state.list) ? state.list : []
 
-      // Tab filter — mine/unassigned need the auth store, imported lazily.
-      // IDs are coerced via String() because backend sends int64 (JS number)
-      // while stores/filters keep them as strings. `1 === "1"` would be false.
-      if (state.filters.tab === 'unassigned') {
-        result = result.filter(c => !c.assigneeId)
-      } else if (state.filters.tab === 'mine') {
+      // Tab filter — `mine` need the auth store, imported lazily. IDs are
+      // coerced via String() because backend sends int64 (JS number) while
+      // stores/filters keep them as strings. `1 === "1"` would be false.
+      if (state.filters.tab === 'mine') {
         const auth = useAuthStore()
         const myId = auth.user?.id
         if (myId) {
           result = result.filter(c => String(c.assigneeId) === String(myId))
         }
+      }
+      // Independent "Sem agente" flag — intersects with any tab. `mine` +
+      // `unassignedOnly` results in an empty list (correct: contradictory).
+      if (state.filters.unassignedOnly) {
+        result = result.filter(c => !c.assigneeId)
       }
 
       // Status filter — backend sends int, filters are string labels
@@ -225,22 +238,41 @@ export const useConversationsStore = defineStore('conversations', {
         }
       }
 
-      // Inbox filter
-      if (state.filters.inboxId) {
-        result = result.filter(c => String(c.inboxId) === String(state.filters.inboxId))
+      // Inbox filter (multi-select)
+      const inboxIds = state.filters.inboxIds
+      if (inboxIds && inboxIds.length) {
+        const set = new Set(inboxIds.map(String))
+        result = result.filter(c => set.has(String(c.inboxId)))
       }
 
-      // Label filter — backend now sends labels as string titles (Chatwoot
-      // shape). The legacy object form is no longer surfaced here, so the
-      // filterId is interpreted as the label title for backward compat with
-      // saved filters that still reference an id.
-      if (state.filters.labelId) {
-        result = result.filter(c => c.labels?.includes(state.filters.labelId as string))
+      // Label filter (multi-select). Backend sends labels as string titles
+      // (Chatwoot shape); a conversation matches if it carries any of the
+      // selected labels.
+      const labelIds = state.filters.labelIds
+      if (labelIds && labelIds.length) {
+        const set = new Set(labelIds)
+        result = result.filter(c => c.labels?.some(l => set.has(l)))
       }
 
-      // Team filter
-      if (state.filters.teamId) {
-        result = result.filter(c => String(c.teamId) === String(state.filters.teamId))
+      // Team filter (multi-select)
+      const teamIds = state.filters.teamIds
+      if (teamIds && teamIds.length) {
+        const set = new Set(teamIds.map(String))
+        result = result.filter(c => set.has(String(c.teamId)))
+      }
+
+      // Conversation type — ortogonal às outras dimensões. Espelha o scope
+      // `unattended` do Chatwoot (`models/conversation.rb`): primeira resposta
+      // ainda não enviada OU cliente esperando resposta agora.
+      if (state.filters.conversationType === 'unattended') {
+        result = result.filter(c => !c.firstReplyCreatedAt || !!c.waitingSince)
+      }
+
+      // Unread — `unreadCount > 0`. Ortogonal: combina com qualquer status,
+      // assignee tab, etc. Não vai pro backend (sem param dedicado), o filtro
+      // é só client-side em cima da página carregada.
+      if (state.filters.unread) {
+        result = result.filter(c => (c.unreadCount ?? 0) > 0)
       }
 
       return result
@@ -278,6 +310,9 @@ export const useConversationsStore = defineStore('conversations', {
     },
     resetFilters() {
       this.filters = { tab: 'mine', sortBy: 'last_activity_desc', status: 'OPEN' }
+    },
+    clearScopeFilters() {
+      this.filters = { ...this.filters, inboxIds: undefined, labelIds: undefined, teamIds: undefined }
     },
     setMeta(meta: ConversationMeta) {
       this.meta = meta

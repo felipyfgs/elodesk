@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { breakpointsTailwind } from '@vueuse/core'
-import { useConversationsStore, type Conversation } from '~/stores/conversations'
+import { useConversationsStore, type Conversation, type ConversationMeta, type ConversationStatus } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useLabelsStore, type Label } from '~/stores/labels'
@@ -64,6 +63,17 @@ const isPanelOpen = computed({
   }
 })
 
+// O USlideover precisa ficar montado pra evitar race de HMR com o Teleport,
+// mas em ≥lg (não-compact) a Thread vira inline e o slideover não pode
+// abrir — caso contrário cobre a tela inteira (`sm:max-w-full`) parecendo
+// mobile no desktop. Gate via :open ao invés de v-show porque o root do
+// USlideover é um componente (DialogRoot) e v-show é silenciosamente
+// ignorado.
+const compactPanelOpen = computed({
+  get: () => isCompact.value && isPanelOpen.value,
+  set: (v: boolean) => { isPanelOpen.value = v }
+})
+
 // Deep-link support: when the URL carries a :conversationId that isn't in the
 // currently loaded list, fetch it directly. A 404 means the conversation was
 // deleted (e.g. another tab) — drop it from the store and route back.
@@ -94,22 +104,86 @@ watch(selectedId, (id) => {
   ensureSelectedLoaded(id)
 })
 
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const isMobile = breakpoints.smaller('lg')
+// `isCompact` cobre mobile + tablet (qualquer coisa abaixo de lg). Nesse
+// modo a Thread vira slideover em cima da lista; em ≥lg as duas colunas
+// coexistem lado a lado.
+const { isCompact } = useResponsive()
 
 const filters = useConversationFilters(load)
 const { connect: connectRealtime } = useConversationRealtime(selected, () => {
   loadMeta()
 })
 
+// Backend `/conversations/meta` only knows `inbox_id`. For label / team /
+// unattended / advanced-filter scopes we derive counters locally from the
+// already-loaded list — otherwise the tab badges would show account-wide
+// totals and contradict the filtered list.
+const STATUS_TO_BUCKET: Record<ConversationStatus, keyof ConversationMeta> = {
+  0: 'open', 1: 'resolved', 2: 'pending', 3: 'snoozed'
+}
+
+function isMetaScopeBackendSupported() {
+  if (filters.advancedQuery.value) return false
+  const f = convs.filters
+  if (f.labelIds?.length) return false
+  if (f.teamIds?.length) return false
+  if (f.conversationType === 'unattended') return false
+  return true
+}
+
+function computeLocalMeta(): ConversationMeta {
+  const meta: ConversationMeta = {
+    open: { all: 0, mine: 0, unassigned: 0 },
+    pending: { all: 0, mine: 0, unassigned: 0 },
+    resolved: { all: 0, mine: 0, unassigned: 0 },
+    snoozed: { all: 0, mine: 0, unassigned: 0 }
+  }
+  let list: Conversation[] = convs.list
+  const f = convs.filters
+  if (f.inboxIds?.length) {
+    const set = new Set(f.inboxIds.map(String))
+    list = list.filter(c => set.has(String(c.inboxId)))
+  }
+  if (f.labelIds?.length) {
+    const set = new Set(f.labelIds)
+    list = list.filter(c => c.labels?.some(l => set.has(l)))
+  }
+  if (f.teamIds?.length) {
+    const set = new Set(f.teamIds.map(String))
+    list = list.filter(c => set.has(String(c.teamId)))
+  }
+  if (f.conversationType === 'unattended') {
+    list = list.filter(c => !c.firstReplyCreatedAt || !!c.waitingSince)
+  }
+  const myId = auth.user?.id
+  for (const c of list) {
+    const k = STATUS_TO_BUCKET[c.status]
+    if (!k) continue
+    const bucket = meta[k]
+    bucket.all++
+    if (!c.assigneeId) bucket.unassigned++
+    else if (myId && String(c.assigneeId) === String(myId)) bucket.mine++
+  }
+  return meta
+}
+
 async function loadMeta() {
   if (!auth.account?.id) return
+
+  if (!isMetaScopeBackendSupported()) {
+    convs.setMeta(computeLocalMeta())
+    return
+  }
+
   const params: Record<string, string> = {}
-  if (convs.filters.inboxId) params.inbox_id = convs.filters.inboxId
+  // Backend supports a single inbox filter only; meta numbers reflect that
+  // when exactly one inbox is selected. With 0 or 2+ selected we leave the
+  // count global since the meta endpoint can't aggregate multi-inbox.
+  if (convs.filters.inboxIds?.length === 1) params.inbox_id = convs.filters.inboxIds[0]!
   const qs = new URLSearchParams(params).toString()
   const url = `/accounts/${auth.account.id}/conversations/meta${qs ? `?${qs}` : ''}`
   try {
-    const res = await api<{ payload: import('~/stores/conversations').ConversationMeta }>(url)
+    const res = await api<{ payload: ConversationMeta }>(url)
     if (res.payload) convs.setMeta(res.payload)
   } catch (err) {
     if (import.meta.dev) console.warn('[conversations] failed to load meta', err)
@@ -134,9 +208,23 @@ async function load() {
       const params: Record<string, string> = { page: '1', per_page: '100', sort_by: convs.filters.sortBy }
       const statusCode = convs.filters.status ? STATUS_CODE[convs.filters.status] : undefined
       if (statusCode) params.status = statusCode
-      if (convs.filters.inboxId) params.inbox_id = convs.filters.inboxId
-      const assigneeType = ASSIGNEE_TYPE[convs.filters.tab]
-      if (assigneeType && assigneeType !== 'all') params.assignee_type = assigneeType
+      // Single inbox: pass to backend so the list comes pre-filtered.
+      // Multi or no selection: pull all and let `filteredList` do client-side.
+      if (convs.filters.inboxIds?.length === 1) params.inbox_id = convs.filters.inboxIds[0]!
+      // The "Sem agente" flag overrides the tab — when it's on we want only
+      // unassigned conversations regardless of which tab the user is viewing.
+      // (Mine + unassigned is contradictory and naturally yields empty.)
+      if (convs.filters.unassignedOnly) {
+        params.assignee_type = 'unassigned'
+      } else {
+        const assigneeType = ASSIGNEE_TYPE[convs.filters.tab]
+        if (assigneeType && assigneeType !== 'all') params.assignee_type = assigneeType
+      }
+      // `conversation_type` é dimensão separada no Chatwoot
+      // (ConversationFinder#filter_by_conversation_type). Passamos pra
+      // pré-filtrar no backend; o `filteredList` ainda faz client-side
+      // pra manter consistência quando a lista chegar via realtime.
+      if (convs.filters.conversationType) params.conversation_type = convs.filters.conversationType
       const res = await api<import('~/stores/conversations').ConversationListResponse>(
         `/accounts/${auth.account.id}/conversations?${new URLSearchParams(params).toString()}`
       )
@@ -183,9 +271,12 @@ onMounted(async () => {
   connectRealtime()
 })
 
+// `flush: 'post'` defers the reload until after the DOM update tied to the
+// route navigation finishes, avoiding `instance.update is not a function`
+// when the middleware mutates filters mid-navigation.
 watch(() => convs.filters, () => {
   if (!filters.advancedQuery.value) load()
-}, { deep: true })
+}, { deep: true, flush: 'post' })
 
 const filtersBundle = computed(() => ({
   advancedQuery: filters.advancedQuery.value,
@@ -197,15 +288,8 @@ const filtersBundle = computed(() => ({
   statusMenuItems: filters.statusMenuItems.value,
   currentStatus: filters.currentStatus.value,
   sortMenuItems: filters.sortMenuItems.value,
-  currentSort: filters.currentSort.value,
-  filterMenuItems: filters.filterMenuItems.value,
-  hasScopeFilter: filters.hasScopeFilter.value,
-  activeFilterSummary: filters.activeFilterSummary.value
+  currentSort: filters.currentSort.value
 }))
-
-function clearScopeFilter() {
-  navigateTo(`/accounts/${auth.account?.id}/conversations`)
-}
 </script>
 
 <template>
@@ -217,32 +301,51 @@ function clearScopeFilter() {
     :displayed-list="filters.displayedList.value"
     :loading="convs.loading"
     @open-advanced-filter="filters.openAdvancedFilter"
-    @clear-scope-filter="clearScopeFilter"
     @clear-advanced-filter="filters.clearAdvancedFilter"
     @edit-active-filter="filters.editActiveFilter"
     @delete-saved-filter="(id) => filters.deleteSavedFilter(id)"
     @advanced-apply="filters.onAdvancedApply"
     @advanced-saved="filters.onAdvancedSaved"
+    @apply-saved-filter="filters.applySavedFilter"
   />
 
-  <ConversationsThread v-if="selected && !isMobile" :conversation="selected" @close="selected = null" />
-  <div v-else-if="!isMobile" class="hidden lg:flex flex-1 items-center justify-center flex-col gap-2">
-    <UIcon name="i-lucide-inbox" class="size-32 text-dimmed" />
-    <p class="text-muted">
-      {{ t('conversations.select') }}
-    </p>
+  <!--
+    Avoid HMR race conditions by keeping both views mounted and toggling
+    visibility instead of v-if. When Vite hot-replaces the component tree,
+    v-if triggers unmount/recreate that races with async watchers and
+    Teleported elements (USlideover), causing:
+      "can't access property 'subTree', vnode.component is null"
+      "can't access property 'parentNode', node is null"
+    v-show preserves the DOM tree across HMR updates and defers actual
+    removal to the transition hooks, which are safe.
+  -->
+  <div v-show="!isCompact" class="flex flex-1">
+    <ConversationsThread
+      v-if="selected"
+      :key="selected.id"
+      :conversation="selected"
+      @close="selected = null"
+    />
+    <div
+      v-show="!selected"
+      class="hidden lg:flex flex-1 items-center justify-center flex-col gap-2"
+    >
+      <UIcon name="i-lucide-inbox" class="size-32 text-dimmed" />
+      <p class="text-muted">
+        {{ t('conversations.select') }}
+      </p>
+    </div>
   </div>
 
-  <ClientOnly>
-    <USlideover v-if="isMobile" v-model:open="isPanelOpen">
-      <template #content>
-        <ConversationsThread
-          v-if="selected"
-          :conversation="selected"
-          show-back
-          @close="selected = null"
-        />
-      </template>
-    </USlideover>
-  </ClientOnly>
+  <USlideover v-model:open="compactPanelOpen" :ui="{ content: 'sm:max-w-full' }">
+    <template #content>
+      <ConversationsThread
+        v-if="selected && isCompact"
+        :key="selected.id"
+        :conversation="selected"
+        show-back
+        @close="selected = null"
+      />
+    </template>
+  </USlideover>
 </template>

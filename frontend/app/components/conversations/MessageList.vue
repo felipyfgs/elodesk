@@ -7,8 +7,10 @@ import {
   messageSide,
   messageBubbleKind,
   messageParts,
+  messageIsForwardable,
   shouldGroupWith
 } from '~/utils/chatAdapter'
+import { forwardSelectionModeKey, forwardSelectedIdsKey } from '~/utils/forward'
 
 const props = defineProps<{
   messages: Message[]
@@ -16,6 +18,40 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+
+const _selectionModeRef = inject(forwardSelectionModeKey, null)
+const _selectedIdsRef = inject(forwardSelectedIdsKey, null)
+const selectionMode = computed(() => _selectionModeRef?.value ?? false)
+const selectedIds = computed(() => _selectedIdsRef?.value ?? new Set<string>())
+
+const MAX_SELECTION = 5
+
+function isSelected(m: Message): boolean {
+  return selectedIds.value.has(String(m.id))
+}
+
+function isMaxReached(m: Message): boolean {
+  return selectedIds.value.size >= MAX_SELECTION && !isSelected(m)
+}
+
+function toggle(m: Message) {
+  if (!_selectedIdsRef) return
+  if (!messageIsForwardable(m)) return
+  const ids = new Set(_selectedIdsRef.value)
+  const key = String(m.id)
+  if (ids.has(key)) {
+    ids.delete(key)
+  } else if (ids.size < MAX_SELECTION) {
+    ids.add(key)
+  }
+  _selectedIdsRef.value = ids
+}
+
+function onRowClick(m: Message) {
+  if (!selectionMode.value) return
+  if (!messageIsForwardable(m)) return
+  toggle(m)
+}
 
 function isGrouped(index: number): boolean {
   if (index === 0) return false
@@ -56,8 +92,15 @@ function messageUi(m: Message) {
 </script>
 
 <template>
+  <!--
+    `!flex-none` sobrescreve o `flex-1` default do slot root do
+    UChatMessages (definido em @nuxt/ui chat-messages.ts). Sem isso, o
+    componente cresce até preencher 100% da altura do scroll container,
+    anulando o `justify-end` do wrapper em Thread.vue — que é o que faz
+    poucas mensagens grudarem no fundo, próximas ao composer.
+  -->
   <UChatMessages
-    class="mx-auto w-full max-w-4xl px-0 py-4"
+    class="mx-auto w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl px-0 py-4 !flex-none"
     :should-scroll-to-bottom="false"
     :auto-scroll="false"
     :spacing-offset="0"
@@ -69,24 +112,51 @@ function messageUi(m: Message) {
       </p>
     </div>
 
-    <UChatMessage
+    <div
       v-for="(m, i) in messages"
-      :id="String(m.id)"
       :key="m.id"
-      :role="messageRole(m)"
-      :variant="messageVariant(m)"
-      :side="messageSide(m)"
-      :parts="messageParts(m)"
-      :compact="isGrouped(i)"
-      :ui="messageUi(m)"
+      class="flex items-center transition-colors"
+      :class="[
+        selectionMode && messageIsForwardable(m) ? 'cursor-pointer' : '',
+        selectionMode && isSelected(m) ? 'bg-primary/10' : '',
+        selectionMode && messageIsForwardable(m) && !isSelected(m) ? 'hover:bg-elevated/40' : ''
+      ]"
+      @click="onRowClick(m)"
     >
-      <template #content>
-        <ConversationsMessageBubble
-          :message="m"
-          :conversation="conversation"
-          :grouped="isGrouped(i)"
+      <div
+        v-if="selectionMode"
+        class="w-10 shrink-0 self-stretch flex items-center justify-center pb-4"
+      >
+        <UCheckbox
+          v-if="messageIsForwardable(m)"
+          :model-value="isSelected(m)"
+          :disabled="isMaxReached(m)"
+          :ui="{ base: 'size-4' }"
+          :aria-label="t('conversations.forward.triggerAction')"
+          @click.stop
+          @update:model-value="toggle(m)"
         />
-      </template>
-    </UChatMessage>
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <UChatMessage
+          :id="String(m.id)"
+          :role="messageRole(m)"
+          :variant="messageVariant(m)"
+          :side="messageSide(m)"
+          :parts="messageParts(m)"
+          :compact="isGrouped(i)"
+          :ui="messageUi(m)"
+        >
+          <template #content>
+            <ConversationsMessageBubble
+              :message="m"
+              :conversation="conversation"
+              :grouped="isGrouped(i)"
+            />
+          </template>
+        </UChatMessage>
+      </div>
+    </div>
   </UChatMessages>
 </template>

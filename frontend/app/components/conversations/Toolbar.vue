@@ -140,18 +140,26 @@ async function bulkDelete() {
   }
 }
 
-const snoozeItems = computed(() => [[
-  { label: t('conversations.bulk.snooze.1h'), icon: 'i-lucide-clock', click: () => bulkToggleStatus('SNOOZED') },
-  { label: t('conversations.bulk.snooze.4h'), icon: 'i-lucide-clock', click: () => bulkToggleStatus('SNOOZED') },
-  { label: t('conversations.bulk.snooze.tomorrow'), icon: 'i-lucide-calendar', click: () => bulkToggleStatus('SNOOZED') },
-  { label: t('conversations.bulk.snooze.nextWeek'), icon: 'i-lucide-calendar-range', click: () => bulkToggleStatus('SNOOZED') }
-]])
+// Status actions are split into two groups: terminal transitions (resolve /
+// reopen) and snooze durations. Grouping with a separator avoids nesting menus.
+const statusMenuItems = computed(() => [
+  [
+    { label: t('conversations.bulk.resolve'), icon: 'i-lucide-check-circle', onSelect: () => bulkToggleStatus('RESOLVED') },
+    { label: t('conversations.bulk.open'), icon: 'i-lucide-message-circle', onSelect: () => bulkToggleStatus('OPEN') }
+  ],
+  [
+    { label: t('conversations.bulk.snooze.1h'), icon: 'i-lucide-clock', onSelect: () => bulkToggleStatus('SNOOZED') },
+    { label: t('conversations.bulk.snooze.4h'), icon: 'i-lucide-clock', onSelect: () => bulkToggleStatus('SNOOZED') },
+    { label: t('conversations.bulk.snooze.tomorrow'), icon: 'i-lucide-calendar', onSelect: () => bulkToggleStatus('SNOOZED') },
+    { label: t('conversations.bulk.snooze.nextWeek'), icon: 'i-lucide-calendar-range', onSelect: () => bulkToggleStatus('SNOOZED') }
+  ]
+])
 </script>
 
 <template>
   <UDashboardToolbar
     v-if="convs.hasSelection"
-    class="!min-h-9 !px-2 sm:!px-2"
+    class="!min-h-9 !pl-[22px] !pr-2 sm:!pl-[22px] sm:!pr-2"
   >
     <template #left>
       <div class="flex items-center gap-2">
@@ -176,43 +184,20 @@ const snoozeItems = computed(() => [[
 
     <template #right>
       <div class="flex items-center gap-1">
-        <UTooltip :text="t('conversations.bulk.resolve')">
-          <UButton
-            icon="i-lucide-check-circle"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :aria-label="t('conversations.bulk.resolve')"
-            :loading="loading"
-            @click="bulkToggleStatus('RESOLVED')"
-          />
-        </UTooltip>
-
-        <UDropdownMenu :items="snoozeItems" :content="{ align: 'start' }">
-          <UTooltip :text="t('conversations.bulk.snooze.label')">
+        <UDropdownMenu :items="statusMenuItems" :content="{ align: 'start' }">
+          <UTooltip :text="t('conversations.bulk.statusLabel')">
             <UButton
-              icon="i-lucide-clock"
+              icon="i-lucide-circle-check-big"
               color="neutral"
               variant="ghost"
               size="xs"
-              :aria-label="t('conversations.bulk.snooze.label')"
+              :aria-label="t('conversations.bulk.statusLabel')"
+              :loading="loading"
             />
           </UTooltip>
         </UDropdownMenu>
 
-        <UTooltip :text="t('conversations.bulk.open')">
-          <UButton
-            icon="i-lucide-message-circle"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :aria-label="t('conversations.bulk.open')"
-            :loading="loading"
-            @click="bulkToggleStatus('OPEN')"
-          />
-        </UTooltip>
-
-        <UDropdownMenu :items="[[{ label: t('conversations.bulk.addLabel'), icon: 'i-lucide-tag', click: () => { labelAction = 'add'; labelOpen = true } }, { label: t('conversations.bulk.removeLabel'), icon: 'i-lucide-tag-x', click: () => { labelAction = 'remove'; labelOpen = true } }]]" :content="{ align: 'start' }">
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.addLabel'), icon: 'i-lucide-tag', onSelect: () => { labelAction = 'add'; labelOpen = true } }, { label: t('conversations.bulk.removeLabel'), icon: 'i-lucide-tag-x', onSelect: () => { labelAction = 'remove'; labelOpen = true } }]]" :content="{ align: 'start' }">
           <UTooltip :text="t('conversations.bulk.labels')">
             <UButton
               icon="i-lucide-tag"
@@ -224,7 +209,7 @@ const snoozeItems = computed(() => [[
           </UTooltip>
         </UDropdownMenu>
 
-        <UDropdownMenu :items="[[{ label: t('conversations.bulk.assignAgent'), icon: 'i-lucide-user-plus', click: () => { assignAgentOpen = true } }, { label: t('conversations.bulk.assignTeam'), icon: 'i-lucide-users', click: () => { assignTeamOpen = true } }]]" :content="{ align: 'start' }">
+        <UDropdownMenu :items="[[{ label: t('conversations.bulk.assignAgent'), icon: 'i-lucide-user-plus', onSelect: () => { assignAgentOpen = true } }, { label: t('conversations.bulk.assignTeam'), icon: 'i-lucide-users', onSelect: () => { assignTeamOpen = true } }]]" :content="{ align: 'start' }">
           <UTooltip :text="t('conversations.bulk.assign')">
             <UButton
               icon="i-lucide-user-plus"

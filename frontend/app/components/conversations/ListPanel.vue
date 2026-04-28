@@ -2,7 +2,10 @@
 import type { DropdownMenuItem, TabsItem } from '@nuxt/ui'
 import type { Conversation } from '~/stores/conversations'
 import type { FilterQueryPayload } from '~/components/filters/FilterBuilder.vue'
-import type { SavedFilter } from '~/stores/savedFilters'
+import { useConversationsStore } from '~/stores/conversations'
+import { useInboxesStore } from '~/stores/inboxes'
+import { useTeamsStore } from '~/stores/teams'
+import { useSavedFiltersStore, type SavedFilter } from '~/stores/savedFilters'
 
 interface FiltersBundle {
   advancedQuery: FilterQueryPayload | null
@@ -11,13 +14,10 @@ interface FiltersBundle {
   advancedInitialQuery: FilterQueryPayload | null
   advancedInitialName: string
   tabItems: TabsItem[]
-  statusMenuItems: DropdownMenuItem[]
+  statusMenuItems: DropdownMenuItem[] | DropdownMenuItem[][]
   currentStatus: { label: string, icon: string }
   sortMenuItems: DropdownMenuItem[]
   currentSort: { icon: string }
-  filterMenuItems: DropdownMenuItem[]
-  hasScopeFilter: boolean
-  activeFilterSummary: string
 }
 
 const props = defineProps<{
@@ -32,28 +32,61 @@ const activeTab = defineModel<string>('activeTab', { default: '' })
 
 const emit = defineEmits<{
   openAdvancedFilter: []
-  clearScopeFilter: []
   clearAdvancedFilter: []
   editActiveFilter: []
   deleteSavedFilter: [id: string]
   advancedApply: [query: FilterQueryPayload]
   advancedSaved: [filter: SavedFilter]
+  applySavedFilter: [filter: SavedFilter]
 }>()
 
 const { t } = useI18n()
+const route = useRoute()
+const convs = useConversationsStore()
+const inboxes = useInboxesStore()
+const teams = useTeamsStore()
+const savedFilters = useSavedFiltersStore()
 
 // Prefer reactive access to the bundle (props is reactive in Vue 3.4+).
 const f = computed(() => props.filters)
+
+const panelTitle = computed(() => {
+  const cf = convs.filters
+  const totalScope = (cf.inboxIds?.length ?? 0) + (cf.labelIds?.length ?? 0) + (cf.teamIds?.length ?? 0)
+
+  if (totalScope === 1) {
+    if (cf.inboxIds?.length === 1) {
+      const inbox = inboxes.list.find(i => i.id === cf.inboxIds![0])
+      return inbox?.name ?? t('nav.channels')
+    }
+    if (cf.labelIds?.length === 1) return `#${cf.labelIds[0]}`
+    if (cf.teamIds?.length === 1) {
+      const team = teams.list.find(tm => tm.id === cf.teamIds![0])
+      return team?.name ?? t('nav.teams')
+    }
+  }
+  if (totalScope > 1) return t('conversations.scopedFilters', { count: totalScope })
+
+  if (route.path.endsWith('/conversations/unattended')) return t('nav.unattended')
+  if (route.path.includes('/conversations/filter/')) {
+    const id = route.params.id as string | undefined
+    const sf = id ? savedFilters.list.find(s => s.id === id) : undefined
+    return sf?.name ?? t('nav.folders')
+  }
+  return t('conversations.title')
+})
+
 </script>
 
 <template>
   <UDashboardPanel
     id="conversations-list"
     :default-size="22"
-    :min-size="22"
-    :max-size="22"
+    :min-size="18"
+    :max-size="32"
+    resizable
   >
-    <UDashboardNavbar :title="t('conversations.title')">
+    <UDashboardNavbar :title="panelTitle">
       <template #leading>
         <UDashboardSidebarCollapse />
       </template>
@@ -67,18 +100,15 @@ const f = computed(() => props.filters)
       :current-sort="f.currentSort"
       :status-menu-items="f.statusMenuItems"
       :sort-menu-items="f.sortMenuItems"
-      :filter-menu-items="f.filterMenuItems"
       :advanced-query="f.advancedQuery"
-      :has-scope-filter="f.hasScopeFilter"
+      :active-saved-filter="f.activeSavedFilter"
       @open-advanced-filter="emit('openAdvancedFilter')"
+      @apply-saved-filter="(filter) => emit('applySavedFilter', filter)"
     />
 
     <ConversationsActiveFilterBanner
-      :has-scope-filter="f.hasScopeFilter"
-      :active-filter-summary="f.activeFilterSummary"
       :advanced-query="f.advancedQuery"
       :active-saved-filter="f.activeSavedFilter"
-      @clear-scope-filter="emit('clearScopeFilter')"
       @clear-advanced-filter="emit('clearAdvancedFilter')"
       @edit-active-filter="emit('editActiveFilter')"
       @delete-saved-filter="(id) => emit('deleteSavedFilter', id)"

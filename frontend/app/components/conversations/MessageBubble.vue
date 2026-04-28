@@ -12,6 +12,7 @@ import {
   hasAttachments,
   getAttachments,
   messageIsForwarded,
+  messageIsForwardable,
   type BubbleKind
 } from '~/utils/chatAdapter'
 import { forwardSelectionModeKey, forwardSelectedIdsKey } from '~/utils/forward'
@@ -28,11 +29,13 @@ const toast = useToast()
 const auth = useAuthStore()
 const messages = useMessagesStore()
 
-// Forward selection state (inject from ancestor)
+// MessageList owns the checkbox + row click; we only need the flag here to
+// gate actions (context menu, chevron) and to dim non-forwardable bubbles.
+// `_selectedIdsRef` is still injected so the "Encaminhar" dropdown entry can
+// seed the initial selection.
 const _selectionModeRef = inject(forwardSelectionModeKey, null)
 const _selectedIdsRef = inject(forwardSelectedIdsKey, null)
 const selectionMode = computed(() => _selectionModeRef?.value ?? false)
-const selectedMessageIds = computed(() => _selectedIdsRef?.value ?? new Set<string>())
 
 interface QuotedReply {
   id?: string | number
@@ -200,34 +203,7 @@ const messageActionItems = computed<DropdownMenuItem[][]>(() => {
   return groups
 })
 
-// Selection mode logic
-const nonForwardable = computed(() =>
-  props.message.messageType === 2 || bubbleKind.value === 'deleted'
-)
-
-const isSelected = computed(() =>
-  selectedMessageIds.value.has(String(props.message.id))
-)
-
-const isMaxMessages = computed(() =>
-  selectedMessageIds.value.size >= 5
-)
-
-function toggleSelection() {
-  if (!_selectedIdsRef) return
-  const ids = new Set(_selectedIdsRef.value)
-  if (ids.has(String(props.message.id))) {
-    ids.delete(String(props.message.id))
-  } else if (ids.size < 5) {
-    ids.add(String(props.message.id))
-  }
-  _selectedIdsRef.value = ids
-}
-
-function onBubbleClick() {
-  if (!selectionMode.value || nonForwardable.value) return
-  toggleSelection()
-}
+const isForwardable = computed(() => messageIsForwardable(props.message))
 
 const menuOpen = ref(false)
 function toggleMenu(open: boolean) {
@@ -244,32 +220,9 @@ function toggleMenu(open: boolean) {
       :class="[
         'group/bubble relative',
         bubbleClass,
-        nonForwardable && selectionMode ? 'opacity-50 pointer-events-none' : '',
-        selectionMode && !nonForwardable ? 'cursor-pointer' : ''
+        selectionMode && !isForwardable ? 'opacity-50' : ''
       ]"
-      @click="onBubbleClick"
     >
-      <!-- Selection mode checkbox -->
-      <template v-if="selectionMode && !nonForwardable">
-        <div
-          class="absolute z-10"
-          :class="side === 'right' ? 'left-1.5 top-1/2 -translate-y-1/2' : 'right-1.5 top-1/2 -translate-y-1/2'"
-        >
-          <UCheckbox
-            :model-value="isSelected"
-            :disabled="isMaxMessages && !isSelected"
-            :ui="{ base: 'size-4' }"
-            @click.stop="toggleSelection"
-          />
-        </div>
-        <!-- Tooltip for disabled checkbox -->
-        <UTooltip
-          v-if="isMaxMessages && !isSelected"
-          :text="t('conversations.forward.maxMessages')"
-          :popper="{ placement: side === 'right' ? 'left' : 'right' }"
-        />
-      </template>
-
       <!-- Chevron hidden during selection mode -->
       <UDropdownMenu
         v-if="showActions && !selectionMode"

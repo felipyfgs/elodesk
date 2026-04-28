@@ -109,6 +109,11 @@
     "home": "Home",
     "sessions": "Sessions",
     "conversations": "Conversations",
+    "allConversations": "All",
+    "unattended": "Unattended",
+    "folders": "Saved filters",
+    "channels": "Channels",
+    "teams": "Teams",
     "contacts": "Contacts",
     "inboxes": "Inboxes",
     "settings": "Settings",
@@ -126,10 +131,10 @@
     "settingsCanned": "Canned Responses",
     "settingsAttributes": "Attributes",
     "settingsMembers": "Members",
-    "settingsGroupWorkspace": "Workspace",
-    "settingsGroupTeam": "Team",
-    "settingsGroupProductivity": "Productivity",
-    "settingsGroupAdministration": "Administration",
+    "labels": "Labels",
+    "macros": "Macros",
+    "canned": "Canned Responses",
+    "attributes": "Attributes",
     "reports": "Reports",
     "docs": "API docs",
     "goTo": "Go to",
@@ -386,6 +391,7 @@
   },
   "conversations": {
     "title": "Conversations",
+    "scopedFilters": "{count} filters",
     "empty": "No conversations yet.",
     "deletedFallback": "This conversation has been deleted.",
     "audio": {
@@ -403,6 +409,7 @@
       "title": "Filters",
       "mine": "Mine",
       "unassigned": "Unassigned",
+      "unread": "Unread",
       "all": "All",
       "unattended": "Unattended",
       "status": "Status",
@@ -419,11 +426,16 @@
       "snoozed": "Snoozed"
     },
     "status": {
+      "label": "Status",
       "open": "Open",
       "pending": "Pending",
       "resolved": "Resolved",
       "snoozed": "Snoozed",
       "all": "All"
+    },
+    "filtersMenu": "Filters & sorting",
+    "scope": {
+      "clear": "Clear selection"
     },
     "sort": {
       "label": "Sort",
@@ -579,6 +591,7 @@
       "selected": "{count} selected",
       "selectAll": "Select all",
       "clearSelection": "Clear",
+      "statusLabel": "Status",
       "resolve": "Resolve",
       "open": "Reopen",
       "snooze": {
@@ -909,8 +922,20 @@
       "saveFailed": "Could not save notification preferences"
     }
   },
+  "notifications": {
+    "title": "Notifications",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "markAllRead": "Mark all as read",
+    "loadMore": "Load more",
+    "empty": "No notifications yet",
+    "emptyDescription": "When something happens here, you'll see the alerts on this page.",
+    "emptyUnreadTitle": "You're all caught up",
+    "emptyUnread": "No unread notifications right now."
+  },
   "labels": {
     "title": "Labels",
+    "subtitle": "Organize conversations and contacts with colored tags.",
     "create": "New label",
     "edit": "Edit label",
     "delete": "Delete label",
@@ -919,7 +944,14 @@
     "color": "Color",
     "description": "Description",
     "showOnSidebar": "Show on sidebar",
-    "empty": "No labels created."
+    "empty": "No labels created.",
+    "createSuccess": "Label created.",
+    "updateSuccess": "Label updated.",
+    "deleteSuccess": "Label deleted.",
+    "createFailed": "Could not create label.",
+    "updateFailed": "Could not update label.",
+    "deleteFailed": "Could not delete label.",
+    "fetchFailed": "Could not load labels."
   },
   "teams": {
     "title": "Teams",

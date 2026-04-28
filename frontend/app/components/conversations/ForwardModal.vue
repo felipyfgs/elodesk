@@ -25,7 +25,6 @@ const auth = useAuthStore()
 const api = useApi()
 
 const selectedTargets = ref<ForwardTarget[]>([])
-const sending = ref(false)
 const searchQuery = ref('')
 const expandedContactId = ref<string | null>(null)
 
@@ -177,32 +176,32 @@ function contactDisplayName(c: Contact): string {
   return c.name ?? c.email ?? c.phoneNumber ?? `#${c.id}`
 }
 
-async function submit() {
+function submit() {
   if (selectedTargets.value.length === 0) return
-  sending.value = true
-  try {
-    const result = await messagesStore.forward({
-      sourceMessageIds: props.messageIds,
-      targets: selectedTargets.value
+  // Fire-and-forget: close the modal immediately and let the request run in
+  // the background. Toasts surface the outcome when it resolves so the user
+  // isn't blocked waiting for every fan-out send to finish.
+  const sourceMessageIds = props.messageIds
+  const targets = [...selectedTargets.value]
+  emit('done')
+  messagesStore.forward({ sourceMessageIds, targets })
+    .then((result) => {
+      const successCount = result.results?.filter(r => r.status === 'success').length ?? 0
+      if (successCount > 0) {
+        toast.add({ title: t('conversations.forward.success', { count: successCount }), color: 'success' })
+      }
+      const failCount = result.results?.filter(r => r.status === 'failed').length ?? 0
+      if (failCount > 0) {
+        toast.add({
+          title: t('conversations.forward.partialFailure', { ok: successCount, total: result.results.length }),
+          color: 'warning'
+        })
+      }
     })
-    const successCount = result.results?.filter(r => r.status === 'success').length ?? 0
-    if (successCount > 0) {
-      toast.add({ title: t('conversations.forward.success', { count: successCount }), color: 'success' })
-    }
-    const failCount = result.results?.filter(r => r.status === 'failed').length ?? 0
-    if (failCount > 0) {
-      toast.add({
-        title: t('conversations.forward.partialFailure', { ok: successCount, total: result.results.length }),
-        color: 'warning'
-      })
-    }
-    emit('done')
-  } catch (err: unknown) {
-    console.error('[ForwardModal] forward failed', err)
-    toast.add({ title: t('conversations.forward.failed'), color: 'error' })
-  } finally {
-    sending.value = false
-  }
+    .catch((err: unknown) => {
+      console.error('[ForwardModal] forward failed', err)
+      toast.add({ title: t('conversations.forward.failed'), color: 'error' })
+    })
 }
 </script>
 
@@ -364,8 +363,7 @@ async function submit() {
             {{ t('conversations.forward.cancel') }}
           </UButton>
           <UButton
-            :disabled="selectedTargets.length === 0 || sending"
-            :loading="sending"
+            :disabled="selectedTargets.length === 0"
             color="primary"
             @click="submit"
           >
