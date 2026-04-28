@@ -24,6 +24,11 @@ const contactConversations = ref<Conversation[]>([])
 type SidebarTab = 'attributes' | 'history' | 'notes' | 'merge'
 const activeTab = ref<SidebarTab>('attributes')
 
+// Em <xl a sidebar não cabe inline (380px é metade da largura útil em
+// laptops 1280px). Vira slideover acionado pelo botão "i" no header.
+const { isWide } = useResponsive()
+const sidebarOpen = ref(false)
+
 const tabs = computed(() => [
   { label: t('contactDetail.sidebar.attributes'), value: 'attributes' as const, icon: 'i-lucide-braces' },
   { label: t('contactDetail.sidebar.history'), value: 'history' as const, icon: 'i-lucide-clock' },
@@ -113,6 +118,22 @@ onMounted(load)
             icon="i-lucide-message-square-plus"
             @click="sendMessage"
           />
+          <!--
+            Em <xl o painel lateral não cabe inline; o agente abre via
+            slideover com este botão. Em ≥xl o painel já está visível e o
+            botão é redundante.
+          -->
+          <UButton
+            v-if="contact && !isWide"
+            :label="t('contactDetail.sidebar.attributes')"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            icon="i-lucide-info"
+            square
+            :aria-label="t('contactDetail.sidebar.attributes')"
+            @click="sidebarOpen = true"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -133,8 +154,8 @@ onMounted(load)
           </div>
         </div>
 
-        <!-- Right sidebar -->
-        <aside class="hidden xl:flex shrink-0 w-[380px] flex-col border-l border-default bg-elevated/30">
+        <!-- Right sidebar inline (≥xl) -->
+        <aside v-if="isWide" class="hidden xl:flex shrink-0 w-[380px] flex-col border-l border-default bg-elevated/30">
           <div class="p-3 border-b border-default">
             <UTabs
               v-model="activeTab"
@@ -168,6 +189,51 @@ onMounted(load)
           </div>
         </aside>
       </div>
+
+      <!-- Sidebar slideover em <xl -->
+      <ClientOnly>
+        <USlideover
+          v-if="contact && !isWide"
+          v-model:open="sidebarOpen"
+          :ui="{ content: 'w-full sm:max-w-md' }"
+        >
+          <template #content>
+            <div class="flex h-full min-h-0 flex-col bg-elevated/30">
+              <div class="p-3 border-b border-default">
+                <UTabs
+                  v-model="activeTab"
+                  :items="tabs"
+                  variant="pill"
+                  size="xs"
+                  :content="false"
+                  class="w-full"
+                />
+              </div>
+              <div class="flex-1 overflow-y-auto p-4">
+                <ContactsDetailSidebarAttributes
+                  v-if="activeTab === 'attributes'"
+                  :contact="contact"
+                />
+                <ContactsDetailSidebarHistory
+                  v-else-if="activeTab === 'history'"
+                  :conversations="contactConversations"
+                />
+                <ContactsDetailSidebarNotes
+                  v-else-if="activeTab === 'notes'"
+                  :contact-id="contactId"
+                />
+                <ContactsDetailSidebarMerge
+                  v-else-if="isOwnerAdmin"
+                  :contact="contact"
+                />
+                <p v-else class="text-sm text-muted">
+                  {{ t('settings.accessDenied') }}
+                </p>
+              </div>
+            </div>
+          </template>
+        </USlideover>
+      </ClientOnly>
     </template>
   </UDashboardPanel>
 </template>

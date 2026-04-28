@@ -21,25 +21,22 @@ const kind = computed<ChannelKind | null>(() => {
   return VALID_KINDS.includes(k as ChannelKind) ? (k as ChannelKind) : null
 })
 
-const wizardMap: Record<ChannelKind, () => Promise<Component>> = {
-  api: () => import('~/components/inboxes/wizards/ApiWizard.vue'),
-  whatsapp: () => import('~/components/inboxes/wizards/WhatsAppWizard.vue'),
-  sms: () => import('~/components/inboxes/wizards/SmsWizard.vue'),
-  instagram: () => import('~/components/inboxes/wizards/InstagramWizard.vue'),
-  facebook_page: () => import('~/components/inboxes/wizards/FacebookPageWizard.vue'),
-  telegram: () => import('~/components/inboxes/wizards/TelegramWizard.vue'),
-  web_widget: () => import('~/components/inboxes/wizards/WebWidgetWizard.vue'),
-  email: () => import('~/components/inboxes/wizards/EmailWizard.vue'),
-  line: () => import('~/components/inboxes/wizards/LineWizard.vue'),
-  tiktok: () => import('~/components/inboxes/wizards/TiktokWizard.vue'),
-  twilio: () => import('~/components/inboxes/wizards/TwilioWizard.vue'),
-  twitter: () => import('~/components/inboxes/wizards/TwitterWizard.vue')
+const wizardMap: Record<ChannelKind, Component> = {
+  api: defineAsyncComponent(() => import('~/components/inboxes/wizards/ApiWizard.vue')),
+  whatsapp: defineAsyncComponent(() => import('~/components/inboxes/wizards/WhatsAppWizard.vue')),
+  sms: defineAsyncComponent(() => import('~/components/inboxes/wizards/SmsWizard.vue')),
+  instagram: defineAsyncComponent(() => import('~/components/inboxes/wizards/InstagramWizard.vue')),
+  facebook_page: defineAsyncComponent(() => import('~/components/inboxes/wizards/FacebookPageWizard.vue')),
+  telegram: defineAsyncComponent(() => import('~/components/inboxes/wizards/TelegramWizard.vue')),
+  web_widget: defineAsyncComponent(() => import('~/components/inboxes/wizards/WebWidgetWizard.vue')),
+  email: defineAsyncComponent(() => import('~/components/inboxes/wizards/EmailWizard.vue')),
+  line: defineAsyncComponent(() => import('~/components/inboxes/wizards/LineWizard.vue')),
+  tiktok: defineAsyncComponent(() => import('~/components/inboxes/wizards/TiktokWizard.vue')),
+  twilio: defineAsyncComponent(() => import('~/components/inboxes/wizards/TwilioWizard.vue')),
+  twitter: defineAsyncComponent(() => import('~/components/inboxes/wizards/TwitterWizard.vue'))
 }
 
-const ActiveWizard = computed(() => {
-  if (!kind.value) return null
-  return defineAsyncComponent(wizardMap[kind.value])
-})
+const ActiveWizard = computed(() => (kind.value ? wizardMap[kind.value] : null))
 
 const breadcrumb = computed(() => {
   const accountId = auth.account?.id
