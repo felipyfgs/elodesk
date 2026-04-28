@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import AuditLogsTable from '~/components/settings/audit-logs/AuditLogsTable.vue'
-import AuditLogsFilters from '~/components/settings/audit-logs/AuditLogsFilters.vue'
-import AuditLogExportButton from '~/components/settings/audit-logs/AuditLogExportButton.vue'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 
@@ -52,13 +49,13 @@ onMounted(fetchPage)
         <UButton variant="outline" icon="i-lucide-refresh-cw" @click="fetchPage">
           {{ t('common.refresh') ?? 'Refresh' }}
         </UButton>
-        <AuditLogExportButton :items="items" />
+        <SettingsAuditLogsExportButton :items="items" />
       </div>
     </template>
 
     <div class="grid grid-cols-1 lg:grid-cols-[16rem_1fr] gap-6">
       <aside>
-        <AuditLogsFilters
+        <SettingsAuditLogsFilters
           v-model:from="filters.from"
           v-model:to="filters.to"
           v-model:action="filters.action"
@@ -68,7 +65,7 @@ onMounted(fetchPage)
           {{ t('common.apply') ?? 'Apply' }}
         </UButton>
       </aside>
-      <AuditLogsTable :items="items" :loading="loading" />
+      <SettingsAuditLogsTable :items="items" :loading="loading" />
     </div>
   </UPageCard>
 </template>

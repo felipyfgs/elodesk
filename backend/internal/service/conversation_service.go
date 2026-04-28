@@ -112,6 +112,17 @@ func (s *ConversationService) ToggleStatus(ctx context.Context, id, accountID in
 	return convo, nil
 }
 
+// MarkRead atualiza assignee_last_seen_at e dispara conversation.updated para
+// que o unread_count zere em todos os clientes conectados. Idempotente — pode
+// ser chamado a cada abertura da thread sem efeito colateral.
+func (s *ConversationService) MarkRead(ctx context.Context, id, accountID int64) error {
+	if err := s.conversationRepo.UpdateAssigneeLastSeen(ctx, id, accountID); err != nil {
+		return err
+	}
+	s.broadcastUpdated(ctx, accountID, id)
+	return nil
+}
+
 // Delete permanently removes the conversation (and all messages/participants
 // via ON DELETE CASCADE). A conversation.deleted realtime event is broadcast
 // so connected clients drop the row. The audit trail lives in audit_logs; the

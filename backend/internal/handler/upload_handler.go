@@ -26,6 +26,7 @@ type UploadHandler struct {
 	minio          *media.MinioClient
 	attachmentRepo *repo.AttachmentRepo
 	mediaResolver  MediaResolveFunc
+	tokenSecret    []byte
 }
 
 func NewUploadHandler(minio *media.MinioClient, attachmentRepo *repo.AttachmentRepo) *UploadHandler {
@@ -34,6 +35,13 @@ func NewUploadHandler(minio *media.MinioClient, attachmentRepo *repo.AttachmentR
 
 func (h *UploadHandler) SetMediaResolver(fn MediaResolveFunc) {
 	h.mediaResolver = fn
+}
+
+// SetAttachmentTokenSecret injeta a chave usada pra assinar/validar o token
+// de download público (GET /attachments/:id/file?token=...). Sem isso, o
+// endpoint público é desabilitado.
+func (h *UploadHandler) SetAttachmentTokenSecret(secret []byte) {
+	h.tokenSecret = secret
 }
 
 // SignedUploadURL generates a presigned PUT URL. The object path MUST begin
@@ -125,9 +133,10 @@ func (h *UploadHandler) ProxyUpload(c *fiber.Ctx) error {
 		Msg("proxy upload complete")
 
 	return c.JSON(dto.SuccessResp(fiber.Map{
-		"path":         objectPath,
-		"file_type":    contentType,
-		"size":         fh.Size,
+		"path":      objectPath,
+		"file_type": contentType,
+		"file_name": fh.Filename,
+		"size":      fh.Size,
 	}))
 }
 
@@ -148,6 +157,80 @@ func sanitizeFileName(name string) string {
 		return "file"
 	}
 	return out
+}
+
+// PublicAttachmentDownload é o endpoint sem-Bearer que aceita um token
+// HMAC na query (`?token=...`) e faz stream do attachment correspondente.
+// Espelha o padrão do Chatwoot/ActiveStorage: integradores externos só
+// precisam saber a URL pública do elodesk; o storage real (MinIO/S3) fica
+// abstraído. O handler resolve o file_key do attachment e lê via cliente
+// interno (rede docker), sem expor o endpoint do MinIO.
+func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
+	if len(h.tokenSecret) == 0 {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(dto.ErrorResp("Service Unavailable", "attachment download disabled"))
+	}
+
+	idStr := c.Params("id")
+	attachmentID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid attachment id"))
+	}
+
+	token := c.Query("token")
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "token required"))
+	}
+
+	tokenAccountID, tokenAttachmentID, err := VerifyAttachmentToken(h.tokenSecret, token)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "invalid or expired token"))
+	}
+	if tokenAttachmentID != attachmentID {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "token does not match attachment"))
+	}
+
+	attachment, err := h.attachmentRepo.FindByID(c.Context(), attachmentID, tokenAccountID)
+	if err != nil {
+		return handleNotFound(c, err)
+	}
+
+	var objectPath string
+	if attachment.FileKey != nil && *attachment.FileKey != "" {
+		objectPath = *attachment.FileKey
+	} else if h.mediaResolver != nil {
+		resolved, rerr := h.mediaResolver(c.Context(), attachmentID, tokenAccountID)
+		if rerr == nil && resolved != "" {
+			objectPath = resolved
+		}
+	}
+	if objectPath == "" {
+		// Attachment com só external_url (mídia ainda não baixada pro MinIO):
+		// 302 redireciona pra URL externa. Hoje cobre o caminho Meta Cloud
+		// direto, antes da Fase 1 do plano de mídia (proxy ingestion).
+		if attachment.ExternalURL != nil && *attachment.ExternalURL != "" {
+			return c.Redirect(*attachment.ExternalURL, fiber.StatusFound)
+		}
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "attachment has no storage location"))
+	}
+
+	obj, err := h.minio.Client().GetObject(c.Context(), h.minio.Bucket(), objectPath, minio.GetObjectOptions{})
+	if err != nil {
+		logger.Error().Str("component", "uploads").Err(err).Msg("failed to get object")
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to fetch file"))
+	}
+	stat, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		logger.Warn().Str("component", "uploads").Err(err).Str("objectPath", objectPath).Msg("object not found")
+		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "file not found"))
+	}
+
+	if stat.ContentType != "" {
+		c.Set("Content-Type", stat.ContentType)
+	}
+	c.Set("Content-Length", strconv.FormatInt(stat.Size, 10))
+	c.Set("Cache-Control", "public, max-age=3600")
+	return c.SendStream(obj, int(stat.Size))
 }
 
 // ProxyDownload streams an object from MinIO through the backend so the

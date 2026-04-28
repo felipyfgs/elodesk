@@ -29,12 +29,27 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
+        'zod',
         'zod/v4',
         'date-fns',
+        'date-fns/locale',
         'pinia',
         'reka-ui',
         '@unovis/vue',
-        '@unovis/ts'
+        '@unovis/ts',
+        'vue3-emoji-picker',
+        'libphonenumber-js',
+        'libphonenumber-js/mobile/examples',
+        '@tiptap/vue-3',
+        '@tiptap/starter-kit',
+        '@tiptap/extension-link',
+        'tiptap-markdown',
+        'wavesurfer.js',
+        'wavesurfer.js/dist/plugins/record.esm.js',
+        'vue-audio-visual',
+        'markdown-it',
+        'dompurify',
+        'pdfjs-dist'
       ]
     }
   },

@@ -1,16 +1,21 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 
 	"backend/internal/dto"
 	"backend/internal/logger"
+	"backend/internal/media"
 	"backend/internal/model"
 	"backend/internal/repo"
 	"backend/internal/service"
@@ -23,6 +28,7 @@ type MessageHandler struct {
 	messageRepo      *repo.MessageRepo
 	attachmentRepo   *repo.AttachmentRepo
 	conversationRepo *repo.ConversationRepo
+	minio            *media.MinioClient
 }
 
 func NewMessageHandler(
@@ -45,6 +51,13 @@ func (h *MessageHandler) SetAttachmentRepo(r *repo.AttachmentRepo) {
 
 func (h *MessageHandler) SetConversationRepo(r *repo.ConversationRepo) {
 	h.conversationRepo = r
+}
+
+// SetMinio injeta o cliente MinIO usado pelo caminho multipart de criação de
+// mensagens. Sem ele, anexos via multipart são rejeitados — o caminho JSON
+// com presigned upload continua funcionando.
+func (h *MessageHandler) SetMinio(m *media.MinioClient) {
+	h.minio = m
 }
 
 func (h *MessageHandler) Create(c *fiber.Ctx) error {
@@ -179,12 +192,6 @@ func (h *MessageHandler) CreateAuthenticated(c *fiber.Ctx) error {
 }
 
 func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conversationID int64) error {
-	// Attachments via multipart are not supported. Clients should upload files
-	// via presigned URLs first, then send the message with attachment_ids.
-	if form, err := c.MultipartForm(); err == nil && len(form.File) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "attachments via multipart are not supported; use presigned upload URLs"))
-	}
-
 	content := c.FormValue("content")
 	if content == "" {
 		content = c.FormValue("message[content]")
@@ -204,12 +211,39 @@ func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conve
 
 	private := c.FormValue("private") == "true"
 
+	messageType := model.MessageIncoming
+	if mt := c.FormValue("message_type"); mt != "" {
+		parsed, err := parseMessageType(&mt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))
+		}
+		messageType = parsed
+	}
+
+	var rawAttrs json.RawMessage
+	if contentAttrsRaw := c.FormValue("content_attributes"); contentAttrsRaw != "" {
+		// Validar que é JSON antes de persistir — formato livre, mas tem que
+		// fazer parse para não corromper consultas downstream.
+		var parsed map[string]any
+		if err := json.Unmarshal([]byte(contentAttrsRaw), &parsed); err == nil {
+			rawAttrs = json.RawMessage(contentAttrsRaw)
+		}
+	}
+	contentAttrs := mergeEchoID(rawAttrs, echoID)
+
+	attachments, err := h.uploadMultipartAttachments(c, accountID)
+	if err != nil {
+		return err
+	}
+
 	msg := &model.Message{
 		Content:      &content,
+		MessageType:  messageType,
 		SourceID:     sourceID,
 		Private:      private,
 		ContentType:  model.ContentTypeText,
-		ContentAttrs: mergeEchoID(nil, echoID),
+		ContentAttrs: contentAttrs,
+		Attachments:  attachments,
 	}
 
 	created, err := h.svc.Create(c.Context(), accountID, inboxID, conversationID, msg)
@@ -218,6 +252,81 @@ func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conve
 	}
 
 	return c.JSON(dto.SuccessResp(dto.MessageToResp(created)))
+}
+
+// uploadMultipartAttachments lê os arquivos enviados como `attachments[]` (ou
+// `attachments`, sem colchetes — alguns clients não usam) e sobe no MinIO,
+// devolvendo a lista de model.Attachment com FileKey populado. Sem MinIO
+// configurado, retorna 400 — o cliente deve cair no caminho JSON com
+// presigned URL.
+func (h *MessageHandler) uploadMultipartAttachments(c *fiber.Ctx, accountID int64) ([]model.Attachment, error) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return nil, nil
+	}
+	files := form.File["attachments[]"]
+	if len(files) == 0 {
+		files = form.File["attachments"]
+	}
+	if len(files) == 0 {
+		return nil, nil
+	}
+	if h.minio == nil {
+		return nil, c.Status(fiber.StatusServiceUnavailable).JSON(dto.ErrorResp("Service Unavailable", "media storage not configured"))
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context(), 2*time.Minute)
+	defer cancel()
+
+	out := make([]model.Attachment, 0, len(files))
+	for _, fh := range files {
+		f, err := fh.Open()
+		if err != nil {
+			logger.Error().Str("component", "messages").Err(err).Str("filename", fh.Filename).Msg("open multipart file")
+			return nil, c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to read upload"))
+		}
+
+		safeName := sanitizeFileName(fh.Filename)
+		objectPath := fmt.Sprintf("%d/uploads/%s-%s", accountID, uuid.New().String(), safeName)
+
+		contentType := fh.Header.Get("Content-Type")
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+
+		_, putErr := h.minio.Client().PutObject(ctx, h.minio.Bucket(), objectPath, f, fh.Size, minio.PutObjectOptions{
+			ContentType: contentType,
+		})
+		f.Close()
+		if putErr != nil {
+			logger.Error().Str("component", "messages").Err(putErr).Str("objectPath", objectPath).Msg("upload attachment to minio")
+			return nil, c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to upload attachment"))
+		}
+
+		key := objectPath
+		ext := extractExtension(fh.Filename)
+		var extPtr *string
+		if ext != "" {
+			extPtr = &ext
+		}
+		fileName := fh.Filename
+		out = append(out, model.Attachment{
+			AccountID: accountID,
+			FileKey:   &key,
+			FileName:  &fileName,
+			FileType:  service.FileTypeFromMime(contentType),
+			Extension: extPtr,
+		})
+	}
+	return out, nil
+}
+
+func extractExtension(filename string) string {
+	i := strings.LastIndex(filename, ".")
+	if i < 0 || i == len(filename)-1 {
+		return ""
+	}
+	return strings.ToLower(filename[i+1:])
 }
 
 func (h *MessageHandler) ListPublic(c *fiber.Ctx) error {
@@ -451,6 +560,10 @@ func buildAttachments(reqs []dto.CreateAttachmentReq) []model.Attachment {
 		att := model.Attachment{
 			FileKey:  &fileKey,
 			FileType: service.FileTypeFromMime(r.FileType),
+		}
+		if r.FileName != "" {
+			fileName := r.FileName
+			att.FileName = &fileName
 		}
 		out = append(out, att)
 	}

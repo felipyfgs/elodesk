@@ -129,7 +129,6 @@ type Contact struct {
 	AvatarHash      *string    `json:"avatarHash,omitempty"`
 	Blocked         bool       `json:"blocked"`
 	LastActivityAt  *time.Time `json:"lastActivityAt,omitempty"`
-	DeletedAt       *time.Time `json:"deletedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
@@ -221,10 +220,11 @@ type Message struct {
 	SenderID          *int64             `json:"senderId,omitempty"`
 	SenderContactID   *int64             `json:"senderContactId,omitempty"`
 	ExternalSourceIDs *string            `json:"externalSourceIds,omitempty"`
-	CreatedAt         time.Time          `json:"createdAt"`
-	UpdatedAt         time.Time          `json:"updatedAt"`
-	DeletedAt         *time.Time         `json:"deletedAt,omitempty"`
-	Attachments       []Attachment       `json:"attachments,omitempty"`
+	ForwardedFromMessageID *int64             `json:"forwardedFromMessageId,omitempty"`
+	CreatedAt              time.Time           `json:"createdAt"`
+	UpdatedAt              time.Time           `json:"updatedAt"`
+	DeletedAt              *time.Time          `json:"deletedAt,omitempty"`
+	Attachments            []Attachment        `json:"attachments,omitempty"`
 }
 
 type AttachmentFileType int
@@ -416,6 +416,7 @@ type Attachment struct {
 	FileType    AttachmentFileType `json:"fileType"`
 	ExternalURL *string            `json:"externalUrl,omitempty"`
 	FileKey     *string            `json:"fileKey,omitempty"`
+	FileName    *string            `json:"fileName,omitempty"`
 	Extension   *string            `json:"extension,omitempty"`
 	Meta        *string            `json:"meta,omitempty"`
 	CreatedAt   time.Time          `json:"createdAt"`

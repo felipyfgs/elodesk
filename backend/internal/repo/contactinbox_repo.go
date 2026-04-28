@@ -43,6 +43,26 @@ func (r *ContactInboxRepo) Create(ctx context.Context, m *model.ContactInbox) er
 	return nil
 }
 
+// FindByID resolves a contact_inbox by id, scoped to the given accountID via
+// the inbox JOIN. The contact_inboxes table has no account_id of its own, so
+// the join through inboxes is the multi-tenant guard — without it any caller
+// holding a numeric id could fetch another tenant's contact_inbox.
+func (r *ContactInboxRepo) FindByID(ctx context.Context, id, accountID int64) (*model.ContactInbox, error) {
+	query := `SELECT ci.id, ci.contact_id, ci.inbox_id, ci.source_id, ci.hmac_verified, ci.created_at, ci.updated_at
+		FROM contact_inboxes ci
+		INNER JOIN inboxes i ON i.id = ci.inbox_id
+		WHERE ci.id = $1 AND i.account_id = $2`
+	row := r.pool.QueryRow(ctx, query, id, accountID)
+	var m model.ContactInbox
+	if err := scanContactInbox(row, &m); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %w", ErrContactInboxNotFound, err)
+		}
+		return nil, fmt.Errorf("failed to find contact inbox by id: %w", err)
+	}
+	return &m, nil
+}
+
 func (r *ContactInboxRepo) FindBySourceID(ctx context.Context, sourceID string, inboxID int64) (*model.ContactInbox, error) {
 	query := `SELECT ` + contactInboxSelectColumns + ` FROM contact_inboxes WHERE source_id = $1 AND inbox_id = $2`
 	row := r.pool.QueryRow(ctx, query, sourceID, inboxID)

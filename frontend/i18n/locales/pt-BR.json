@@ -414,7 +414,8 @@
       "open": "Abertas",
       "pending": "Pendentes",
       "resolved": "Resolvidas",
-      "snoozed": "Adiadas"
+      "snoozed": "Adiadas",
+      "all": "Todas"
     },
     "sort": {
       "label": "Ordenar",
@@ -531,6 +532,8 @@
       "edited": "editada",
       "deleted": "Mensagem apagada",
       "private": "Nota privada",
+      "image": "Imagem",
+      "sticker": "Sticker",
       "copied": "Mensagem copiada",
       "copyFailed": "Falha ao copiar",
       "confirmDelete": "Apagar esta mensagem?",
@@ -542,6 +545,26 @@
         "download": "Baixar",
         "delete": "Apagar",
         "attachment": "Anexo"
+      }
+    },
+    "forward": {
+      "triggerAction": "Encaminhar",
+      "selectionTitle": "{count} selecionada(s)",
+      "cancel": "Cancelar",
+      "submitButton": "Encaminhar ({count})",
+      "forwardedBadge": "↪ Encaminhada",
+      "success": "Encaminhada para {count} destino(s)",
+      "partialFailure": "{ok} de {total} destinos receberam",
+      "failed": "Falha ao encaminhar",
+      "maxMessages": "Máximo de 5 mensagens",
+      "modal": {
+        "title": "Encaminhar {count} mensagens",
+        "searchPlaceholder": "Buscar conversa ou contato…",
+        "recentConversations": "Conversas recentes",
+        "contacts": "Contatos",
+        "noConversation": "Sem conversa — escolher inbox",
+        "maxTargets": "Máximo de 5 destinos",
+        "incompatibleChannel": "{channel} não suporta {fileType}"
       }
     },
     "bulk": {
@@ -1037,7 +1060,8 @@
     "yes": "Sim",
     "no": "Não",
     "retry": "Tentar novamente",
-    "next": "Próximo"
+    "next": "Próximo",
+    "open": "Abrir"
   },
   "reports": {
     "title": "Relatórios",

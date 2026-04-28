@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import MacroActionsList from './MacroActionsList.vue'
-import MacroConditionsJsonField from './MacroConditionsJsonField.vue'
 import { macroSchema, type MacroForm } from '~/schemas/settings/macros'
 import { useMacrosStore, type Macro } from '~/stores/macros'
 
@@ -72,10 +70,10 @@ async function onSubmit() {
             <UInput v-model="state.name" />
           </UFormField>
           <UFormField :label="t('settings.macros.conditions')" name="conditions">
-            <MacroConditionsJsonField v-model="state.conditions as Record<string, unknown>" />
+            <SettingsMacrosConditionsJsonField v-model="state.conditions as Record<string, unknown>" />
           </UFormField>
           <UFormField :label="t('settings.macros.actions')" name="actions">
-            <MacroActionsList v-model="state.actions as MacroForm['actions']" />
+            <SettingsMacrosActionsList v-model="state.actions as MacroForm['actions']" />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="outline" @click="emit('update:open', false)">

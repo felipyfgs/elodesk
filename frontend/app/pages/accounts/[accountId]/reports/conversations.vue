@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import ConversationsReportTable from '~/components/reports/conversations/ConversationsReportTable.vue'
-import ConversationsReportFilters from '~/components/reports/conversations/ConversationsReportFilters.vue'
-import ConversationsReportExport from '~/components/reports/conversations/ConversationsReportExport.vue'
-import ReportsDateRangePicker from '~/components/reports/ReportsDateRangePicker.vue'
 import type { Range } from '~/types'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
@@ -63,7 +59,7 @@ onMounted(load)
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <ConversationsReportExport :items="items" />
+          <ReportsConversationsExport :items="items" />
         </template>
       </UDashboardNavbar>
       <UDashboardToolbar>
@@ -73,9 +69,9 @@ onMounted(load)
     <template #body>
       <div class="grid grid-cols-1 lg:grid-cols-[14rem_1fr] gap-6 max-w-6xl mx-auto w-full">
         <aside>
-          <ConversationsReportFilters v-model:inbox-id="filters.inboxId" v-model:label-id="filters.labelId" />
+          <ReportsConversationsFilters v-model:inbox-id="filters.inboxId" v-model:label-id="filters.labelId" />
         </aside>
-        <ConversationsReportTable :items="items" :loading="loading" />
+        <ReportsConversationsTable :items="items" :loading="loading" />
       </div>
     </template>
   </UDashboardPanel>

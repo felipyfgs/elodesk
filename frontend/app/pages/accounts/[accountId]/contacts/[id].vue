@@ -4,7 +4,7 @@ import { useContactsStore, type Contact } from '~/stores/contacts'
 import { useLabelsStore, type Label } from '~/stores/labels'
 import { useNotesStore, type Note } from '~/stores/notes'
 import { useCustomAttributesStore, type CustomAttributeDefinition } from '~/stores/customAttributes'
-import { useConversationsStore, type Conversation } from '~/stores/conversations'
+import type { Conversation } from '~/stores/conversations'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -19,6 +19,7 @@ const toast = useToast()
 const contactId = route.params.id as string
 const loading = ref(true)
 const contact = ref<Contact | null>(null)
+const contactConversations = ref<Conversation[]>([])
 
 type SidebarTab = 'attributes' | 'history' | 'notes' | 'merge'
 const activeTab = ref<SidebarTab>('attributes')
@@ -51,7 +52,7 @@ async function load() {
     useLabelsStore().setAll(labels)
     useNotesStore().setForContact(contactId, notes)
     useCustomAttributesStore().setAll(attrs)
-    useConversationsStore().setAll(convs)
+    contactConversations.value = convs
   } finally {
     loading.value = false
   }
@@ -125,7 +126,7 @@ onMounted(load)
         <!-- Main column -->
         <div class="flex-1 min-w-0 overflow-y-auto">
           <div class="max-w-6xl mx-auto w-full px-6 py-6">
-            <ContactsDetailContactDetailView
+            <ContactsDetailView
               :contact="contact"
               @updated="onUpdated"
             />
@@ -145,18 +146,19 @@ onMounted(load)
             />
           </div>
           <div class="flex-1 overflow-y-auto p-4">
-            <ContactsDetailContactSidebarAttributes
+            <ContactsDetailSidebarAttributes
               v-if="activeTab === 'attributes'"
               :contact="contact"
             />
-            <ContactsDetailContactSidebarHistory
+            <ContactsDetailSidebarHistory
               v-else-if="activeTab === 'history'"
+              :conversations="contactConversations"
             />
-            <ContactsDetailContactSidebarNotes
+            <ContactsDetailSidebarNotes
               v-else-if="activeTab === 'notes'"
               :contact-id="contactId"
             />
-            <ContactsDetailContactSidebarMerge
+            <ContactsDetailSidebarMerge
               v-else-if="isOwnerAdmin"
               :contact="contact"
             />

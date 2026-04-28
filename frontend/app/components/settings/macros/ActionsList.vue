@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MacroActionItem from './MacroActionItem.vue'
 import type { MacroAction } from '~/schemas/settings/macros'
 
 const props = defineProps<{ modelValue: MacroAction[] }>()
@@ -26,7 +25,7 @@ function removeAt(index: number) {
 
 <template>
   <div class="space-y-3">
-    <MacroActionItem
+    <SettingsMacrosActionItem
       v-for="(action, i) in props.modelValue"
       :key="i"
       :model-value="action"

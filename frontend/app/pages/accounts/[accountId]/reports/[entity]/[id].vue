@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import EntityMetricsGrid from '~/components/reports/entity/EntityMetricsGrid.vue'
-import EntityLineChart from '~/components/reports/entity/EntityLineChart.vue'
 import type { EntityMetric } from '~/types/reports'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
@@ -53,9 +51,9 @@ onMounted(load)
     </template>
     <template #body>
       <div class="space-y-6 max-w-6xl mx-auto w-full">
-        <EntityMetricsGrid :metric="metric" />
+        <ReportsEntityMetricsGrid :metric="metric" />
         <ClientOnly>
-          <EntityLineChart :data="timeline" />
+          <ReportsEntityLineChart :data="timeline" />
         </ClientOnly>
       </div>
     </template>

@@ -203,6 +203,10 @@ func (m *mockConversationStore) UpdateLastActivity(_ context.Context, _ int64, _
 	return nil
 }
 
+func (m *mockConversationStore) CountUnread(_ context.Context, _, _ int64) (int, error) {
+	return 0, nil
+}
+
 func newReopenFixture(status model.ConversationStatus) (*MessageService, *mockConversationStore, *mockRealtimeNotifier) {
 	conv := &model.Conversation{ID: 77, AccountID: 10, InboxID: 5, Status: status}
 	store := &mockConversationStore{
@@ -297,18 +301,38 @@ func TestMessageService_reopenIfClosed_SkipsPending(t *testing.T) {
 	}
 }
 
-func TestMessageService_reopenIfClosed_SkipsOutgoing(t *testing.T) {
+func TestMessageService_reopenIfClosed_ReopensOutgoing(t *testing.T) {
+	// Diverge do Chatwoot: mensagens outgoing também reabrem (cobre echo
+	// externo do wzap quando o operador envia do próprio WhatsApp).
 	svc, store, notifier := newReopenFixture(model.ConversationResolved)
 	msg := incomingMsg()
 	msg.MessageType = model.MessageOutgoing
 
 	svc.reopenIfClosed(context.Background(), msg)
 
+	if store.toggleStatusCalls != 1 {
+		t.Errorf("ToggleStatus calls = %d, want 1", store.toggleStatusCalls)
+	}
+	if store.toggleStatusArgs.status != model.ConversationOpen {
+		t.Errorf("toggle status = %d, want ConversationOpen", store.toggleStatusArgs.status)
+	}
+	if len(notifier.calls) != 1 {
+		t.Errorf("broadcasts = %d, want 1", len(notifier.calls))
+	}
+}
+
+func TestMessageService_reopenIfClosed_SkipsActivity(t *testing.T) {
+	svc, store, notifier := newReopenFixture(model.ConversationResolved)
+	msg := incomingMsg()
+	msg.MessageType = model.MessageActivity
+
+	svc.reopenIfClosed(context.Background(), msg)
+
 	if store.toggleStatusCalls != 0 {
-		t.Errorf("ToggleStatus called for outgoing message")
+		t.Errorf("ToggleStatus called for activity message")
 	}
 	if len(notifier.calls) != 0 {
-		t.Errorf("broadcast emitted for outgoing message")
+		t.Errorf("broadcast emitted for activity message")
 	}
 }
 

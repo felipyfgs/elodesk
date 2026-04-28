@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import ReportsDateRangePicker from '~/components/reports/ReportsDateRangePicker.vue'
-import ReportsPeriodSelect from '~/components/reports/ReportsPeriodSelect.vue'
-import ReportsStats from '~/components/reports/ReportsStats.vue'
-import ReportsChart from '~/components/reports/ReportsChart.client.vue'
-import ReportsTopAgents from '~/components/reports/ReportsTopAgents.vue'
 import type { OverviewReport, EntityMetric } from '~/types/reports'
 import type { Range, Period } from '~/types'
 import { useApi } from '~/composables/useApi'

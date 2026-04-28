@@ -162,24 +162,15 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 	}
 
 	msgType := model.MessageIncoming
-	contentType := model.ContentTypeText
-	if im.MediaType != "" {
-		switch im.MediaType {
-		case "image":
-			contentType = model.ContentTypeImage
-		case "video":
-			contentType = model.ContentTypeVideo
-		case "audio":
-			contentType = model.ContentTypeAudio
-		default:
-			contentType = model.ContentTypeFile
-		}
-	}
+	contentType, fileType := contentAndFileTypeFromMediaKind(im.MediaType)
 
 	if im.ExternalEcho {
 		msgType = model.MessageOutgoing
 	}
 
+	// Mantém external_source_urls em content_attributes pra retrocompat — alguns
+	// caminhos legados ainda olham aí. A persistência canônica agora é a linha
+	// na tabela attachments com external_url, criada abaixo.
 	var contentAttrs *string
 	if im.MediaURL != "" {
 		attrs := map[string]interface{}{
@@ -209,11 +200,42 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 		SenderID:     &contactID,
 	}
 
+	if im.MediaURL != "" {
+		extURL := im.MediaURL
+		msg.Attachments = []model.Attachment{
+			{
+				AccountID:   ch.AccountID,
+				FileType:    fileType,
+				ExternalURL: &extURL,
+			},
+		}
+	}
+
 	if _, err := s.messageSvc.Create(ctx, ch.AccountID, inbox.ID, convo.ID, msg); err != nil {
 		return fmt.Errorf("create message: %w", err)
 	}
 
 	return nil
+}
+
+// contentAndFileTypeFromMediaKind mapeia o "kind" do canal (image/video/audio/
+// document/sticker) pros enums correspondentes. Default file/file pra qualquer
+// outra coisa que ainda não temos render dedicado.
+func contentAndFileTypeFromMediaKind(kind string) (model.MessageContentType, model.AttachmentFileType) {
+	switch kind {
+	case "image":
+		return model.ContentTypeImage, model.FileTypeImage
+	case "video":
+		return model.ContentTypeVideo, model.FileTypeVideo
+	case "audio":
+		return model.ContentTypeAudio, model.FileTypeAudio
+	case "sticker":
+		return model.ContentTypeSticker, model.FileTypeImage
+	case "":
+		return model.ContentTypeText, model.FileTypeFile
+	default:
+		return model.ContentTypeFile, model.FileTypeFile
+	}
 }
 
 func (s *Service) processStatusUpdate(ctx context.Context, ch *model.ChannelWhatsApp, su appchannel.StatusUpdate) error {

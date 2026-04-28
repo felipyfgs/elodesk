@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import SlaTable from '~/components/settings/sla/SlaTable.vue'
-import SlaForm from '~/components/settings/sla/SlaForm.vue'
 import { ConfirmModal } from '#components'
 import type { SlaPolicy } from '~/stores/sla'
 import { useSlaStore } from '~/stores/sla'
@@ -50,12 +48,12 @@ function onRemove(p: SlaPolicy) {
       </div>
     </template>
 
-    <SlaTable
+    <SettingsSlaTable
       :items="store.items"
       :loading="store.loading"
       @edit="onEdit"
       @remove="onRemove"
     />
-    <SlaForm v-model:open="formOpen" :policy="editing" />
+    <SettingsSlaForm v-model:open="formOpen" :policy="editing" />
   </UPageCard>
 </template>

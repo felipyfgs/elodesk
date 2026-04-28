@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import NotificationItem from '~/components/notifications/NotificationItem.vue'
 import { useNotificationsStore, type Notification } from '~/stores/notifications'
 
 definePageMeta({ layout: 'dashboard' })
@@ -56,7 +55,7 @@ async function markAll() {
         <p v-if="!store.loading && store.items.length === 0" class="text-center text-muted py-12">
           {{ t('nav.noNotifications') }}
         </p>
-        <NotificationItem
+        <NotificationsItem
           v-for="n in store.items"
           :key="n.id"
           :notification="n"

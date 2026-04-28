@@ -15,14 +15,14 @@ import (
 
 var ErrMessageNotFound = errors.New("message not found")
 
-const messageSelectColumns = "id, account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id, external_source_ids, created_at, updated_at, deleted_at"
+const messageSelectColumns = "id, account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id, external_source_ids, created_at, updated_at, deleted_at, forwarded_from_message_id"
 
 type messageScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanMessage(scanner messageScanner, m *model.Message) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.InboxID, &m.ConversationID, &m.MessageType, &m.ContentType, &m.Content, &m.SourceID, &m.Private, &m.Status, &m.ContentAttrs, &m.SenderType, &m.SenderID, &m.SenderContactID, &m.ExternalSourceIDs, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.InboxID, &m.ConversationID, &m.MessageType, &m.ContentType, &m.Content, &m.SourceID, &m.Private, &m.Status, &m.ContentAttrs, &m.SenderType, &m.SenderID, &m.SenderContactID, &m.ExternalSourceIDs, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt, &m.ForwardedFromMessageID)
 }
 
 type MessageRepo struct {
@@ -40,13 +40,13 @@ func NewMessageRepo(pool *pgxpool.Pool) *MessageRepo {
 // edited content). When source_id is nil each call inserts a new row.
 func (r *MessageRepo) Create(ctx context.Context, m *model.Message) (*model.Message, error) {
 	if m.SourceID != nil {
-		query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id, forwarded_from_message_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 			ON CONFLICT (inbox_id, source_id) WHERE source_id IS NOT NULL DO UPDATE SET
 				content = COALESCE(EXCLUDED.content, messages.content),
 				updated_at = NOW()
 			RETURNING ` + messageSelectColumns
-		row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID, m.SenderContactID)
+		row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID, m.SenderContactID, m.ForwardedFromMessageID)
 		var result model.Message
 		if err := scanMessage(row, &result); err != nil {
 			return nil, fmt.Errorf("failed to upsert message: %w", err)
@@ -54,15 +54,42 @@ func (r *MessageRepo) Create(ctx context.Context, m *model.Message) (*model.Mess
 		return &result, nil
 	}
 
-	query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id, forwarded_from_message_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING ` + messageSelectColumns
-	row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID, m.SenderContactID)
+	row := r.pool.QueryRow(ctx, query, m.AccountID, m.InboxID, m.ConversationID, m.MessageType, m.ContentType, m.Content, m.SourceID, m.Private, m.Status, m.ContentAttrs, m.SenderType, m.SenderID, m.SenderContactID, m.ForwardedFromMessageID)
 	var result model.Message
 	if err := scanMessage(row, &result); err != nil {
 		return nil, fmt.Errorf("failed to create message: %w", err)
 	}
 	return &result, nil
+}
+
+// FindByIDs retrieves multiple messages by their IDs, all scoped to the same account.
+// Returns an error if any of the messages is not found or belongs to a different account.
+func (r *MessageRepo) FindByIDs(ctx context.Context, ids []int64, accountID int64) ([]model.Message, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	query := `SELECT ` + messageSelectColumns + ` FROM messages WHERE id = ANY($1) AND account_id = $2 AND deleted_at IS NULL ORDER BY id`
+	rows, err := r.pool.Query(ctx, query, ids, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find messages by ids: %w", err)
+	}
+	defer rows.Close()
+
+	var messages []model.Message
+	for rows.Next() {
+		var m model.Message
+		if err := scanMessage(rows, &m); err != nil {
+			return nil, fmt.Errorf("failed to scan message: %w", err)
+		}
+		messages = append(messages, m)
+	}
+	if len(messages) != len(ids) {
+		return nil, fmt.Errorf("%w: some messages not found", ErrMessageNotFound)
+	}
+	return messages, rows.Err()
 }
 
 func (r *MessageRepo) FindByID(ctx context.Context, id, accountID int64) (*model.Message, error) {

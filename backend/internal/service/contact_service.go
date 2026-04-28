@@ -290,7 +290,12 @@ func (s *ContactService) ListEvents(ctx context.Context, accountID, contactID in
 	return out, total, nil
 }
 
-func (s *ContactService) FindConversations(ctx context.Context, contactID, accountID int64) ([]model.Conversation, error) {
+// FindConversations returns the contact's conversations as hydrated DTOs
+// (inbox + sender + last non-activity message), so the contact-detail history
+// sidebar can render full conversation cards instead of bare ids. Hydration
+// per row keeps the change small; if it fails for one row we fall back to the
+// bare DTO so the page still renders.
+func (s *ContactService) FindConversations(ctx context.Context, contactID, accountID int64) ([]dto.ConversationResp, error) {
 	contactIDCopy := contactID
 	filter := repo.ConversationFilter{
 		AccountID: accountID,
@@ -299,7 +304,21 @@ func (s *ContactService) FindConversations(ctx context.Context, contactID, accou
 		PerPage:   1000,
 	}
 	convos, _, err := s.conversationRepo.ListByAccount(ctx, filter)
-	return convos, err
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]dto.ConversationResp, 0, len(convos))
+	for i := range convos {
+		hydrated, herr := s.conversationRepo.FindByIDFull(ctx, accountID, convos[i].ID)
+		if herr != nil {
+			out = append(out, dto.ConversationToResp(&convos[i]))
+			continue
+		}
+		row := repo.ConversationHydratedToFullRow(hydrated)
+		out = append(out, dto.ConversationToRespFull(&row))
+	}
+	return out, nil
 }
 
 func (s *ContactService) FindBySourceID(ctx context.Context, sourceID string, inboxID, accountID int64) (*model.Contact, error) {

@@ -91,17 +91,27 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
 
   const displayedList = computed(() => advancedQuery.value ? convs.list : convs.filteredList)
 
-  // Status bucket counters
+  // Status bucket counters. ALL agrega os 4 buckets — não tem entrada
+  // dedicada no `convs.meta`, então somamos por dimensão (mine/unassigned/all)
+  // pra alimentar as tabs com o total real.
   const statusBucket = computed(() => {
     const s = convs.filters.status ?? 'OPEN'
-    const map: Record<ConversationStatusFilter, keyof ConversationMeta> = {
+    if (s === 'ALL') {
+      const m = convs.meta
+      return {
+        all: m.open.all + m.pending.all + m.resolved.all + m.snoozed.all,
+        mine: m.open.mine + m.pending.mine + m.resolved.mine + m.snoozed.mine,
+        unassigned: m.open.unassigned + m.pending.unassigned + m.resolved.unassigned + m.snoozed.unassigned
+      }
+    }
+    const map: Record<Exclude<ConversationStatusFilter, 'ALL'>, keyof ConversationMeta> = {
       OPEN: 'open', PENDING: 'pending', RESOLVED: 'resolved', SNOOZED: 'snoozed'
     }
     return convs.meta[map[s]]
   })
 
   function tabBadge(count: number) {
-    return count > 0 ? { label: String(count), color: 'neutral' as const, variant: 'subtle' as const, size: 'sm' as const } : undefined
+    return { label: String(count), color: 'neutral' as const, variant: 'subtle' as const, size: 'sm' as const }
   }
 
   const tabItems = computed(() => [
@@ -114,7 +124,8 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     { label: t('conversations.status.open'), value: 'OPEN' as const, icon: 'i-lucide-inbox' },
     { label: t('conversations.status.pending'), value: 'PENDING' as const, icon: 'i-lucide-clock' },
     { label: t('conversations.status.snoozed'), value: 'SNOOZED' as const, icon: 'i-lucide-bell-off' },
-    { label: t('conversations.status.resolved'), value: 'RESOLVED' as const, icon: 'i-lucide-check-circle-2' }
+    { label: t('conversations.status.resolved'), value: 'RESOLVED' as const, icon: 'i-lucide-check-circle-2' },
+    { label: t('conversations.status.all'), value: 'ALL' as const, icon: 'i-lucide-list' }
   ])
 
   const currentStatus = computed(() => {

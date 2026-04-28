@@ -84,7 +84,11 @@ services:
       MINIO_PUBLIC_ENDPOINT: 127.0.0.1
       MINIO_PUBLIC_PORT: "9010"
       MINIO_PUBLIC_USE_SSL: "false"
-      API_URL: http://localhost:3001
+      # API_URL é a URL pública do elodesk usada pra montar links de mídia
+      # em webhooks outbound (padrão Chatwoot/ActiveStorage — o elodesk hospeda
+      # a URL e proxia bytes do MinIO). Precisa ser alcançável de containers
+      # externos (wzap, n8n) — `host.docker.internal` resolve via host-gateway.
+      API_URL: http://host.docker.internal:3001
       CORS_ORIGINS: "*"
       META_ALLOW_UNSIGNED: "true"
       TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-dev-stub}

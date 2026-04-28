@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SlaBindingsPicker from './SlaBindingsPicker.vue'
 import { slaSchema, type SlaForm as SlaFormType } from '~/schemas/settings/sla'
 import { useSlaStore, type SlaPolicy } from '~/stores/sla'
 
@@ -80,7 +79,7 @@ async function onSubmit() {
           <UFormField name="businessHoursOnly">
             <UCheckbox v-model="state.businessHoursOnly" :label="t('settings.sla.binding')" />
           </UFormField>
-          <SlaBindingsPicker
+          <SettingsSlaBindingsPicker
             :inbox-ids="state.inboxIds ?? []"
             :label-ids="state.labelIds ?? []"
             @update:inbox-ids="state.inboxIds = $event"

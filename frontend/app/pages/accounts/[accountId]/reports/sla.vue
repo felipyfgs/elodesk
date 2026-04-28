@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SlaKpiGrid from '~/components/reports/sla/SlaKpiGrid.vue'
-import SlaViolationsTable from '~/components/reports/sla/SlaViolationsTable.vue'
-import SlaPolicyBreakdown from '~/components/reports/sla/SlaPolicyBreakdown.vue'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 
@@ -41,9 +38,9 @@ onMounted(load)
     <template #body>
       <div class="space-y-6 max-w-6xl mx-auto w-full">
         <template v-if="report && report.total > 0">
-          <SlaKpiGrid :report="report" />
-          <SlaViolationsTable :items="report.byPolicy ?? []" />
-          <SlaPolicyBreakdown :items="report.byPolicy ?? []" />
+          <ReportsSlaKpiGrid :report="report" />
+          <ReportsSlaViolationsTable :items="report.byPolicy ?? []" />
+          <ReportsSlaPolicyBreakdown :items="report.byPolicy ?? []" />
         </template>
         <UPageCard v-else :title="t('settings.sla.empty')" variant="subtle">
           <p class="text-sm text-muted">

@@ -35,14 +35,6 @@ type Config struct {
 	MinioPublicEndpoint string
 	MinioPublicPort     string
 	MinioPublicUseSSL   bool
-	// MinioWebhookEndpoint/Port/UseSSL — endpoint usado para gerar URLs
-	// presigned em outbound webhooks (server-to-server). Quando vazio,
-	// recai no Public*. Útil quando o "público" é o browser
-	// (ex.: 127.0.0.1) e os consumidores do webhook estão em outro
-	// container/host (ex.: host.docker.internal).
-	MinioWebhookEndpoint string
-	MinioWebhookPort     string
-	MinioWebhookUseSSL   bool
 
 	APIURL      string
 	CORSOrigins string
@@ -93,12 +85,9 @@ func Load() *Config {
 		MinioSecretKey:      getEnv("MINIO_SECRET_KEY", ""),
 		MinioBucket:         getEnv("MINIO_BUCKET", "backend-media"),
 		MinioUseSSL:         getEnvAsBool("MINIO_USE_SSL", false),
-		MinioPublicEndpoint:  getEnv("MINIO_PUBLIC_ENDPOINT", ""),
-		MinioPublicPort:      getEnv("MINIO_PUBLIC_PORT", ""),
-		MinioPublicUseSSL:    getEnvAsBool("MINIO_PUBLIC_USE_SSL", false),
-		MinioWebhookEndpoint: getEnv("MINIO_WEBHOOK_ENDPOINT", ""),
-		MinioWebhookPort:     getEnv("MINIO_WEBHOOK_PORT", ""),
-		MinioWebhookUseSSL:   getEnvAsBool("MINIO_WEBHOOK_USE_SSL", false),
+		MinioPublicEndpoint: getEnv("MINIO_PUBLIC_ENDPOINT", ""),
+		MinioPublicPort:     getEnv("MINIO_PUBLIC_PORT", ""),
+		MinioPublicUseSSL:   getEnvAsBool("MINIO_PUBLIC_USE_SSL", false),
 
 		APIURL:      getEnv("API_URL", "http://localhost:3001"),
 		CORSOrigins: getEnv("CORS_ORIGINS", "*"),

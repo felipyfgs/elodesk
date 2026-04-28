@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import CsatScoreCard from '~/components/reports/csat/CsatScoreCard.vue'
-import CsatDistributionChart from '~/components/reports/csat/CsatDistributionChart.vue'
-import CsatResponsesTable from '~/components/reports/csat/CsatResponsesTable.vue'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 
@@ -35,9 +32,9 @@ onMounted(load)
     <template #body>
       <div class="space-y-6 max-w-6xl mx-auto w-full">
         <template v-if="enabled">
-          <CsatScoreCard :score="null" />
-          <CsatDistributionChart />
-          <CsatResponsesTable />
+          <ReportsCsatScoreCard :score="null" />
+          <ReportsCsatDistributionChart />
+          <ReportsCsatResponsesTable />
         </template>
         <UPageCard v-else title="CSAT desabilitado" variant="subtle">
           <p class="text-sm text-muted">

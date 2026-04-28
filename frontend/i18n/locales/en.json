@@ -422,7 +422,8 @@
       "open": "Open",
       "pending": "Pending",
       "resolved": "Resolved",
-      "snoozed": "Snoozed"
+      "snoozed": "Snoozed",
+      "all": "All"
     },
     "sort": {
       "label": "Sort",
@@ -539,6 +540,8 @@
       "edited": "edited",
       "deleted": "Message deleted",
       "private": "Private note",
+      "image": "Image",
+      "sticker": "Sticker",
       "copied": "Message copied",
       "copyFailed": "Copy failed",
       "confirmDelete": "Delete this message?",
@@ -550,6 +553,26 @@
         "download": "Download",
         "delete": "Delete",
         "attachment": "Attachment"
+      }
+    },
+    "forward": {
+      "triggerAction": "Forward",
+      "selectionTitle": "{count} selected",
+      "cancel": "Cancel",
+      "submitButton": "Forward ({count})",
+      "forwardedBadge": "↪ Forwarded",
+      "success": "Forwarded to {count} destination(s)",
+      "partialFailure": "{ok} of {total} destinations received",
+      "failed": "Forward failed",
+      "maxMessages": "Maximum of 5 messages",
+      "modal": {
+        "title": "Forward {count} messages",
+        "searchPlaceholder": "Search conversation or contact…",
+        "recentConversations": "Recent conversations",
+        "contacts": "Contacts",
+        "noConversation": "No conversation — choose inbox",
+        "maxTargets": "Maximum of 5 targets",
+        "incompatibleChannel": "{channel} does not support {fileType}"
       }
     },
     "bulk": {
@@ -1080,7 +1103,8 @@
     "yes": "Yes",
     "no": "No",
     "retry": "Retry",
-    "next": "Next"
+    "next": "Next",
+    "open": "Open"
   },
   "reports": {
     "title": "Reports",

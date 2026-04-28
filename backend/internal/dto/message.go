@@ -24,6 +24,7 @@ type CreateMessageReq struct {
 
 type CreateAttachmentReq struct {
 	FileKey  string `json:"file_key" validate:"required"`
+	FileName string `json:"file_name,omitempty"`
 	FileType string `json:"file_type,omitempty"`
 	Size     int64  `json:"size,omitempty"`
 }
@@ -58,11 +59,12 @@ type MessageResp struct {
 	// SenderContactID is the per-message author contact in group conversations
 	// (where sender_id points to the chat-level contact). Echoed in writes and
 	// reads so callers can disambiguate the actual member who sent the message.
-	SenderContactID   *int64                       `json:"sender_contact_id,omitempty"`
-	Sender            *MessageSenderResp           `json:"sender,omitempty"`
-	Conversation      *ConversationSummaryEventDTO `json:"conversation,omitempty"`
-	CreatedAt         int64                        `json:"created_at"`
-	UpdatedAt         int64                        `json:"updated_at"`
+	SenderContactID       *int64                       `json:"sender_contact_id,omitempty"`
+	Sender                *MessageSenderResp           `json:"sender,omitempty"`
+	Conversation          *ConversationSummaryEventDTO `json:"conversation,omitempty"`
+	ForwardedFromMessageID *int64                      `json:"forwarded_from_message_id,omitempty"`
+	CreatedAt             int64                        `json:"created_at"`
+	UpdatedAt             int64                        `json:"updated_at"`
 }
 
 // ConversationSummaryEventDTO is a lean conversation snapshot embedded in
@@ -103,6 +105,9 @@ type AttachmentResp struct {
 	MessageID   int64                    `json:"message_id"`
 	FileType    model.AttachmentFileType `json:"file_type"`
 	FileKey     *string                  `json:"file_key,omitempty"`
+	FileName    *string                  `json:"file_name,omitempty"`
+	ExternalURL *string                  `json:"external_url,omitempty"`
+	Extension   *string                  `json:"extension,omitempty"`
 	ContentType *string                  `json:"content_type,omitempty"`
 	Size        int64                    `json:"size"`
 	CreatedAt   int64                    `json:"created_at"`
@@ -110,11 +115,14 @@ type AttachmentResp struct {
 
 func AttachmentToResp(a *model.Attachment) AttachmentResp {
 	return AttachmentResp{
-		ID:        a.ID,
-		MessageID: a.MessageID,
-		FileType:  a.FileType,
-		FileKey:   a.FileKey,
-		CreatedAt: a.CreatedAt.Unix(),
+		ID:          a.ID,
+		MessageID:   a.MessageID,
+		FileType:    a.FileType,
+		FileKey:     a.FileKey,
+		FileName:    a.FileName,
+		ExternalURL: a.ExternalURL,
+		Extension:   a.Extension,
+		CreatedAt:   a.CreatedAt.Unix(),
 	}
 }
 
@@ -131,24 +139,51 @@ type MessageListResp struct {
 	Payload []MessageResp `json:"payload"`
 }
 
+// --- Forward messages DTOs ---
+
+type ForwardTargetReq struct {
+	ConversationID *int64 `json:"conversation_id,omitempty"`
+	ContactID      *int64 `json:"contact_id,omitempty"`
+	InboxID        *int64 `json:"inbox_id,omitempty"`
+}
+
+type ForwardMessagesReq struct {
+	SourceMessageIDs []int64            `json:"source_message_ids" validate:"required,min=1,max=5"`
+	Targets          []ForwardTargetReq `json:"targets" validate:"required,min=1,max=5"`
+}
+
+type ForwardResultResp struct {
+	Target             ForwardTargetReq `json:"target"`
+	Status             string           `json:"status"` // "success" | "failed"
+	CreatedMessageIDs  []int64          `json:"created_message_ids,omitempty"`
+	ConversationID     *int64           `json:"conversation_id,omitempty"`
+	CreatedConversation bool             `json:"created_conversation"`
+	Error              *string          `json:"error,omitempty"`
+}
+
+type ForwardMessagesResp struct {
+	Results []ForwardResultResp `json:"results"`
+}
+
 // MessageToResp builds the base shape from a model. Callers that have the
 // hydrated sender (contact/user) should follow up with MessageToRespWithSender
 // — the bare form returns nil sender.
 func MessageToResp(m *model.Message) MessageResp {
 	resp := MessageResp{
-		ID:              m.ID,
-		AccountID:       m.AccountID,
-		InboxID:         m.InboxID,
-		ConversationID:  m.ConversationID,
-		MessageType:     m.MessageType,
-		ContentType:     m.ContentType,
-		Content:         m.Content,
-		SourceID:        m.SourceID,
-		Private:         m.Private,
-		Status:          m.Status,
-		SenderContactID: m.SenderContactID,
-		CreatedAt:       m.CreatedAt.Unix(),
-		UpdatedAt:       m.UpdatedAt.Unix(),
+		ID:                    m.ID,
+		AccountID:             m.AccountID,
+		InboxID:               m.InboxID,
+		ConversationID:        m.ConversationID,
+		MessageType:           m.MessageType,
+		ContentType:           m.ContentType,
+		Content:               m.Content,
+		SourceID:              m.SourceID,
+		Private:               m.Private,
+		Status:                m.Status,
+		SenderContactID:       m.SenderContactID,
+		ForwardedFromMessageID: m.ForwardedFromMessageID,
+		CreatedAt:             m.CreatedAt.Unix(),
+		UpdatedAt:             m.UpdatedAt.Unix(),
 	}
 	if m.ContentAttrs != nil && *m.ContentAttrs != "" {
 		resp.ContentAttributes = json.RawMessage(*m.ContentAttrs)

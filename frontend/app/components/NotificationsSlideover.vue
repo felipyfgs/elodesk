@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import NotificationItem from '~/components/notifications/NotificationItem.vue'
 import { useNotificationsStore, type Notification } from '~/stores/notifications'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
@@ -62,7 +61,7 @@ defineExpose({ unreadCount: computed(() => store.unreadCount) })
       <p v-if="!store.items.length" class="text-sm text-muted p-2">
         {{ t('nav.noNotifications') }}
       </p>
-      <NotificationItem
+      <NotificationsItem
         v-for="n in store.items"
         :key="n.id"
         :notification="n"

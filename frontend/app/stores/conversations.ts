@@ -125,7 +125,10 @@ export type ConversationSort
     | 'created_desc'
     | 'created_asc'
 
-export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+// `ALL` é uma virtualidade do frontend — quando selecionado, o filtro `status`
+// não vai pra API e o backend devolve conversas em qualquer status. Mantém a
+// fonte única no STATUS_MAP que mapeia direto pros enums numéricos do backend.
+export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED' | 'ALL'
 
 export interface ConversationFilters {
   tab: ConversationTab

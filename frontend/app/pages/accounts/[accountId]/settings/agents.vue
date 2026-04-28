@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import AgentsTable from '~/components/settings/agents/AgentsTable.vue'
-import AgentInviteModal from '~/components/settings/agents/AgentInviteModal.vue'
 import { ConfirmModal } from '#components'
 import type { Agent } from '~/stores/agents'
 import { useAgentsStore } from '~/stores/agents'
@@ -45,13 +43,13 @@ function onRemove(agent: Agent) {
       </div>
     </template>
 
-    <AgentsTable
+    <SettingsAgentsTable
       :items="store.items"
       :loading="store.loading"
       @edit="onEdit"
       @remove="onRemove"
     />
 
-    <AgentInviteModal v-model:open="inviteOpen" />
+    <SettingsAgentsInviteModal v-model:open="inviteOpen" />
   </UPageCard>
 </template>

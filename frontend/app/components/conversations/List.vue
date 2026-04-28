@@ -68,10 +68,10 @@ function lastMessage(c: Conversation): { text: string, icon: string, isPrivate: 
   const isOutgoing = msg.messageType === 1
   const isActivity = msg.messageType === 2
 
-  let icon = 'i-lucide-arrow-reply'
+  let icon = 'i-lucide-corner-up-right'
   if (isPrivate) icon = 'i-lucide-lock'
   else if (isActivity) icon = 'i-lucide-info'
-  else if (isOutgoing) icon = 'i-lucide-arrow-reply'
+  else if (isOutgoing) icon = 'i-lucide-corner-up-right'
   else icon = 'i-lucide-arrow-left'
 
   let text = msg.content || ''

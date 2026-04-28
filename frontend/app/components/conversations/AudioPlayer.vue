@@ -34,7 +34,6 @@ const playing = computed(() => isActive.value && audioStore.isPlaying)
 const displayTime = computed(() => isActive.value ? audioStore.currentTime : 0)
 const displayDuration = computed(() => isActive.value && audioStore.duration > 0 ? audioStore.duration : localDuration.value)
 const displayRate = computed(() => isActive.value ? audioStore.playbackRate : 1)
-const displayMuted = computed(() => isActive.value && audioStore.muted)
 
 let blobUrl: string | null = null
 let initialized = false
@@ -121,11 +120,6 @@ function cycleSpeed() {
   if (isActive.value) audioStore.setPlaybackRate(next)
 }
 
-function toggleMute() {
-  if (!isActive.value) return
-  audioStore.setMuted(!audioStore.muted)
-}
-
 function seekFromCanvas(event: MouseEvent) {
   if (!isActive.value || !audioStore.duration) return
   const target = event.currentTarget as HTMLElement
@@ -185,75 +179,74 @@ watch([displayTime, isActive], ([time, active]) => {
 </script>
 
 <template>
-  <div class="flex w-fit max-w-full items-center gap-2">
-    <UButton
-      :icon="playing ? 'i-lucide-pause' : 'i-lucide-play'"
-      :color="isOutgoing ? 'neutral' : 'primary'"
-      :variant="isOutgoing ? 'subtle' : 'soft'"
-      size="sm"
-      class="shrink-0"
-      :disabled="!resolvedUrl || errored"
-      :aria-label="playing ? t('conversations.audio.pause') : t('conversations.audio.play')"
-      @click="togglePlay"
-    />
+  <!--
+    Layout WhatsApp: largura fixa (w-72), nada aparece/desaparece com play.
+    Linha 1: [play] [waveform] [speed | download]
+    Linha 2 (sob a waveform): [tempo decorrido ............ duração total]
+    Botões de speed/download sempre renderizam (apenas mudam o estado
+    enabled/visual quando ativo), evitando reflow do card.
+  -->
+  <div class="flex w-72 max-w-full shrink-0 flex-col gap-1">
+    <div class="flex items-center gap-2">
+      <UButton
+        :icon="playing ? 'i-lucide-pause' : 'i-lucide-play'"
+        :color="isOutgoing ? 'neutral' : 'primary'"
+        :variant="isOutgoing ? 'subtle' : 'soft'"
+        size="sm"
+        class="shrink-0"
+        :disabled="!resolvedUrl || errored"
+        :aria-label="playing ? t('conversations.audio.pause') : t('conversations.audio.play')"
+        @click="togglePlay"
+      />
 
-    <audio
-      v-if="resolvedUrl"
-      ref="audioRef"
-      class="hidden"
-      :src="resolvedUrl"
-      preload="metadata"
-      muted
-      @loadedmetadata="localDuration = audioRef?.duration ?? 0"
-      @error="errored = true"
-    />
+      <audio
+        v-if="resolvedUrl"
+        ref="audioRef"
+        class="hidden"
+        :src="resolvedUrl"
+        preload="metadata"
+        muted
+        @loadedmetadata="localDuration = audioRef?.duration ?? 0"
+        @error="errored = true"
+      />
 
-    <div
-      class="audio-waveform h-8 w-40 shrink-0 sm:w-48"
-      @click="seekFromCanvas"
-    >
-      <canvas ref="canvasRef" class="block h-8 w-full" />
+      <div
+        class="audio-waveform h-8 min-w-0 flex-1"
+        @click="seekFromCanvas"
+      >
+        <canvas ref="canvasRef" class="block h-8 w-full" />
+      </div>
+
+      <button
+        type="button"
+        class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums transition-colors disabled:opacity-50"
+        :class="isOutgoing ? 'bg-white/15 text-white hover:bg-white/25' : 'bg-default text-muted ring ring-default hover:bg-elevated'"
+        :disabled="!isActive || errored"
+        :aria-label="t('conversations.audio.speed')"
+        @click="cycleSpeed"
+      >
+        {{ isActive ? displayRate : 1 }}x
+      </button>
+
+      <button
+        type="button"
+        class="shrink-0 grid size-6 place-content-center rounded transition-colors disabled:opacity-50"
+        :class="isOutgoing ? 'text-white/80 hover:bg-white/15' : 'text-muted hover:bg-elevated'"
+        :disabled="!resolvedUrl || errored"
+        :aria-label="t('conversations.audio.download')"
+        @click="download"
+      >
+        <UIcon name="i-lucide-download" class="size-3.5" />
+      </button>
     </div>
 
-    <span
-      class="shrink-0 font-mono text-xs leading-none tabular-nums"
-      :class="isOutgoing ? 'text-white/80' : 'text-muted'"
+    <div
+      class="flex items-center justify-between pl-9 pr-1 font-mono text-[10px] leading-none tabular-nums"
+      :class="isOutgoing ? 'text-white/70' : 'text-dimmed'"
     >
-      {{ errored ? t('conversations.audio.error') : format(isActive ? displayTime : displayDuration) }}
-    </span>
-
-    <button
-      v-if="!errored && isActive"
-      type="button"
-      class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium leading-none tabular-nums transition-colors"
-      :class="isOutgoing ? 'bg-white/15 text-white hover:bg-white/25' : 'bg-default text-muted ring ring-default hover:bg-elevated'"
-      :aria-label="t('conversations.audio.speed')"
-      @click="cycleSpeed"
-    >
-      {{ displayRate }}x
-    </button>
-
-    <button
-      v-if="!errored && isActive"
-      type="button"
-      class="shrink-0 grid size-6 place-content-center rounded transition-colors"
-      :class="isOutgoing ? 'text-white/80 hover:bg-white/15' : 'text-muted hover:bg-elevated'"
-      :aria-label="displayMuted ? t('conversations.audio.unmute') : t('conversations.audio.mute')"
-      @click="toggleMute"
-    >
-      <UIcon :name="displayMuted ? 'i-lucide-volume-off' : 'i-lucide-volume-2'" class="size-3.5" />
-    </button>
-
-    <button
-      v-if="!errored && resolvedUrl"
-      type="button"
-      class="shrink-0 grid size-6 place-content-center rounded transition-colors"
-      :class="isOutgoing ? 'text-white/80 hover:bg-white/15' : 'text-muted hover:bg-elevated'"
-      :aria-label="t('conversations.audio.download')"
-      @click="download"
-    >
-      <UIcon name="i-lucide-download" class="size-3.5" />
-    </button>
+      <span>{{ errored ? t('conversations.audio.error') : format(isActive ? displayTime : 0) }}</span>
+      <span>{{ format(displayDuration) }}</span>
+    </div>
   </div>
 </template>
 

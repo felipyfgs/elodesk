@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import ProfileAvatarField from '~/components/settings/profile/ProfileAvatarField.vue'
-import ProfilePasswordCard from '~/components/settings/profile/ProfilePasswordCard.vue'
-import ProfileAccessTokenCard from '~/components/settings/profile/ProfileAccessTokenCard.vue'
-import ProfileDangerZone from '~/components/settings/profile/ProfileDangerZone.vue'
-import ProfileNotificationPreferencesCard from '~/components/settings/profile/ProfileNotificationPreferencesCard.vue'
 import { profileSchema, type ProfileForm } from '~/schemas/settings/profile'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
@@ -50,7 +45,7 @@ async function onSubmit() {
         class="space-y-4"
         @submit="onSubmit"
       >
-        <ProfileAvatarField v-model="state.avatarUrl" />
+        <SettingsProfileAvatarField v-model="state.avatarUrl" />
         <UFormField :label="t('settings.general.name')" name="name">
           <UInput v-model="state.name" />
         </UFormField>
@@ -65,9 +60,9 @@ async function onSubmit() {
       </UForm>
     </UPageCard>
 
-    <ProfilePasswordCard />
-    <ProfileNotificationPreferencesCard />
-    <ProfileAccessTokenCard />
-    <ProfileDangerZone />
+    <SettingsProfilePasswordCard />
+    <SettingsProfileNotificationPreferencesCard />
+    <SettingsProfileAccessTokenCard />
+    <SettingsProfileDangerZone />
   </div>
 </template>

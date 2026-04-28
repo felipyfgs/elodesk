@@ -75,10 +75,13 @@ export function messageBubbleKind(m: Message): BubbleKind {
 // --- Attachment helpers (S1.2) ---
 
 export interface MessageAttachment {
+  id?: number
   fileUrl?: string
   path?: string
   fileType: string
+  fileName?: string
   size?: number
+  extension?: string
 }
 
 export function hasAttachments(m: Message): boolean {
@@ -111,9 +114,13 @@ function normalizeFileType(contentType: string | undefined | null, rawFileType: 
 export function getAttachments(m: Message): MessageAttachment[] {
   if (m.attachments && m.attachments.length > 0) {
     return m.attachments.map(a => ({
+      id: a.id,
       path: a.fileKey,
+      fileUrl: a.externalUrl,
       fileType: normalizeFileType(a.contentType, a.fileType),
-      size: a.size
+      fileName: a.fileName,
+      size: a.size,
+      extension: a.extension
     }))
   }
   const ca = messageContentAttributes(m)
@@ -164,6 +171,50 @@ export function messageParts(m: Message) {
     parts.push({ type: 'text', text: m.content })
   }
   return parts
+}
+
+// --- Forward helpers ---
+
+export function messageIsForwarded(m: Message): boolean {
+  return m.forwardedFromMessageId != null
+}
+
+// Channel compatibility matrix matching backend service/channel_compat.go.
+const CHANNEL_FILE_TYPE_SUPPORT: Record<string, string[]> = {
+  'Channel::Whatsapp': ['image', 'audio', 'video', 'file'],
+  'Channel::Telegram': ['image', 'audio', 'video', 'file'],
+  'Channel::Email': ['image', 'audio', 'video', 'file'],
+  'Channel::FacebookPage': ['image', 'audio', 'video', 'file'],
+  'Channel::WebWidget': ['image', 'audio', 'video', 'file'],
+  'Channel::Api': ['image', 'audio', 'video', 'file'],
+  'Channel::Sms': [],
+  'Channel::Twilio': [],
+  'Channel::Instagram': ['image', 'video'],
+  'Channel::Tiktok': ['image', 'video'],
+  'Channel::Line': ['image', 'audio', 'video'],
+  'Channel::Twitter': ['image', 'video']
+}
+
+export function isInboxCompatibleWithAttachments(
+  channelType: string,
+  messages: Message[]
+): boolean {
+  if (!messages || messages.length === 0) return true
+  const supported = CHANNEL_FILE_TYPE_SUPPORT[channelType]
+  if (!supported) return false // unknown channel, conservative
+
+  for (const msg of messages) {
+    const atts = getAttachments(msg)
+    for (const att of atts) {
+      if (!supported.includes(att.fileType)) return false
+    }
+  }
+  return true
+}
+
+export function incompatibilityReason(channelType: string, fileType: string): string {
+  const name = channelType.replace('Channel::', '')
+  return `${name} does not support ${fileType} attachments`
 }
 
 // --- Time formatting ---

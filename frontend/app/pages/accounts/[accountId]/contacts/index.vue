@@ -421,7 +421,7 @@ const headerMenuItems = computed(() => [
         @save-segment="onSaveSegment"
       />
 
-      <ContactsContactSegmentSaveModal
+      <ContactsSegmentSaveModal
         v-model="segmentSaveOpen"
         :query="pendingSegmentQuery"
       />

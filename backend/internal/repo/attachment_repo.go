@@ -13,14 +13,14 @@ import (
 
 var ErrAttachmentNotFound = errors.New("attachment not found")
 
-const attachmentSelectColumns = "id, message_id, account_id, file_type, external_url, file_key, extension, meta, created_at, updated_at"
+const attachmentSelectColumns = "id, message_id, account_id, file_type, external_url, file_key, file_name, extension, meta, created_at, updated_at"
 
 type attachmentScanner interface {
 	Scan(dest ...any) error
 }
 
 func scanAttachment(scanner attachmentScanner, m *model.Attachment) error {
-	return scanner.Scan(&m.ID, &m.MessageID, &m.AccountID, &m.FileType, &m.ExternalURL, &m.FileKey, &m.Extension, &m.Meta, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.MessageID, &m.AccountID, &m.FileType, &m.ExternalURL, &m.FileKey, &m.FileName, &m.Extension, &m.Meta, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type AttachmentRepo struct {
@@ -32,10 +32,10 @@ func NewAttachmentRepo(pool *pgxpool.Pool) *AttachmentRepo {
 }
 
 func (r *AttachmentRepo) Create(ctx context.Context, m *model.Attachment) error {
-	query := `INSERT INTO attachments (message_id, account_id, file_type, external_url, file_key, extension, meta)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	query := `INSERT INTO attachments (message_id, account_id, file_type, external_url, file_key, file_name, extension, meta)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at, updated_at`
-	err := r.pool.QueryRow(ctx, query, m.MessageID, m.AccountID, m.FileType, m.ExternalURL, m.FileKey, m.Extension, m.Meta).
+	err := r.pool.QueryRow(ctx, query, m.MessageID, m.AccountID, m.FileType, m.ExternalURL, m.FileKey, m.FileName, m.Extension, m.Meta).
 		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create attachment: %w", err)

@@ -24,26 +24,48 @@ const (
 	EventTypeConversationTypingOff      = "conversation_typing_off"
 )
 
-// AttachmentPresigner gera uma URL temporária (presigned GET) para o object
-// path do attachment. É usado pelo dispatch do webhook outbound para que
-// integradores externos consigam baixar a mídia sem credenciais do MinIO.
-type AttachmentPresigner func(ctx context.Context, fileKey string) (string, error)
+// AttachmentURLBuilder devolve a URL pública do attachment hospedada pelo
+// próprio elodesk (padrão Chatwoot/ActiveStorage). O integrador (wzap, n8n,
+// etc.) só precisa saber de uma hostname — a do elodesk — pra alcançar a
+// mídia, sem nunca falar direto com MinIO/S3.
+type AttachmentURLBuilder func(accountID, attachmentID int64) string
+
+// ContactInboxLookup é o contrato mínimo que o webhook outbound precisa pra
+// resolver o source_id do contato em uma inbox. Implementado por
+// *repo.ContactInboxRepo. Definido aqui (não em /repo) pra evitar ciclo
+// import e manter o serviço testável com fakes. accountID é exigido pelo
+// guard multi-tenant — o caller já tem o accountID do channel/conversation.
+type ContactInboxLookup interface {
+	FindByID(ctx context.Context, id, accountID int64) (*model.ContactInbox, error)
+}
 
 type OutboundWebhookService struct {
-	asynqClient *asynq.Client
-	cipher      *crypto.Cipher
-	presigner   AttachmentPresigner
+	asynqClient      *asynq.Client
+	cipher           *crypto.Cipher
+	urlBuilder       AttachmentURLBuilder
+	contactInboxRepo ContactInboxLookup
 }
 
 func NewOutboundWebhookService(asynqClient *asynq.Client, cipher *crypto.Cipher) *OutboundWebhookService {
 	return &OutboundWebhookService{asynqClient: asynqClient, cipher: cipher}
 }
 
-// WithAttachmentPresigner injeta o gerador de URL presigned do MinIO. Sem
-// isso o webhook outbound serializa attachments sem `dataUrl`, e o integrador
-// não consegue baixar a mídia.
-func (s *OutboundWebhookService) WithAttachmentPresigner(p AttachmentPresigner) *OutboundWebhookService {
-	s.presigner = p
+// WithAttachmentURLBuilder injeta o builder de URL hospedada pelo elodesk.
+// Sem isso o webhook outbound serializa attachments sem `dataUrl` e o
+// integrador não consegue baixar a mídia.
+func (s *OutboundWebhookService) WithAttachmentURLBuilder(b AttachmentURLBuilder) *OutboundWebhookService {
+	s.urlBuilder = b
+	return s
+}
+
+// WithContactInboxRepo injeta o repo usado pra resolver o source_id do
+// contact_inbox e enriquecer o payload outbound. Sem isso, o integrador (wzap)
+// não tem como descobrir pra qual destinatário enviar quando a conversa é
+// recém-criada (forward para contato sem histórico) — wzap só consegue mapear
+// elodesk_conv_id → chat_jid via mensagens incoming, então o source_id
+// fornecido aqui é o único caminho pra entrega no primeiro envio.
+func (s *OutboundWebhookService) WithContactInboxRepo(r ContactInboxLookup) *OutboundWebhookService {
+	s.contactInboxRepo = r
 	return s
 }
 
@@ -103,7 +125,7 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 	}
 
 	if conv != nil {
-		data, err := json.Marshal(conv)
+		data, err := s.marshalConversation(ctx, conv)
 		if err != nil {
 			return fmt.Errorf("marshal conversation: %w", err)
 		}
@@ -144,6 +166,39 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 	return nil
 }
 
+// outboundContactInboxView é o subset de model.ContactInbox que o integrador
+// precisa: id (referência) e sourceId (telefone/email/identifier do canal).
+// Para um forward para contato sem histórico, este é o único caminho pelo
+// qual o wzap descobre o JID de destino — antes desse enriquecimento, ele
+// caía no FindChatJIDByElodeskConvID que retorna vazio nesse cenário.
+type outboundContactInboxView struct {
+	ID       int64  `json:"id,omitempty"`
+	SourceID string `json:"sourceId"`
+}
+
+// outboundConversationView embeda model.Conversation e adiciona o
+// contactInbox resolvido. encoding/json usa o ContactInbox embutido aqui
+// (menor profundidade) em vez do que viesse de Conversation.
+type outboundConversationView struct {
+	*model.Conversation
+	ContactInbox *outboundContactInboxView `json:"contactInbox,omitempty"`
+}
+
+// marshalConversation enriquece a conversa com o contact_inbox quando o repo
+// está disponível. Falha em resolver é silenciosa — o webhook ainda sai com a
+// conversa "magra" (comportamento anterior), só que sem o source_id de
+// fallback. Mantém retrocompat para integradores que não dependem do campo.
+func (s *OutboundWebhookService) marshalConversation(ctx context.Context, conv *model.Conversation) ([]byte, error) {
+	view := outboundConversationView{Conversation: conv}
+	if s.contactInboxRepo != nil && conv.ContactInboxID != nil && *conv.ContactInboxID > 0 {
+		ci, err := s.contactInboxRepo.FindByID(ctx, *conv.ContactInboxID, conv.AccountID)
+		if err == nil && ci != nil && ci.SourceID != "" {
+			view.ContactInbox = &outboundContactInboxView{ID: ci.ID, SourceID: ci.SourceID}
+		}
+	}
+	return json.Marshal(view)
+}
+
 // outboundAttachmentView espelha model.Attachment com `dataUrl` adicional
 // (URL presigned do MinIO). Vai serializado no payload pra que integradores
 // externos consigam baixar a mídia sem credenciais.
@@ -161,7 +216,7 @@ type outboundMessageView struct {
 	Attachments []outboundAttachmentView `json:"attachments"`
 }
 
-func (s *OutboundWebhookService) marshalMessage(ctx context.Context, msg *model.Message) ([]byte, error) {
+func (s *OutboundWebhookService) marshalMessage(_ context.Context, msg *model.Message) ([]byte, error) {
 	if len(msg.Attachments) == 0 {
 		return json.Marshal(msg)
 	}
@@ -169,17 +224,9 @@ func (s *OutboundWebhookService) marshalMessage(ctx context.Context, msg *model.
 	views := make([]outboundAttachmentView, len(msg.Attachments))
 	for i, att := range msg.Attachments {
 		views[i] = outboundAttachmentView{Attachment: att}
-		if s.presigner == nil || att.FileKey == nil || *att.FileKey == "" {
-			continue
+		if s.urlBuilder != nil && att.ID > 0 {
+			views[i].DataURL = s.urlBuilder(att.AccountID, att.ID)
 		}
-		signedURL, err := s.presigner(ctx, *att.FileKey)
-		if err != nil {
-			logger.Warn().Str("component", "outbound-webhook").
-				Int64("attachmentId", att.ID).Err(err).
-				Msg("failed to presign attachment URL — dataUrl will be empty")
-			continue
-		}
-		views[i].DataURL = signedURL
 	}
 
 	return json.Marshal(outboundMessageView{Message: msg, Attachments: views})

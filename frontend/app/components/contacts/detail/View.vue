@@ -4,7 +4,7 @@ import { ConfirmModal } from '#components'
 import type { Contact } from '~/stores/contacts'
 import { useAuthStore } from '~/stores/auth'
 import { useContactsStore } from '~/stores/contacts'
-import type { ContactFormState } from './ContactDetailForm.vue'
+import type { ContactFormState } from './Form.vue'
 
 const props = defineProps<{
   contact: Contact
@@ -95,7 +95,7 @@ async function confirmDelete() {
   <div class="flex flex-col gap-8 pb-6">
     <!-- Header: avatar + name + metadata -->
     <div class="flex flex-col items-start gap-3">
-      <ContactsContactAvatarUploader :contact="contact" />
+      <ContactsAvatarUploader :contact="contact" />
 
       <div class="flex items-center gap-2">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -129,7 +129,7 @@ async function confirmDelete() {
     </div>
 
     <!-- Form -->
-    <ContactsDetailContactDetailForm
+    <ContactsDetailForm
       ref="formRef"
       :contact="contact"
       @submit="onSubmit"

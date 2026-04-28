@@ -2,7 +2,7 @@
 import { formatTimeAgo } from '@vueuse/core'
 import type { Contact } from '~/stores/contacts'
 import { parseJsonAttrs } from '~/utils/jsonAttrs'
-import ContactsEditForm from './ContactsEditForm.vue'
+import ContactsEditForm from './EditForm.vue'
 
 const props = defineProps<{
   contact: Contact

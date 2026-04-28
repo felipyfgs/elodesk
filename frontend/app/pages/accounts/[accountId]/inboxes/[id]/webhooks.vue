@@ -7,5 +7,5 @@ defineProps<{
 </script>
 
 <template>
-  <InboxWebhookSettings :inbox="inbox" />
+  <InboxesSettingsWebhookSettings :inbox="inbox" />
 </template>

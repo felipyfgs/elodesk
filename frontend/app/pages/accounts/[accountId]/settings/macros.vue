@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MacroBuilder from '~/components/settings/macros/MacroBuilder.vue'
 import { ConfirmModal } from '#components'
 import type { Macro } from '~/stores/macros'
 import { useMacrosStore } from '~/stores/macros'
@@ -95,6 +94,6 @@ async function onDelete(m: Macro) {
       </table>
     </div>
 
-    <MacroBuilder v-model:open="builderOpen" :macro="editing" />
+    <SettingsMacrosBuilder v-model:open="builderOpen" :macro="editing" />
   </UPageCard>
 </template>

@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -130,6 +132,9 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	messageHandler.SetConversationRepo(conversationRepo)
 	messageHandler.SetAttachmentRepo(attachmentRepo)
 
+	forwardSvc := service.NewForwardService(messageRepo, attachmentRepo, conversationRepo, contactInboxRepo, contactRepo, inboxRepo, messageSvc, conversationSvc)
+	forwardHandler := handler.NewForwardHandler(forwardSvc)
+
 	conversationSvc.SetMessageService(messageSvc)
 	conversationHandler := handler.NewConversationHandler(conversationSvc, messageSvc, inboxRepo, contactInboxRepo, conversationRepo, agentRepo, teamRepo, auditLogger)
 
@@ -138,7 +143,8 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	participantHandler := handler.NewParticipantHandler(participantSvc)
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisURL})
-	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient, cipher)
+	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient, cipher).
+		WithContactInboxRepo(contactInboxRepo)
 
 	outboundNotifier := service.NewOutboundWebhookNotifier(outboundWebhookSvc, channelApiRepo, inboxRepo, conversationRepo)
 	messageSvc.SetOnOutboundHandler(outboundNotifier)
@@ -188,26 +194,20 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		return nil, err
 	}
 
-	// Liga o presigner do MinIO ao webhook outbound. Quando MINIO_WEBHOOK_*
-	// está configurado, usa um cliente dedicado — evita que URLs presigned
-	// referenciem `127.0.0.1` (válido só pra browser do host) quando o
-	// consumidor do webhook está em outro container.
-	webhookMinioClient := minioClient
-	if cfg.MinioWebhookEndpoint != "" {
-		webhookMinioClient, err = media.NewWithPublic(
-			cfg.MinioEndpoint, cfg.MinioPort, cfg.MinioUseSSL,
-			cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket,
-			cfg.MinioWebhookEndpoint, cfg.MinioWebhookPort, cfg.MinioWebhookUseSSL,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-	outboundWebhookSvc.WithAttachmentPresigner(func(ctx context.Context, fileKey string) (string, error) {
-		return webhookMinioClient.PresignGet(ctx, fileKey, 15*time.Minute)
-	})
 	uploadHandler := handler.NewUploadHandler(minioClient, attachmentRepo)
 	contactSvc.WithMinio(minioClient)
+	messageHandler.SetMinio(minioClient)
+
+	// Padrão Chatwoot/ActiveStorage: o elodesk hospeda a URL pública da mídia
+	// e proxia bytes do MinIO. Integradores externos só veem a URL do elodesk.
+	// Token HMAC-SHA256 com a KEK (já validada como ≥32 bytes base64) — não há
+	// criptografia, só integridade + expiração.
+	tokenSecret, _ := base64.StdEncoding.DecodeString(cfg.BackendKEK)
+	uploadHandler.SetAttachmentTokenSecret(tokenSecret)
+	outboundWebhookSvc.WithAttachmentURLBuilder(func(accountID, attachmentID int64) string {
+		token := handler.SignAttachmentToken(tokenSecret, accountID, attachmentID, 15*time.Minute)
+		return fmt.Sprintf("%s/api/v1/attachments/%d/file?token=%s", cfg.APIURL, attachmentID, token)
+	})
 
 	healthHandler := handler.NewHealthHandler(db, redisClient)
 
@@ -217,6 +217,12 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	realtimeHandler.RegisterRoutes(s.App)
 
 	api := s.App.Group("/api/v1")
+
+	// Endpoint público de download de attachment (padrão Chatwoot/ActiveStorage).
+	// Sem Bearer — autenticação é o token HMAC na query. Registrado fora do
+	// grupo `/auth` e do grupo `/accounts/:aid` (que tem JwtAuth) pra ser
+	// alcançável por integradores externos (wzap, n8n) com URL estável.
+	api.Get("/attachments/:id/file", uploadHandler.PublicAttachmentDownload)
 
 	auth := api.Group("/auth")
 	auth.Get("/setup", authHandler.SetupStatus)
@@ -274,6 +280,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Delete("/conversations/:id", ownerAdmin, conversationHandler.Delete)
 	accounts.Get("/conversations/:conversationId/messages", messageHandler.List)
 	accounts.Post("/conversations/:conversationId/messages", agentPlus, messageHandler.CreateAuthenticated)
+	accounts.Post("/messages/forward", agentPlus, forwardHandler.Forward)
 	accounts.Delete("/conversations/:conversationId/messages/:messageId", messageHandler.SoftDelete)
 	accounts.Post("/uploads/signed-url", uploadHandler.SignedUploadURL)
 	accounts.Post("/uploads", uploadHandler.ProxyUpload)
@@ -287,6 +294,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/conversations/:id/participants/sync", participantHandler.Sync)
 	accounts.Post("/conversations/:id/assignments", agentPlus, conversationHandler.Assign)
 	accounts.Patch("/conversations/:id/status", agentPlus, conversationHandler.ToggleStatus)
+	accounts.Post("/conversations/:id/update_last_seen", agentPlus, conversationHandler.MarkRead)
 
 	accounts.Post("/conversations/:id/labels", agentPlus, labelsHandler.ApplyToConversation)
 	accounts.Delete("/conversations/:id/labels/:labelId", agentPlus, labelsHandler.RemoveFromConversation)

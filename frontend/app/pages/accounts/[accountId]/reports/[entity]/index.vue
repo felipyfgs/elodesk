@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import EntityList from '~/components/reports/entity/EntityList.vue'
 import type { EntityMetric } from '~/types/reports'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
@@ -40,7 +39,7 @@ onMounted(load)
     </template>
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <EntityList :items="items" :entity="entity" />
+        <ReportsEntityList :items="items" :entity="entity" />
       </div>
     </template>
   </UDashboardPanel>

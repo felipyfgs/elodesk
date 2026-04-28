@@ -505,7 +505,7 @@ func (h *ContactHandler) ListContactConversations(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	return c.JSON(dto.SuccessResp(dto.ConversationsToResp(convos)))
+	return c.JSON(dto.SuccessResp(convos))
 }
 
 func (h *ContactHandler) Import(c *fiber.Ctx) error {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ChannelApiData, Inbox } from '~/stores/inboxes'
 import { useAuthStore } from '~/stores/auth'
-import InboxSettingsForm from '~/components/inboxes/settings/InboxSettingsForm.vue'
 
 const props = defineProps<{
   inbox: Inbox
@@ -202,7 +201,7 @@ async function saveOverview() {
       :title="t('inboxes.security')"
       variant="subtle"
     >
-      <InboxSettingsForm :inbox="inbox" />
+      <InboxesSettingsForm :inbox="inbox" />
     </UPageCard>
 
     <UPageCard

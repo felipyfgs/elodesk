@@ -167,6 +167,11 @@ func (f ConversationFilter) whereClause() (string, []any) {
 		args = append(args, *f.TeamID)
 		argN++
 	}
+	if f.ContactID != nil {
+		clause += fmt.Sprintf(" AND contact_id = $%d", argN)
+		args = append(args, *f.ContactID)
+		argN++
+	}
 
 	switch f.AssigneeType {
 	case ConversationAssigneeTypeMine:
@@ -621,6 +626,38 @@ func (r *ConversationRepo) UpdateLastSeen(ctx context.Context, id int64) error {
 		`UPDATE conversations SET last_activity_at = NOW(), updated_at = NOW() WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to update last seen: %w", err)
+	}
+	return nil
+}
+
+// CountUnread devolve o número de mensagens incoming não vistas pelo
+// assignee (mesmo cálculo que conversationHydratedColumns usa). Usado pelo
+// broadcast de message.created/updated para que o badge atualize em tempo
+// real sem precisar reidratar a conversa inteira.
+func (r *ConversationRepo) CountUnread(ctx context.Context, id, accountID int64) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM messages m
+		  JOIN conversations cv ON cv.id = m.conversation_id
+		 WHERE cv.id = $1 AND cv.account_id = $2
+		   AND m.message_type = 0
+		   AND (cv.assignee_last_seen_at IS NULL OR m.created_at > cv.assignee_last_seen_at)`,
+		id, accountID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count unread messages: %w", err)
+	}
+	return count, nil
+}
+
+// UpdateAssigneeLastSeen marks o agent atribuído como tendo lido a conversa
+// até o instante atual. Usado pelo endpoint /update_last_seen quando o agente
+// abre a thread no dashboard — zera o unread_count derivado em
+// conversationHydratedColumns.
+func (r *ConversationRepo) UpdateAssigneeLastSeen(ctx context.Context, id, accountID int64) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE conversations SET assignee_last_seen_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to update assignee_last_seen_at: %w", err)
 	}
 	return nil
 }

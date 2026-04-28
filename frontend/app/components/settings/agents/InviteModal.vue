@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AgentRoleSelect from './AgentRoleSelect.vue'
 import { agentInviteSchema, type AgentInviteForm } from '~/schemas/settings/agents'
 import { useAgentsStore } from '~/stores/agents'
 
@@ -44,7 +43,7 @@ async function onSubmit() {
             <UInput v-model="state.name" />
           </UFormField>
           <UFormField :label="t('settings.agents.role')" name="role">
-            <AgentRoleSelect v-model="state.role as string" />
+            <SettingsAgentsRoleSelect v-model="state.role as string" />
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="outline" @click="emit('update:open', false)">

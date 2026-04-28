@@ -49,6 +49,7 @@ type conversationStore interface {
 	FindByIDFull(ctx context.Context, accountID, id int64) (*repo.ConversationHydrated, error)
 	ToggleStatus(ctx context.Context, id, accountID int64, status model.ConversationStatus) (*model.Conversation, error)
 	UpdateLastActivity(ctx context.Context, id int64, at time.Time) error
+	CountUnread(ctx context.Context, id, accountID int64) (int, error)
 }
 
 type MessageService struct {
@@ -287,15 +288,18 @@ func (s *MessageService) resolveSender(ctx context.Context, msg *model.Message) 
 	return ErrMessageMissingSender
 }
 
-// reopenIfClosed mirrors Chatwoot's Message#reopen_conversation: an incoming
-// (non-private) message in a snoozed or resolved conversation reopens it.
-// Errors are logged but never bubbled — like bumpActivity, this is a derived
-// side-effect that must not roll back a successfully persisted message.
+// reopenIfClosed reabre uma conversa resolvida/snoozed quando chega qualquer
+// mensagem não-privada — entrada *ou* saída. Diverge do Chatwoot
+// (que só reabre em incoming) para cobrir o caso do operador enviar do próprio
+// WhatsApp (external echo via wzap chega como Outgoing): também é atividade
+// nova e o usuário espera ver a conversa de volta em "Abertas".
+// Erros são logados mas não estouram — efeito derivado, não pode rolar a
+// mensagem persistida.
 func (s *MessageService) reopenIfClosed(ctx context.Context, msg *model.Message) {
 	if msg == nil || s.conversationRepo == nil {
 		return
 	}
-	if msg.MessageType != model.MessageIncoming || msg.Private {
+	if msg.MessageType == model.MessageActivity || msg.MessageType == model.MessageTemplate || msg.Private {
 		return
 	}
 	conv, err := s.conversationRepo.FindByID(ctx, msg.ConversationID, msg.AccountID)
@@ -430,7 +434,15 @@ func (s *MessageService) broadcastMessageEvent(ctx context.Context, event string
 				Int64("conversationId", msg.ConversationID).Err(err).
 				Msg("fetch conversation for realtime event")
 		} else {
-			convSummary = dto.ConversationSummaryFromModel(conv, 0)
+			// Conta unread real para o broadcast — antes ia hardcoded 0,
+			// o que zerava o badge no frontend a cada mensagem.
+			unread, cerr := s.conversationRepo.CountUnread(ctx, conv.ID, conv.AccountID)
+			if cerr != nil {
+				logger.Warn().Str("component", "message_service").
+					Int64("conversationId", conv.ID).Err(cerr).
+					Msg("count unread for realtime event")
+			}
+			convSummary = dto.ConversationSummaryFromModel(conv, unread)
 		}
 	}
 	payload := dto.MessageToEventResp(msg, convSummary)
