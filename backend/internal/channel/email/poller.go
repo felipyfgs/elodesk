@@ -93,7 +93,9 @@ func (p *EmailPoller) poll(ctx context.Context, _ string) error {
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	defer client.Close() //nolint:errcheck
+	defer func() {
+		_ = client.Close()
+	}()
 
 	msgs, err := client.FetchSince(uint32(p.ch.LastUIDSeen))
 	if err != nil {

@@ -59,7 +59,9 @@ func SendSMTP(ch *model.ChannelEmail, msg *OutboundEmail, decryptFn func(string)
 		if clientErr != nil {
 			return "", fmt.Errorf("smtp new client: %w", clientErr)
 		}
-		defer client.Close() //nolint:errcheck
+		defer func() {
+			_ = client.Close()
+		}()
 		if auth != nil {
 			if authErr := client.Auth(auth); authErr != nil {
 				return "", fmt.Errorf("smtp auth: %w", authErr)

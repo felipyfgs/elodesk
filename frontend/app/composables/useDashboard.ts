@@ -5,6 +5,7 @@ import { useLabelsStore, type Label } from '~/stores/labels'
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useTeamsStore, type Team } from '~/stores/teams'
 import { useSavedFiltersStore, type SavedFilter } from '~/stores/savedFilters'
+
 export type SidebarItem = NavigationMenuItem & {
   meta?: { color?: string }
 }

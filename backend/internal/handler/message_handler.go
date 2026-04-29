@@ -297,7 +297,9 @@ func (h *MessageHandler) uploadMultipartAttachments(c *fiber.Ctx, accountID int6
 		_, putErr := h.minio.Client().PutObject(ctx, h.minio.Bucket(), objectPath, f, fh.Size, minio.PutObjectOptions{
 			ContentType: contentType,
 		})
-		f.Close()
+		if closeErr := f.Close(); closeErr != nil {
+			logger.Warn().Str("component", "messages").Err(closeErr).Msg("close multipart file")
+		}
 		if putErr != nil {
 			logger.Error().Str("component", "messages").Err(putErr).Str("objectPath", objectPath).Msg("upload attachment to minio")
 			return nil, c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to upload attachment"))

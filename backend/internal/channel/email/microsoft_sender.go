@@ -55,7 +55,9 @@ func SendGraph(ctx context.Context, ch *model.ChannelEmail, msg *OutboundEmail, 
 	if err != nil {
 		return "", fmt.Errorf("microsoft: send: %w", err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode >= 400 {
 		return "", fmt.Errorf("microsoft: send returned HTTP %d", resp.StatusCode)
 	}

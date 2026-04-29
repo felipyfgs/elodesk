@@ -229,7 +229,6 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     }
   ])
 
-
   const statusItems = computed<{ label: string, value: StatusUiValue, icon: string }[]>(() => [
     { label: t('conversations.status.open'), value: 'OPEN', icon: 'i-lucide-inbox' },
     { label: t('conversations.status.pending'), value: 'PENDING', icon: 'i-lucide-clock' },
@@ -289,7 +288,6 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
       onSelect: () => selectStatus(item.value)
     }))
   )
-
 
   const sortMenuItems = computed(() =>
     sortItems.value.map(item => ({

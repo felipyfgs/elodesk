@@ -138,7 +138,13 @@ const teamBadge = computed(() => convs.filters.teamIds?.length ?? 0)
             size="xs"
             :disabled="disabled"
           >
-            <UBadge v-if="inboxBadge" :label="inboxBadge" size="sm" color="primary" variant="subtle" />
+            <UBadge
+              v-if="inboxBadge"
+              :label="inboxBadge"
+              size="sm"
+              color="primary"
+              variant="subtle"
+            />
           </UButton>
         </UTooltip>
       </UDropdownMenu>
@@ -153,7 +159,13 @@ const teamBadge = computed(() => convs.filters.teamIds?.length ?? 0)
             size="xs"
             :disabled="disabled"
           >
-            <UBadge v-if="labelBadge" :label="labelBadge" size="sm" color="primary" variant="subtle" />
+            <UBadge
+              v-if="labelBadge"
+              :label="labelBadge"
+              size="sm"
+              color="primary"
+              variant="subtle"
+            />
           </UButton>
         </UTooltip>
       </UDropdownMenu>
@@ -168,7 +180,13 @@ const teamBadge = computed(() => convs.filters.teamIds?.length ?? 0)
             size="xs"
             :disabled="disabled"
           >
-            <UBadge v-if="teamBadge" :label="teamBadge" size="sm" color="primary" variant="subtle" />
+            <UBadge
+              v-if="teamBadge"
+              :label="teamBadge"
+              size="sm"
+              color="primary"
+              variant="subtle"
+            />
           </UButton>
         </UTooltip>
       </UDropdownMenu>

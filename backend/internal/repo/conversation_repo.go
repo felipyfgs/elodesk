@@ -186,7 +186,6 @@ func (f ConversationFilter) whereClause() (string, []any) {
 		if f.CurrentUser != nil {
 			clause += fmt.Sprintf(" AND assignee_id = $%d", argN)
 			args = append(args, *f.CurrentUser)
-			argN++
 		} else {
 			clause += " AND 1 = 0"
 		}

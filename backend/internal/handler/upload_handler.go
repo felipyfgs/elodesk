@@ -101,7 +101,11 @@ func (h *UploadHandler) ProxyUpload(c *fiber.Ctx) error {
 		logger.Error().Str("component", "uploads").Err(err).Msg("failed to open uploaded file")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to read upload"))
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			logger.Warn().Str("component", "uploads").Err(closeErr).Msg("close uploaded file")
+		}
+	}()
 
 	safeName := sanitizeFileName(fh.Filename)
 	objectPath := fmt.Sprintf("%d/uploads/%s-%s", accountID, uuid.New().String(), safeName)
@@ -220,7 +224,9 @@ func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 	}
 	stat, err := obj.Stat()
 	if err != nil {
-		obj.Close()
+		if closeErr := obj.Close(); closeErr != nil {
+			logger.Warn().Str("component", "uploads").Err(closeErr).Msg("close minio object after stat error")
+		}
 		logger.Warn().Str("component", "uploads").Err(err).Str("objectPath", objectPath).Msg("object not found")
 		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "file not found"))
 	}
@@ -255,7 +261,9 @@ func (h *UploadHandler) ProxyDownload(c *fiber.Ctx) error {
 
 	stat, err := obj.Stat()
 	if err != nil {
-		obj.Close()
+		if closeErr := obj.Close(); closeErr != nil {
+			logger.Warn().Str("component", "uploads").Err(closeErr).Msg("close minio object after stat error")
+		}
 		logger.Warn().Str("component", "uploads").Err(err).Str("objectPath", objectPath).Msg("object not found")
 		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "file not found"))
 	}

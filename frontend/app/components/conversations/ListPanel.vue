@@ -77,7 +77,6 @@ const panelTitle = computed(() => {
   }
   return t('conversations.title')
 })
-
 </script>
 
 <template>
