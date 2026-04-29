@@ -6,14 +6,22 @@ const { t } = useI18n()
 const realtime = useRealtime()
 const store = useNotificationsStore()
 
-realtime.on('notification.new', (payload: Record<string, unknown>) => {
+// `realtime.on` retorna a função de off — sem capturar e chamar ao desmontar,
+// cada mount/HMR empilha novos listeners e a notificação é processada N vezes.
+const offHandlers: Array<() => void> = []
+offHandlers.push(realtime.on('notification.new', (payload: Record<string, unknown>) => {
   store.handleRealtime({ type: 'notification.new', payload: payload as unknown as Notification })
-})
-realtime.on('notification.read', (payload: Record<string, unknown>) => {
+}))
+offHandlers.push(realtime.on('notification.read', (payload: Record<string, unknown>) => {
   store.handleRealtime({ type: 'notification.read', payload: payload as { id: number } })
-})
-realtime.on('notification.read_all', () => {
+}))
+offHandlers.push(realtime.on('notification.read_all', () => {
   store.handleRealtime({ type: 'notification.read_all' })
+}))
+
+onUnmounted(() => {
+  for (const off of offHandlers) off()
+  offHandlers.length = 0
 })
 
 async function loadNotifications() {

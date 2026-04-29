@@ -1,8 +1,10 @@
-import type {
-  Conversation,
-  ConversationListMeta,
-  ConversationListResponse,
-  ConversationMeta
+import {
+  STATUS_CODE,
+  type Conversation,
+  type ConversationListMeta,
+  type ConversationListResponse,
+  type ConversationMeta,
+  type ConversationStatusFilter
 } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 
@@ -11,7 +13,7 @@ import { useAuthStore } from '~/stores/auth'
 export interface ListConversationsParams {
   page?: number
   perPage?: number
-  status?: 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+  status?: ConversationStatusFilter
   assigneeType?: 'mine' | 'unassigned' | 'all' | 'assigned'
   assigneeId?: string | number
   inboxId?: string | number
@@ -19,13 +21,8 @@ export interface ListConversationsParams {
   labels?: string
   q?: string
   sortBy?: string
-}
-
-const STATUS_CODE: Record<NonNullable<ListConversationsParams['status']>, string> = {
-  OPEN: '0',
-  RESOLVED: '1',
-  PENDING: '2',
-  SNOOZED: '3'
+  unread?: boolean
+  conversationType?: 'unattended' | 'mention' | 'participating'
 }
 
 function buildListQuery(p: ListConversationsParams): URLSearchParams {
@@ -40,6 +37,8 @@ function buildListQuery(p: ListConversationsParams): URLSearchParams {
   if (p.labels) qs.set('labels', p.labels)
   if (p.q) qs.set('q', p.q)
   if (p.sortBy) qs.set('sort_by', p.sortBy)
+  if (p.unread) qs.set('unread', 'true')
+  if (p.conversationType) qs.set('conversation_type', p.conversationType)
   return qs
 }
 

@@ -1,8 +1,14 @@
 import { useStorage } from '@vueuse/core'
-import { useConversationsStore, type ConversationSort, type ConversationStatusFilter, type ConversationMeta, type ConversationTab } from '~/stores/conversations'
+import { useConversationsStore, STATUS_MAP, type ConversationSort, type ConversationStatusFilter, type ConversationMeta, type ConversationTab } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 import { useSavedFiltersStore, type SavedFilter } from '~/stores/savedFilters'
 import type { FilterQueryPayload } from '~/components/filters/FilterBuilder.vue'
+
+// Sentinel exclusivo de UI: representa "todos os status" no dropdown. No
+// store/API, isso vira `status: undefined`. Traduzido nas bordas (selectStatus,
+// currentStatus, statusBucket) pra manter o estado interno sem valores mágicos.
+const ALL_STATUSES = 'ALL' as const
+type StatusUiValue = ConversationStatusFilter | typeof ALL_STATUSES
 
 export function useConversationFilters(loadFn: () => Promise<void>) {
   const { t } = useI18n()
@@ -12,26 +18,45 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
   const savedFilters = useSavedFiltersStore()
 
   const persistedSort = useStorage<ConversationSort>('conversations:sort', 'last_activity_desc')
-  const persistedStatus = useStorage<ConversationStatusFilter>('conversations:status', 'OPEN')
+  // Persistido como valor de UI ('ALL' incluso). Traduzido pra `undefined`
+  // quando escreve no store. Permite restaurar a escolha "Todas" entre reloads.
+  const persistedStatus = useStorage<StatusUiValue>('conversations:status', 'OPEN')
   const persistedTab = useStorage<ConversationTab | 'unassigned'>('conversations:tab', 'mine')
-  // Legacy migration: 'unassigned' used to be a tab; now it's a separate flag.
-  // Carry the intent forward by enabling the flag and switching to 'all'.
+  // `unassigned` virou tab própria (UI); persiste no store via `tab='all' +
+  // unassignedOnly=true` pra preservar a separação backend (assignee_type) e
+  // evitar reescrever de novo se o flag for movido pro dropdown no futuro.
   const persistedUnassignedFlag = useStorage<boolean>('conversations:unassignedOnly', false)
   if (persistedTab.value === 'unassigned') {
     persistedTab.value = 'all'
     persistedUnassignedFlag.value = true
   }
+  // `unread` (Não lidas) e `unattended` (Não atendidas) são flags ortogonais —
+  // empilham em qualquer tab. Persistidos em localStorage pra sobreviver a
+  // reload do navegador, igual a `unassignedOnly`.
+  const persistedUnread = useStorage<boolean>('conversations:unread', false)
+  const persistedUnattended = useStorage<boolean>('conversations:unattended', false)
   const validTabs: ConversationTab[] = ['mine', 'all']
   if (!validTabs.includes(persistedTab.value as ConversationTab)) persistedTab.value = 'mine'
-  const validStatus: ConversationStatusFilter[] = ['OPEN', 'PENDING', 'SNOOZED', 'RESOLVED', 'ALL']
+  const validStatus: StatusUiValue[] = ['OPEN', 'PENDING', 'SNOOZED', 'RESOLVED', ALL_STATUSES]
   if (!validStatus.includes(persistedStatus.value)) persistedStatus.value = 'OPEN'
 
   convs.setFilters({
     sortBy: persistedSort.value,
-    status: persistedStatus.value,
+    status: persistedStatus.value === ALL_STATUSES ? undefined : persistedStatus.value,
     tab: persistedTab.value as ConversationTab,
-    unassignedOnly: persistedUnassignedFlag.value
+    unassignedOnly: persistedUnassignedFlag.value,
+    unread: persistedUnread.value,
+    conversationType: persistedUnattended.value ? 'unattended' : undefined
   })
+
+  // Marcadas-como-não-lidas é local ao navegador (igual WhatsApp Web).
+  // Hidrata do localStorage e mantém em sync via watch — sobrevive a reload
+  // mas não atravessa dispositivos.
+  const persistedManuallyUnread = useStorage<string[]>('conversations:manuallyUnread', [])
+  convs.setManuallyUnread(persistedManuallyUnread.value)
+  watch(() => convs.manuallyUnread, (v) => {
+    persistedManuallyUnread.value = [...v]
+  }, { deep: true })
 
   // Advanced filter state
   const showAdvancedFilter = ref(false)
@@ -111,12 +136,14 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
 
   const displayedList = computed(() => advancedQuery.value ? convs.list : convs.filteredList)
 
-  // Status bucket counters. ALL agrega os 4 buckets — não tem entrada
-  // dedicada no `convs.meta`, então somamos por dimensão (mine/unassigned/all)
-  // pra alimentar as tabs com o total real.
+  // Status bucket counters. Quando o filtro é "todos" (status === undefined),
+  // somamos os 4 buckets do meta — não há entrada dedicada no `convs.meta`.
+  const STATUS_BUCKET_KEY: Record<ConversationStatusFilter, keyof ConversationMeta> = {
+    OPEN: 'open', PENDING: 'pending', RESOLVED: 'resolved', SNOOZED: 'snoozed'
+  }
   const statusBucket = computed(() => {
-    const s = convs.filters.status ?? 'OPEN'
-    if (s === 'ALL') {
+    const s = convs.filters.status
+    if (!s) {
       const m = convs.meta
       return {
         all: m.open.all + m.pending.all + m.resolved.all + m.snoozed.all,
@@ -124,40 +151,99 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
         unassigned: m.open.unassigned + m.pending.unassigned + m.resolved.unassigned + m.snoozed.unassigned
       }
     }
-    const map: Record<Exclude<ConversationStatusFilter, 'ALL'>, keyof ConversationMeta> = {
-      OPEN: 'open', PENDING: 'pending', RESOLVED: 'resolved', SNOOZED: 'snoozed'
-    }
-    // Defensive: if `s` is somehow not a known status (stale localStorage,
-    // typo in callers, etc.) fall back to OPEN instead of returning undefined.
-    return convs.meta[map[s as Exclude<ConversationStatusFilter, 'ALL'>]] ?? convs.meta.open
+    return convs.meta[STATUS_BUCKET_KEY[s]]
   })
 
   function tabBadge(count: number) {
     return { label: String(count), color: 'neutral' as const, variant: 'subtle' as const, size: 'sm' as const }
   }
 
-  // Unread is derived locally from already-loaded conversations — backend has
-  // no `unread_count` filter, so the count reflects only the loaded page.
-  const unreadCount = computed(() => convs.list.filter(c => (c.unreadCount ?? 0) > 0).length)
+  // Quando alguma flag ortogonal client-side está ligada (unread, unattended)
+  // os contadores do meta são globais e não refletem o filtro — calculamos a
+  // contagem local a partir de `convs.list` simulando cada tab. Trade-off:
+  // a lista é paginada (100/página), então o número pode ser menor que o real
+  // se houver mais conversas na página seguinte. Aceitável: o badge bate com
+  // o que o usuário enxerga ao trocar de tab.
+  const useLocalTabCounts = computed(() =>
+    !!convs.filters.unread || convs.filters.conversationType === 'unattended'
+  )
 
-  const tabItems = computed(() => [
-    { label: t('conversations.sidebar.mine'), value: 'mine', badge: tabBadge(statusBucket.value.mine) },
-    { label: t('conversations.sidebar.unread'), value: 'unread', badge: tabBadge(unreadCount.value) },
-    { label: t('conversations.sidebar.all'), value: 'all', badge: tabBadge(statusBucket.value.all) }
+  const localTabCounts = computed(() => {
+    const myId = auth.user?.id ? String(auth.user.id) : null
+    const statusNum = convs.filters.status ? STATUS_MAP[convs.filters.status] : null
+    const wantUnread = !!convs.filters.unread
+    const wantUnattended = convs.filters.conversationType === 'unattended'
+    const sticky = convs.stickyUnreadId
+    const manualSet = new Set(convs.manuallyUnread)
+    const counts = { mine: 0, unassigned: 0, all: 0 }
+    for (const c of convs.list) {
+      if (statusNum !== null && c.status !== statusNum) continue
+      if (wantUnread && !((c.unreadCount ?? 0) > 0 || c.id === sticky || manualSet.has(c.id))) continue
+      if (wantUnattended && !(!c.firstReplyCreatedAt || !!c.waitingSince)) continue
+      counts.all++
+      if (myId && String(c.assigneeId) === myId) counts.mine++
+      if (!c.assigneeId) counts.unassigned++
+    }
+    return counts
+  })
+
+  // 3 tabs fixas cobrindo a dimensão de assignee (mine / sem agente / todas).
+  // Filtros ortogonais (unread, unattended) ficam num dropdown ao lado e
+  // empilham com qualquer tab via `flagFilterItems`.
+  const tabItems = computed(() => {
+    const c = useLocalTabCounts.value
+      ? localTabCounts.value
+      : { mine: statusBucket.value.mine, unassigned: statusBucket.value.unassigned, all: statusBucket.value.all }
+    return [
+      { label: t('conversations.sidebar.mine'), value: 'mine' as const, badge: tabBadge(c.mine) },
+      { label: t('conversations.sidebar.unassigned'), value: 'unassigned' as const, badge: tabBadge(c.unassigned) },
+      { label: t('conversations.sidebar.all'), value: 'all' as const, badge: tabBadge(c.all) }
+    ]
+  })
+
+  // Contador de flags ativos pra alimentar o badge `+N` no botão de filtros.
+  const statusFlagCount = computed(() => {
+    let n = 0
+    if (convs.filters.unread) n++
+    if (convs.filters.conversationType === 'unattended') n++
+    return n
+  })
+
+  // Dropdown de flags ortogonais — cada item é um toggle independente
+  // (`type: 'checkbox'`). Empilhar é permitido: "Não lidas" + "Não atendidas"
+  // intersecciona ambos.
+  const flagFilterItems = computed(() => [
+    {
+      label: t('conversations.sidebar.unread'),
+      icon: 'i-lucide-mail',
+      type: 'checkbox' as const,
+      checked: !!convs.filters.unread,
+      onSelect: () => toggleUnread()
+    },
+    {
+      label: t('conversations.sidebar.unattended'),
+      icon: 'i-lucide-clock-alert',
+      type: 'checkbox' as const,
+      checked: convs.filters.conversationType === 'unattended',
+      onSelect: () => toggleUnattended()
+    }
   ])
 
 
-  const statusItems = computed(() => [
-    { label: t('conversations.status.open'), value: 'OPEN' as const, icon: 'i-lucide-inbox' },
-    { label: t('conversations.status.pending'), value: 'PENDING' as const, icon: 'i-lucide-clock' },
-    { label: t('conversations.status.snoozed'), value: 'SNOOZED' as const, icon: 'i-lucide-bell-off' },
-    { label: t('conversations.status.resolved'), value: 'RESOLVED' as const, icon: 'i-lucide-check-circle-2' },
-    { label: t('conversations.status.all'), value: 'ALL' as const, icon: 'i-lucide-list' }
+  const statusItems = computed<{ label: string, value: StatusUiValue, icon: string }[]>(() => [
+    { label: t('conversations.status.open'), value: 'OPEN', icon: 'i-lucide-inbox' },
+    { label: t('conversations.status.pending'), value: 'PENDING', icon: 'i-lucide-clock' },
+    { label: t('conversations.status.snoozed'), value: 'SNOOZED', icon: 'i-lucide-bell-off' },
+    { label: t('conversations.status.resolved'), value: 'RESOLVED', icon: 'i-lucide-check-circle-2' },
+    { label: t('conversations.status.all'), value: ALL_STATUSES, icon: 'i-lucide-list' }
   ])
 
+  // `currentStatus` resolve o item visível no trigger a partir do estado
+  // canônico (`undefined` ⇒ ALL). Sem fallback pra `items[0]`: validStatus
+  // garante que o estado já está numa forma legítima.
   const currentStatus = computed(() => {
-    const items = statusItems.value
-    return items.find(s => s.value === convs.filters.status) ?? items[0]!
+    const target: StatusUiValue = convs.filters.status ?? ALL_STATUSES
+    return statusItems.value.find(s => s.value === target)!
   })
 
   const sortItems = computed(() => [
@@ -172,13 +258,15 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     return items.find(s => s.value === convs.filters.sortBy) ?? items[0]!
   })
 
-  function selectStatus(value: ConversationStatusFilter) {
+  function selectStatus(value: StatusUiValue) {
     persistedStatus.value = value
-    convs.setFilters({ status: value })
+    // Traduz o sentinel da UI ('ALL') pra ausência de filtro no store.
+    convs.setFilters({ status: value === ALL_STATUSES ? undefined : value })
   }
 
   function toggleUnattended() {
     const isOn = convs.filters.conversationType === 'unattended'
+    persistedUnattended.value = !isOn
     convs.setFilters({ conversationType: isOn ? undefined : 'unattended' })
   }
 
@@ -187,34 +275,21 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     convs.setFilters({ sortBy: value })
   }
 
-  // Two-group dropdown: Status (radio-style — single value) + flags
-  // (checkbox — orthogonal toggles). Lets the user combine "Status: Abertas"
-  // with "Não atendidas" without juggling separate controls.
-  const statusMenuItems = computed(() => [
+  // Status menu — single-select. O comportamento é radio-disfarçado-de-checkbox
+  // porque o Nuxt UI v4 ainda não expõe `type: 'radio'` no DropdownMenu; o item
+  // "Todas" funciona como o "limpar" implícito (clicar nele desliga o filtro
+  // de status). Flags ortogonais (Sem agente / Não atendidas) viraram botões
+  // próprios no StatusBar pra não confundir radio com toggle no mesmo menu.
+  const statusMenuItems = computed(() =>
     statusItems.value.map(item => ({
       label: item.label,
       icon: item.icon,
       type: 'checkbox' as const,
-      checked: convs.filters.status === item.value,
+      checked: (convs.filters.status ?? ALL_STATUSES) === item.value,
       onSelect: () => selectStatus(item.value)
-    })),
-    [
-      {
-        label: t('conversations.sidebar.unassigned'),
-        icon: 'i-lucide-user-x',
-        type: 'checkbox' as const,
-        checked: !!convs.filters.unassignedOnly,
-        onSelect: () => toggleUnassigned()
-      },
-      {
-        label: t('nav.unattended'),
-        icon: 'i-lucide-clock-alert',
-        type: 'checkbox' as const,
-        checked: convs.filters.conversationType === 'unattended',
-        onSelect: () => toggleUnattended()
-      }
-    ]
-  ])
+    }))
+  )
+
 
   const sortMenuItems = computed(() =>
     sortItems.value.map(item => ({
@@ -224,34 +299,31 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     }))
   )
 
-  // UI tabs are: mine / unread / all. The store still tracks `tab` separately
-  // (mine / unassigned / all — backend assignee_type) and the new `unread`
-  // flag layered on top. The "Sem agente" view moved to the dropdown flags
-  // group because it's orthogonal to read-state.
-  type UiTab = 'mine' | 'unread' | 'all'
+  // Tabs cobrem assignee_type (mine / unassigned / all). Trocar de tab só
+  // muda essa dimensão — as flags ortogonais (unread, unattended) sobrevivem.
+  type UiTab = 'mine' | 'unassigned' | 'all'
   const activeTab = computed<UiTab>({
     get: () => {
-      if (convs.filters.unread) return 'unread'
+      if (convs.filters.unassignedOnly) return 'unassigned'
       return convs.filters.tab === 'mine' ? 'mine' : 'all'
     },
     set: (v) => {
-      // Tab choices only mutate `tab` and `unread`. Flags (unassignedOnly,
-      // conversationType, etc.) are independent and survive tab switches.
-      if (v === 'unread') {
-        convs.setFilters({ unread: true, tab: 'all' })
+      if (v === 'unassigned') {
         persistedTab.value = 'all'
+        persistedUnassignedFlag.value = true
+        convs.setFilters({ tab: 'all', unassignedOnly: true })
         return
       }
-      const tab: ConversationTab = v
-      persistedTab.value = tab
-      convs.setFilters({ tab, unread: false })
+      persistedTab.value = v
+      persistedUnassignedFlag.value = false
+      convs.setFilters({ tab: v, unassignedOnly: false })
     }
   })
 
-  function toggleUnassigned() {
-    const next = !convs.filters.unassignedOnly
-    persistedUnassignedFlag.value = next
-    convs.setFilters({ unassignedOnly: next })
+  function toggleUnread() {
+    const next = !convs.filters.unread
+    persistedUnread.value = next
+    convs.setFilters({ unread: next })
   }
 
   return {
@@ -265,6 +337,8 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
     tabItems,
     activeTab,
     statusMenuItems,
+    flagFilterItems,
+    statusFlagCount,
     currentStatus,
     sortMenuItems,
     currentSort,

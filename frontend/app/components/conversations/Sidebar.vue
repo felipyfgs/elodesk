@@ -22,8 +22,10 @@ const contactIdentifier = computed(() => resolveContactIdentifier(props.conversa
 const contactAvatar = computed(() => resolveContactAvatar(props.conversation))
 
 const statusLabel = computed(() => {
-  const keys = ['open', 'resolved', 'pending', 'snoozed']
-  return t(`conversations.filters.${keys[props.conversation.status]}`)
+  // Index-based lookup espelha o enum do backend: 0=open, 1=resolved,
+  // 2=pending, 3=snoozed. Mantém o mapeamento sincronizado com STATUS_MAP.
+  const keys = ['open', 'resolved', 'pending', 'snoozed'] as const
+  return t(`conversations.status.${keys[props.conversation.status]}`)
 })
 
 const statusColor = computed(() => {

@@ -331,6 +331,10 @@ function toggleMenu(open: boolean) {
 .markdown-body p { margin: 0; }
 .markdown-body p + p { margin-top: 0.5rem; }
 .markdown-body ul, .markdown-body ol { margin: 0.25rem 0; padding-left: 1.5rem; }
+.markdown-body ul { list-style-type: disc; }
+.markdown-body ol { list-style-type: decimal; }
+.markdown-body li { margin: 0.125rem 0; }
+.markdown-body blockquote { margin: 0.25rem 0; padding-left: 0.75rem; border-left: 2px solid color-mix(in oklch, currentColor 30%, transparent); opacity: 0.85; }
 .markdown-body code { background: color-mix(in oklch, currentColor 10%, transparent); padding: 0 0.25rem; border-radius: 0.25rem; font-size: 0.85em; }
 .markdown-body pre { background: color-mix(in oklch, currentColor 10%, transparent); padding: 0.5rem; border-radius: 0.375rem; overflow-x: auto; }
 .markdown-body a { text-decoration: underline; }

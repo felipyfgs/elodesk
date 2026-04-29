@@ -44,20 +44,24 @@ export function useConversationRealtime(
 
   function applyConversationSummary(summary?: ConversationSummaryEvent) {
     if (!summary) return
-    const existing = convs.list.find(c => c.id === summary.id)
-    if (!existing) return
-    const merged: Conversation = {
-      ...existing,
+    // applyPatch atualiza a conversa onde quer que ela esteja (list e/ou
+    // current) sem inseri-la em listas filtradas que não a contêm. Antes,
+    // chamar `convs.upsert` aqui injetava a conversa no topo da lista mesmo
+    // quando o filtro não devia mostrá-la — quebrava a aba "Resolvidas" se
+    // chegasse uma mensagem nova na conversa Open aberta.
+    //
+    // O summary embutido em message.created/updated usa `omitempty` no backend
+    // para `assigneeId`/`teamId`, ou seja, ausência ≠ "nulo". Por isso só
+    // patcheamos campos efetivamente presentes — preserva o assignee/team
+    // atual se a mensagem não trouxe o dado.
+    const patch: Partial<Conversation> = {
       status: summary.status as Conversation['status'],
-      assigneeId: summary.assigneeId ?? existing.assigneeId,
-      teamId: summary.teamId ?? existing.teamId,
-      lastActivityAt: summary.lastActivityAt,
-      unreadCount: summary.unreadCount ?? existing.unreadCount
+      lastActivityAt: summary.lastActivityAt
     }
-    // selected derives from convs.list/current — upserting is enough to
-    // refresh the thread; writing to selected here would re-trigger the
-    // route push and is unnecessary.
-    convs.upsert(merged)
+    if (summary.assigneeId !== undefined) patch.assigneeId = summary.assigneeId
+    if (summary.teamId !== undefined) patch.teamId = summary.teamId
+    if (summary.unreadCount !== undefined) patch.unreadCount = summary.unreadCount
+    convs.applyPatch(String(summary.id), patch)
   }
 
   // Atualiza a prévia (lastNonActivityMessage) do card da lista quando uma

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import EmojiPicker from 'vue3-emoji-picker'
 import 'vue3-emoji-picker/css'
+import type { DropdownMenuItem } from '@nuxt/ui'
 
 interface EmojiPickerSelectEvent { i: string, n: string[], r: string, t: string, u: string }
 
@@ -10,14 +11,20 @@ type RichEditor = {
   focus: () => void
   toggleBold: () => void
   toggleItalic: () => void
+  toggleStrike: () => void
   toggleCode: () => void
   toggleBulletList: () => void
   toggleOrderedList: () => void
+  toggleBlockquote: () => void
   undo: () => void
   redo: () => void
   setLink: (href: string) => void
   isActive: (mark: string) => boolean
 }
+
+// Espelha o type AttachKind do Composer.vue — fonte autoritativa lá. Mantemos
+// um literal aqui pra evitar import circular do componente filho-pai.
+type AttachKind = 'all' | 'document' | 'media' | 'camera'
 
 const props = defineProps<{
   richEditor: RichEditor | null
@@ -26,11 +33,12 @@ const props = defineProps<{
   sending: boolean
   disabled: boolean
   cannedSearch: string
+  channelType?: string
 }>()
 
 const emit = defineEmits<{
   'submit': []
-  'attach': []
+  'attach': [kind: AttachKind]
   'record': []
   'update:expanded': [value: boolean]
   'cannedSelect': [content: string]
@@ -73,6 +81,47 @@ function promptLink() {
 function toggleExpanded() {
   emit('update:expanded', !props.expanded)
 }
+
+// Itens do menu de anexo. Estilo WhatsApp: agrupa "mídia universal" no topo
+// (cobre todo canal que aceita anexo) e poderá ganhar uma seção condicional
+// por canal no futuro (ex.: Contato/Enquete só em WhatsApp). Hoje só os
+// universais — evita itens disabled/coming-soon na UI.
+//
+// O `onSelect` emite o tipo pra cima; o pai (Composer) decide o accept e
+// dispara o file picker. Item "Áudio" abre o file picker de arquivos de áudio
+// existentes no computador — gravação ao vivo continua acessível pelo botão
+// `i-lucide-mic` separado fora do menu (paridade WhatsApp Web: clip = anexo
+// existente, microfone = grava agora).
+const attachItems = computed<DropdownMenuItem[][]>(() => {
+  const universal: DropdownMenuItem[] = [
+    {
+      label: t('conversations.compose.attachMenu.document'),
+      icon: 'i-lucide-file-text',
+      onSelect: () => emit('attach', 'document')
+    },
+    {
+      label: t('conversations.compose.attachMenu.media'),
+      icon: 'i-lucide-image',
+      onSelect: () => emit('attach', 'media')
+    },
+    {
+      label: t('conversations.compose.attachMenu.camera'),
+      icon: 'i-lucide-camera',
+      onSelect: () => emit('attach', 'camera')
+    },
+    {
+      label: t('conversations.compose.attachMenu.audio'),
+      icon: 'i-lucide-music',
+      onSelect: () => emit('attach', 'audio')
+    }
+  ]
+  return [universal]
+})
+
+// `channelType` ainda não é usado para itens condicionais — fica ancorado aqui
+// pra quando entrarem opções WhatsApp-only (Contato, Enquete). Suprimimos o
+// warning de unused enquanto a infra está pronta mas a UX final em discussão.
+void props.channelType
 </script>
 
 <template>
@@ -110,6 +159,16 @@ function toggleExpanded() {
                 size="xs"
                 :aria-label="t('conversations.compose.toolbar.italic')"
                 @click="richEditor?.toggleItalic()"
+              />
+            </UTooltip>
+            <UTooltip :text="t('conversations.compose.toolbar.strike')">
+              <UButton
+                icon="i-lucide-strikethrough"
+                color="neutral"
+                :variant="richEditor?.isActive('strike') ? 'soft' : 'ghost'"
+                size="xs"
+                :aria-label="t('conversations.compose.toolbar.strike')"
+                @click="richEditor?.toggleStrike()"
               />
             </UTooltip>
             <UTooltip :text="t('conversations.compose.toolbar.link')">
@@ -162,6 +221,16 @@ function toggleExpanded() {
                 @click="richEditor?.toggleOrderedList()"
               />
             </UTooltip>
+            <UTooltip :text="t('conversations.compose.toolbar.blockquote')">
+              <UButton
+                icon="i-lucide-quote"
+                color="neutral"
+                :variant="richEditor?.isActive('blockquote') ? 'soft' : 'ghost'"
+                size="xs"
+                :aria-label="t('conversations.compose.toolbar.blockquote')"
+                @click="richEditor?.toggleBlockquote()"
+              />
+            </UTooltip>
             <UTooltip :text="t('conversations.compose.toolbar.code')">
               <UButton
                 icon="i-lucide-code-2"
@@ -196,16 +265,17 @@ function toggleExpanded() {
           />
         </template>
       </UPopover>
-      <UTooltip :text="t('conversations.compose.attach')">
-        <UButton
-          icon="i-lucide-paperclip"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :aria-label="t('conversations.compose.attach')"
-          @click="emit('attach')"
-        />
-      </UTooltip>
+      <UDropdownMenu :items="attachItems" :content="{ align: 'center', side: 'top' }">
+        <UTooltip :text="t('conversations.compose.attach')">
+          <UButton
+            icon="i-lucide-paperclip"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :aria-label="t('conversations.compose.attach')"
+          />
+        </UTooltip>
+      </UDropdownMenu>
       <UTooltip :text="t('conversations.compose.voice')">
         <UButton
           icon="i-lucide-mic"

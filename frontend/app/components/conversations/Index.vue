@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useConversationsStore, type Conversation, type ConversationMeta, type ConversationStatus } from '~/stores/conversations'
+import { useConversationsStore, STATUS_CODE, type Conversation, type ConversationMeta, type ConversationStatus } from '~/stores/conversations'
 import { useAuthStore } from '~/stores/auth'
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useLabelsStore, type Label } from '~/stores/labels'
@@ -133,10 +133,10 @@ function isMetaScopeBackendSupported() {
 
 function computeLocalMeta(): ConversationMeta {
   const meta: ConversationMeta = {
-    open: { all: 0, mine: 0, unassigned: 0 },
-    pending: { all: 0, mine: 0, unassigned: 0 },
-    resolved: { all: 0, mine: 0, unassigned: 0 },
-    snoozed: { all: 0, mine: 0, unassigned: 0 }
+    open: { all: 0, mine: 0, unassigned: 0, unread: 0 },
+    pending: { all: 0, mine: 0, unassigned: 0, unread: 0 },
+    resolved: { all: 0, mine: 0, unassigned: 0, unread: 0 },
+    snoozed: { all: 0, mine: 0, unassigned: 0, unread: 0 }
   }
   let list: Conversation[] = convs.list
   const f = convs.filters
@@ -163,6 +163,7 @@ function computeLocalMeta(): ConversationMeta {
     bucket.all++
     if (!c.assigneeId) bucket.unassigned++
     else if (myId && String(c.assigneeId) === String(myId)) bucket.mine++
+    if ((c.unreadCount ?? 0) > 0) bucket.unread++
   }
   return meta
 }
@@ -190,7 +191,6 @@ async function loadMeta() {
   }
 }
 
-const STATUS_CODE: Record<string, string> = { OPEN: '0', RESOLVED: '1', PENDING: '2', SNOOZED: '3' }
 const ASSIGNEE_TYPE: Record<string, string> = { mine: 'mine', unassigned: 'unassigned', all: 'all' }
 
 async function load() {
@@ -211,20 +211,24 @@ async function load() {
       // Single inbox: pass to backend so the list comes pre-filtered.
       // Multi or no selection: pull all and let `filteredList` do client-side.
       if (convs.filters.inboxIds?.length === 1) params.inbox_id = convs.filters.inboxIds[0]!
-      // The "Sem agente" flag overrides the tab — when it's on we want only
-      // unassigned conversations regardless of which tab the user is viewing.
-      // (Mine + unassigned is contradictory and naturally yields empty.)
-      if (convs.filters.unassignedOnly) {
-        params.assignee_type = 'unassigned'
-      } else {
-        const assigneeType = ASSIGNEE_TYPE[convs.filters.tab]
-        if (assigneeType && assigneeType !== 'all') params.assignee_type = assigneeType
+      // Flags ortogonais (unread / unattended) agora são tratadas no backend
+      // (whereClause), então a filtragem real acontece no SQL. Mas mantemos o
+      // skip de `assignee_type` quando alguma está ligada: o `localTabCounts`
+      // calcula Minhas/Sem agente/Todas a partir de `convs.list`, e isso só
+      // funciona se a list não estiver pré-particionada por assignee.
+      // (Trade-off: mais dados quando flags estão ativas. Conversas ainda são
+      // filtradas pelo backend via `unread`/`conversation_type`.)
+      const hasOrthogonalFlag = !!convs.filters.unread || convs.filters.conversationType === 'unattended'
+      if (!hasOrthogonalFlag) {
+        if (convs.filters.unassignedOnly) {
+          params.assignee_type = 'unassigned'
+        } else {
+          const assigneeType = ASSIGNEE_TYPE[convs.filters.tab]
+          if (assigneeType && assigneeType !== 'all') params.assignee_type = assigneeType
+        }
       }
-      // `conversation_type` é dimensão separada no Chatwoot
-      // (ConversationFinder#filter_by_conversation_type). Passamos pra
-      // pré-filtrar no backend; o `filteredList` ainda faz client-side
-      // pra manter consistência quando a lista chegar via realtime.
       if (convs.filters.conversationType) params.conversation_type = convs.filters.conversationType
+      if (convs.filters.unread) params.unread = 'true'
       const res = await api<import('~/stores/conversations').ConversationListResponse>(
         `/accounts/${auth.account.id}/conversations?${new URLSearchParams(params).toString()}`
       )
@@ -288,7 +292,9 @@ const filtersBundle = computed(() => ({
   statusMenuItems: filters.statusMenuItems.value,
   currentStatus: filters.currentStatus.value,
   sortMenuItems: filters.sortMenuItems.value,
-  currentSort: filters.currentSort.value
+  currentSort: filters.currentSort.value,
+  flagFilterItems: filters.flagFilterItems.value,
+  statusFlagCount: filters.statusFlagCount.value
 }))
 </script>
 

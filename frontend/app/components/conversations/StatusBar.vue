@@ -108,15 +108,6 @@ const savedFilterItems = computed<DropdownMenuItem[]>(() => {
 const inboxBadge = computed(() => convs.filters.inboxIds?.length ?? 0)
 const labelBadge = computed(() => convs.filters.labelIds?.length ?? 0)
 const teamBadge = computed(() => convs.filters.teamIds?.length ?? 0)
-
-// Count of orthogonal flags layered on top of status. Today: unattended,
-// unassigned. Future ones (mentions/high-priority/etc) plug in here.
-const statusFlagCount = computed(() => {
-  let n = 0
-  if (convs.filters.conversationType === 'unattended') n++
-  if (convs.filters.unassignedOnly) n++
-  return n
-})
 </script>
 
 <template>
@@ -132,7 +123,6 @@ const statusFlagCount = computed(() => {
           :disabled="disabled"
         >
           <template #trailing>
-            <UBadge v-if="statusFlagCount" :label="`+${statusFlagCount}`" size="sm" color="primary" variant="subtle" />
             <UIcon name="i-lucide-chevrons-up-down" class="size-3.5 text-muted" />
           </template>
         </UButton>

@@ -68,11 +68,25 @@ export interface ConversationTeam {
 // Backend sends status as int: 0=Open, 1=Resolved, 2=Pending, 3=Snoozed
 export type ConversationStatus = 0 | 1 | 2 | 3
 
-export const STATUS_MAP: Record<string, ConversationStatus> = {
+// Filtros aceitos no estado: os 4 statuses do backend. "Todos" é representado
+// por `filters.status === undefined` — sem param na API, sem clausura
+// client-side. UI traduz isso pra um item visível ("Todas") no dropdown.
+export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED'
+
+export const STATUS_MAP: Record<ConversationStatusFilter, ConversationStatus> = {
   OPEN: 0,
   RESOLVED: 1,
   PENDING: 2,
   SNOOZED: 3
+}
+
+// String form usada pelo querystring da API (`status=0`). Derivado direto do
+// STATUS_MAP pra evitar drift — fonte única dessa tabela.
+export const STATUS_CODE: Record<ConversationStatusFilter, string> = {
+  OPEN: String(STATUS_MAP.OPEN),
+  PENDING: String(STATUS_MAP.PENDING),
+  RESOLVED: String(STATUS_MAP.RESOLVED),
+  SNOOZED: String(STATUS_MAP.SNOOZED)
 }
 
 export interface Conversation {
@@ -132,11 +146,6 @@ export type ConversationSort
     | 'created_desc'
     | 'created_asc'
 
-// `ALL` é uma virtualidade do frontend — quando selecionado, o filtro `status`
-// não vai pra API e o backend devolve conversas em qualquer status. Mantém a
-// fonte única no STATUS_MAP que mapeia direto pros enums numéricos do backend.
-export type ConversationStatusFilter = 'OPEN' | 'PENDING' | 'RESOLVED' | 'SNOOZED' | 'ALL'
-
 export interface ConversationFilters {
   tab: ConversationTab
   sortBy: ConversationSort
@@ -155,6 +164,10 @@ export interface ConversationMetaBucket {
   all: number
   mine: number
   unassigned: number
+  // Conversas com mensagens não-lidas dentro desse status. Backend computa
+  // global (não particiona por assignee — o badge "Não lidas" é sempre
+  // global, decisão de produto).
+  unread: number
 }
 
 // Legacy meta envelope returned by GET /conversations/meta — open/pending/resolved/snoozed
@@ -181,7 +194,7 @@ export interface ConversationListResponse {
   payload: Conversation[]
 }
 
-const EMPTY_BUCKET: ConversationMetaBucket = { all: 0, mine: 0, unassigned: 0 }
+const EMPTY_BUCKET: ConversationMetaBucket = { all: 0, mine: 0, unassigned: 0, unread: 0 }
 
 function emptyMeta(): ConversationMeta {
   return {
@@ -208,7 +221,17 @@ export const useConversationsStore = defineStore('conversations', {
     } as ConversationFilters,
     meta: emptyMeta() as ConversationMeta,
     listMeta: emptyListMeta() as ConversationListMeta,
-    selection: [] as string[]
+    selection: [] as string[],
+    // Conversa atualmente aberta cujo unreadCount foi zerado pela leitura.
+    // Mantém ela visível na aba "Não lidas" enquanto estiver selecionada —
+    // só sai da lista quando o agente troca de conversa ou fecha.
+    stickyUnreadId: null as string | null,
+    // IDs de conversas marcadas manualmente como "não lidas" pelo agente
+    // (right-click → Marcar como não lida). Espelha o comportamento do
+    // WhatsApp Web: é puramente local — não vai pro backend, não muda
+    // assignee_last_seen_at, não afeta read receipts. Persistido em
+    // localStorage por `useConversationFilters` na entrada da página.
+    manuallyUnread: [] as string[]
   }),
   getters: {
     filteredList(state): Conversation[] {
@@ -230,12 +253,11 @@ export const useConversationsStore = defineStore('conversations', {
         result = result.filter(c => !c.assigneeId)
       }
 
-      // Status filter — backend sends int, filters are string labels
+      // Status filter — backend sends int, filters are string labels.
+      // `undefined` significa "todos os status" e desliga esse passo.
       if (state.filters.status) {
         const statusNum = STATUS_MAP[state.filters.status]
-        if (statusNum !== undefined) {
-          result = result.filter(c => c.status === statusNum)
-        }
+        result = result.filter(c => c.status === statusNum)
       }
 
       // Inbox filter (multi-select)
@@ -270,9 +292,13 @@ export const useConversationsStore = defineStore('conversations', {
 
       // Unread — `unreadCount > 0`. Ortogonal: combina com qualquer status,
       // assignee tab, etc. Não vai pro backend (sem param dedicado), o filtro
-      // é só client-side em cima da página carregada.
+      // é só client-side em cima da página carregada. Também passam:
+      // - sticky (conversa aberta agora, recém-lida — não some enquanto aberta)
+      // - manuallyUnread (marcadas via right-click → Marcar como não lida)
       if (state.filters.unread) {
-        result = result.filter(c => (c.unreadCount ?? 0) > 0)
+        const sticky = state.stickyUnreadId
+        const manualSet = new Set(state.manuallyUnread)
+        result = result.filter(c => (c.unreadCount ?? 0) > 0 || c.id === sticky || manualSet.has(c.id))
       }
 
       return result
@@ -290,6 +316,66 @@ export const useConversationsStore = defineStore('conversations', {
     },
     setCurrent(conv: Conversation | null) {
       this.current = conv
+      // Ao trocar de conversa (ou fechar), libera a sticky-unread anterior
+      // para que ela saia da aba "Não lidas". Se reentrar na mesma conversa,
+      // o id continua sendo o mesmo e mantemos.
+      if (this.stickyUnreadId && conv?.id !== this.stickyUnreadId) {
+        this.stickyUnreadId = null
+      }
+    },
+    // Marca uma conversa como lida (estado local). Se ela tinha unread > 0,
+    // pina o id em `stickyUnreadId` para que continue visível na aba
+    // "Não lidas" enquanto estiver aberta. A chamada HTTP para persistir o
+    // last_seen é feita em ConversationsThread (best-effort).
+    markRead(id: string) {
+      // Abrir a conversa também limpa qualquer "marcada como não lida" manual,
+      // espelhando o WhatsApp Web — reentrar na conversa = lida de novo. Se
+      // havia marcação manual ou unread real, pina a sticky pra a conversa
+      // continuar visível na aba "Não lidas" enquanto estiver aberta.
+      const muIdx = this.manuallyUnread.indexOf(id)
+      const wasManual = muIdx >= 0
+      if (wasManual) this.manuallyUnread.splice(muIdx, 1)
+
+      const conv = this.list.find(c => c.id === id) ?? (this.current?.id === id ? this.current : null)
+      if (!conv) return
+      const hadRealUnread = (conv.unreadCount ?? 0) > 0
+      if (hadRealUnread || wasManual) {
+        this.stickyUnreadId = id
+      }
+      if (hadRealUnread) {
+        this.upsert({ ...conv, unreadCount: 0 })
+        // Decremento otimista do badge "Não lidas" — reconciliado pelo
+        // próximo loadMeta() (debounced). Sem isso, há flicker de ~200ms
+        // entre a leitura local e o refetch do backend.
+        this.bumpMetaUnread(conv.status, -1)
+      }
+    },
+    // Aplica delta otimista no contador de unread do meta (clamp em 0). Usado
+    // por markRead para decrementar imediatamente. Reconciliação fica por
+    // conta do próximo loadMeta() (chamado via invalidateMeta debounced ou
+    // ao trocar de filtro).
+    bumpMetaUnread(status: ConversationStatus, delta: number) {
+      const map: Record<ConversationStatus, keyof ConversationMeta> = {
+        0: 'open', 1: 'resolved', 2: 'pending', 3: 'snoozed'
+      }
+      const k = map[status]
+      const bucket = this.meta[k]
+      if (!bucket) return
+      bucket.unread = Math.max(0, bucket.unread + delta)
+    },
+    // Marca uma conversa como não lida manualmente — igual ao right-click do
+    // WhatsApp Web. Local-only: não muda assignee_last_seen_at, não afeta
+    // read receipts. A conversa volta a aparecer no filtro "Não lidas" e
+    // ganha o dot indicador na lista. Solta a sticky se for a mesma id pra
+    // a "marca manual" prevalecer mesmo se o agente reabrir o filtro.
+    markAsUnread(id: string) {
+      if (!this.manuallyUnread.includes(id)) {
+        this.manuallyUnread.push(id)
+      }
+      if (this.stickyUnreadId === id) this.stickyUnreadId = null
+    },
+    setManuallyUnread(ids: string[]) {
+      this.manuallyUnread = Array.isArray(ids) ? [...ids] : []
     },
     upsert(conv: Conversation) {
       const idx = this.list.findIndex(c => c.id === conv.id)
@@ -300,6 +386,19 @@ export const useConversationsStore = defineStore('conversations', {
       // returns the stale object after upsert, so child props don't update.
       if (this.current?.id === conv.id) this.current = conv
     },
+    // applyPatch só mescla campos numa conversa já carregada (em list e/ou
+    // current). Diferente de `upsert`, NÃO insere uma conversa nova — usado
+    // por handlers realtime que querem refletir mudanças sem injetar a
+    // conversa em filtros que não a contêm (ex.: usuário filtrando "Resolvidas"
+    // recebe message.created da conversa aberta `current` que está Open).
+    applyPatch(id: string, patch: Partial<Conversation>) {
+      const idStr = String(id)
+      const idx = this.list.findIndex(c => String(c.id) === idStr)
+      if (idx >= 0) this.list[idx] = { ...this.list[idx]!, ...patch }
+      if (this.current && String(this.current.id) === idStr) {
+        this.current = { ...this.current, ...patch }
+      }
+    },
     remove(id: string) {
       this.list = this.list.filter(c => c.id !== id)
       this.selection = this.selection.filter(sid => sid !== id)
@@ -307,12 +406,19 @@ export const useConversationsStore = defineStore('conversations', {
     },
     setFilters(filters: Partial<ConversationFilters>) {
       this.filters = { ...this.filters, ...filters }
+      // Trocar tab/status/inbox/label/etc é uma ação intencional do agente —
+      // a sticky-unread deixa de ser desejável (a conversa já foi lida e o
+      // filtro está sendo reaplicado). Solta o pin pra que a conversa saia
+      // da lista de não lidas se já não tem mais unreadCount.
+      this.stickyUnreadId = null
     },
     resetFilters() {
       this.filters = { tab: 'mine', sortBy: 'last_activity_desc', status: 'OPEN' }
+      this.stickyUnreadId = null
     },
     clearScopeFilters() {
       this.filters = { ...this.filters, inboxIds: undefined, labelIds: undefined, teamIds: undefined }
+      this.stickyUnreadId = null
     },
     setMeta(meta: ConversationMeta) {
       this.meta = meta

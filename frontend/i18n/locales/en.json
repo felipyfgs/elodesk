@@ -418,13 +418,6 @@
       "teams": "Teams",
       "clearFilters": "Clear filters"
     },
-    "filters": {
-      "all": "All",
-      "open": "Open",
-      "resolved": "Resolved",
-      "pending": "Pending",
-      "snoozed": "Snoozed"
-    },
     "status": {
       "label": "Status",
       "open": "Open",
@@ -434,6 +427,7 @@
       "all": "All"
     },
     "filtersMenu": "Filters & sorting",
+    "moreFilters": "More filters",
     "scope": {
       "clear": "Clear selection"
     },
@@ -466,10 +460,18 @@
       "voicePermissionDenied": "Microphone permission denied",
       "voiceUnavailable": "Microphone unavailable",
       "voiceUnsupported": "Browser does not support audio recording",
+      "audioPlay": "Play",
+      "audioPause": "Pause",
       "canned": "Canned response",
       "cannedEmpty": "No canned responses",
       "format": "Formatting",
       "linkPrompt": "Link URL",
+      "attachMenu": {
+        "document": "Document",
+        "media": "Photos and videos",
+        "camera": "Camera",
+        "audio": "Audio"
+      },
       "emojiGroups": {
         "smileysPeople": "Smileys & people",
         "animalsNature": "Animals & nature",
@@ -484,11 +486,13 @@
       "toolbar": {
         "bold": "Bold",
         "italic": "Italic",
+        "strike": "Strikethrough",
         "link": "Link",
         "undo": "Undo",
         "redo": "Redo",
         "list": "List",
         "orderedList": "Ordered list",
+        "blockquote": "Quote",
         "code": "Code"
       }
     },
@@ -508,6 +512,9 @@
       "openConversation": "Open conversation {id} with {name}",
       "selectConversation": "Select conversation {id}",
       "unreadCount": "{count} unread message(s)",
+      "markedUnread": "Marked as unread",
+      "markAsUnread": "Mark as unread",
+      "markAsRead": "Mark as read",
       "noPreview": "No message"
     },
     "detail": {

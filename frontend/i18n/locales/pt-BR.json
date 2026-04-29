@@ -414,13 +414,6 @@
       "teams": "Equipes",
       "clearFilters": "Limpar filtros"
     },
-    "filters": {
-      "all": "Todas",
-      "open": "Abertas",
-      "resolved": "Resolvidas",
-      "pending": "Pendentes",
-      "snoozed": "Adiadas"
-    },
     "status": {
       "label": "Status",
       "open": "Abertas",
@@ -430,6 +423,7 @@
       "all": "Todas"
     },
     "filtersMenu": "Filtros e ordenação",
+    "moreFilters": "Mais filtros",
     "scope": {
       "clear": "Limpar seleção"
     },
@@ -462,10 +456,18 @@
       "voicePermissionDenied": "Permissão de microfone negada",
       "voiceUnavailable": "Microfone indisponível",
       "voiceUnsupported": "Navegador não suporta gravação de áudio",
+      "audioPlay": "Reproduzir",
+      "audioPause": "Pausar",
       "canned": "Resposta pronta",
       "cannedEmpty": "Nenhuma resposta pronta",
       "format": "Formatação",
       "linkPrompt": "URL do link",
+      "attachMenu": {
+        "document": "Documento",
+        "media": "Fotos e vídeos",
+        "camera": "Câmera",
+        "audio": "Áudio"
+      },
       "emojiGroups": {
         "smileysPeople": "Pessoas e rostos",
         "animalsNature": "Animais e natureza",
@@ -480,11 +482,13 @@
       "toolbar": {
         "bold": "Negrito",
         "italic": "Itálico",
+        "strike": "Tachado",
         "link": "Link",
         "undo": "Desfazer",
         "redo": "Refazer",
         "list": "Lista",
         "orderedList": "Lista numerada",
+        "blockquote": "Citação",
         "code": "Código"
       }
     },
@@ -504,6 +508,9 @@
       "openConversation": "Abrir conversa {id} de {name}",
       "selectConversation": "Selecionar conversa {id}",
       "unreadCount": "{count} mensagem(ns) não lida(s)",
+      "markedUnread": "Marcada como não lida",
+      "markAsUnread": "Marcar como não lida",
+      "markAsRead": "Marcar como lida",
       "noPreview": "Sem mensagem"
     },
     "detail": {

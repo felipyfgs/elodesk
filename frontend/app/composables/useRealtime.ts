@@ -128,11 +128,13 @@ function getOrCreateSocket(token: string): SocketInstance {
       retries: 10,
       delay: 1000,
       onFailed() {
-        const state = useRealtimeState()
-        state.handlers.clear()
-        state.joined.accounts.clear()
-        state.joined.inboxes.clear()
-        state.joined.conversations.clear()
+        // CRITICAL: NÃO limpar `state.handlers` nem `state.joined` aqui.
+        // Componentes ainda montados (Thread, NotificationsSlideover, etc)
+        // dependem dos handlers e dos rooms registrados. Antes, esgotar os
+        // 10 retries deletava handlers de componentes vivos, deixando-os
+        // mudos até desmontagem manual. Agora liberamos só o socket — se
+        // o token voltar a valer, getOrCreateSocket reabre e rejoinAllRooms
+        // reaplica tudo automaticamente.
         socketInstance = null
         if (tokenRefreshTimer) {
           clearTimeout(tokenRefreshTimer)

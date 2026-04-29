@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { format, isToday, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import type { ContextMenuItem } from '@nuxt/ui'
 import type { Conversation } from '~/stores/conversations'
 import { useConversationsStore } from '~/stores/conversations'
+import { useMessagesStore } from '~/stores/messages'
 import { resolveContactName, resolveContactAvatar } from '~/utils/chatAdapter'
 import { useLabelsStore } from '~/stores/labels'
 
@@ -13,7 +15,16 @@ const props = defineProps<{
 const selected = defineModel<Conversation | null>()
 const { t } = useI18n()
 const convs = useConversationsStore()
+const messages = useMessagesStore()
 const labelsStore = useLabelsStore()
+
+// Prefetch on-hover: dispara o fetch de mensagens assim que o agente passa o
+// mouse na linha. Quando ele clica, a thread já encontra o bucket cacheado e
+// renderiza sem flash. Dedup + TTL ficam na store; aqui só conectamos o
+// gatilho. Espelha a estratégia do Linear/GitHub no list-detail pattern.
+function prefetchMessages(c: Conversation) {
+  messages.prefetch(c.id)
+}
 
 interface LabelChip { title: string, color: string }
 
@@ -52,8 +63,14 @@ function unreadCount(c: Conversation): number {
   return c.unreadCount ?? 0
 }
 
+function isManuallyUnread(c: Conversation): boolean {
+  return convs.manuallyUnread.includes(c.id)
+}
+
+// "Não lida" para fins visuais inclui marcação manual (right-click do agente),
+// mesmo que unreadCount === 0. Espelha o WhatsApp Web.
 function hasUnread(c: Conversation): boolean {
-  return unreadCount(c) > 0
+  return unreadCount(c) > 0 || isManuallyUnread(c)
 }
 
 function channelIcon(c: Conversation): string {
@@ -101,6 +118,30 @@ function rowAriaLabel(c: Conversation): string {
   return t('conversations.list.openConversation', { name: contactName(c), id: c.displayId })
 }
 
+// Right-click → "Marcar como não lida" / "Marcar como lida". Toggle baseado no
+// estado atual da marcação manual. Marcar como lida aqui só remove a marcação
+// manual — não chama o endpoint de update_last_seen porque marcações manuais
+// são local-only (igual WhatsApp Web).
+function rowMenuItems(c: Conversation): ContextMenuItem[][] {
+  const manual = isManuallyUnread(c)
+  return [[
+    manual
+      ? {
+          label: t('conversations.list.markAsRead'),
+          icon: 'i-lucide-mail-open',
+          onSelect: () => {
+            const idx = convs.manuallyUnread.indexOf(c.id)
+            if (idx >= 0) convs.manuallyUnread.splice(idx, 1)
+          }
+        }
+      : {
+          label: t('conversations.list.markAsUnread'),
+          icon: 'i-lucide-mail',
+          onSelect: () => convs.markAsUnread(c.id)
+        }
+  ]]
+}
+
 watch(selected, () => {
   if (!selected.value) return
   const ref = itemRefs.value[selected.value.id]
@@ -143,23 +184,25 @@ defineShortcuts({
       :key="c.id"
       :ref="(el) => { itemRefs[c.id] = el as Element | null }"
     >
-      <div
-        class="group relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-l-2 px-3 py-3 transition-colors outline-none"
-        :class="[
-          isActive(c)
-            ? 'border-primary bg-primary/10'
-            : 'border-bg hover:border-primary hover:bg-primary/5 focus-visible:border-primary focus-visible:bg-primary/5'
-        ]"
-        role="option"
-        tabindex="0"
-        :aria-selected="isActive(c)"
-        :aria-label="rowAriaLabel(c)"
-        @click="selectConversation(c)"
-        @keydown.enter.prevent="selectConversation(c)"
-        @keydown.space.prevent="selectConversation(c)"
-        @mouseenter="hoveredId = c.id"
-        @mouseleave="hoveredId = null"
-      >
+      <UContextMenu :items="rowMenuItems(c)">
+        <div
+          class="group relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-l-2 px-3 py-3 transition-colors outline-none"
+          :class="[
+            isActive(c)
+              ? 'border-primary bg-primary/10'
+              : 'border-bg hover:border-primary hover:bg-primary/5 focus-visible:border-primary focus-visible:bg-primary/5'
+          ]"
+          role="option"
+          tabindex="0"
+          :aria-selected="isActive(c)"
+          :aria-label="rowAriaLabel(c)"
+          @click="selectConversation(c)"
+          @keydown.enter.prevent="selectConversation(c)"
+          @keydown.space.prevent="selectConversation(c)"
+          @mouseenter="hoveredId = c.id; prefetchMessages(c)"
+          @mouseleave="hoveredId = null"
+          @focus="prefetchMessages(c)"
+        >
         <div class="relative size-8 shrink-0">
           <UAvatar
             :alt="contactName(c)"
@@ -211,12 +254,23 @@ defineShortcuts({
                 {{ timeLabel(c) }}
               </span>
               <span
-                v-if="hasUnread(c)"
+                v-if="unreadCount(c) > 0"
                 class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-inverted"
                 :aria-label="t('conversations.list.unreadCount', { count: unreadCount(c) })"
               >
                 {{ unreadCount(c) > 99 ? '99+' : unreadCount(c) }}
               </span>
+              <!--
+                Marcação manual via right-click ("Marcar como não lida") — sem
+                contagem real, mostra apenas um dot indicador (igual ao
+                comportamento do WhatsApp Web). Só aparece quando não há
+                unreadCount real, pra não duplicar com o badge numérico.
+              -->
+              <span
+                v-else-if="isManuallyUnread(c)"
+                class="size-2 rounded-full bg-primary"
+                :aria-label="t('conversations.list.markedUnread')"
+              />
             </div>
           </div>
 
@@ -254,7 +308,8 @@ defineShortcuts({
             </span>
           </div>
         </div>
-      </div>
+        </div>
+      </UContextMenu>
     </li>
   </ul>
 </template>

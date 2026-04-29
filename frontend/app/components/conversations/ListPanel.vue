@@ -14,10 +14,12 @@ interface FiltersBundle {
   advancedInitialQuery: FilterQueryPayload | null
   advancedInitialName: string
   tabItems: TabsItem[]
-  statusMenuItems: DropdownMenuItem[] | DropdownMenuItem[][]
+  statusMenuItems: DropdownMenuItem[]
   currentStatus: { label: string, icon: string }
   sortMenuItems: DropdownMenuItem[]
   currentSort: { icon: string }
+  flagFilterItems: DropdownMenuItem[]
+  statusFlagCount: number
 }
 
 const props = defineProps<{
@@ -114,14 +116,38 @@ const panelTitle = computed(() => {
       @delete-saved-filter="(id) => emit('deleteSavedFilter', id)"
     />
 
-    <div class="border-b border-default px-2 py-1">
+    <!--
+      Linha de tabs (mine / sem agente / todas) + dropdown ao lado com flags
+      ortogonais (Não lidas, Não atendidas) como toggles independentes que
+      empilham em cima de qualquer tab.
+    -->
+    <div class="flex items-center gap-1 border-b border-default px-2 py-1">
       <UTabs
         v-model="activeTab"
         :items="f.tabItems"
         :content="false"
         size="xs"
-        class="w-full"
+        class="flex-1 min-w-0"
       />
+      <UDropdownMenu :items="f.flagFilterItems" :content="{ align: 'end' }">
+        <UTooltip :text="t('conversations.moreFilters')">
+          <UButton
+            icon="i-lucide-filter"
+            :aria-label="t('conversations.moreFilters')"
+            :color="f.statusFlagCount ? 'primary' : 'neutral'"
+            :variant="f.statusFlagCount ? 'soft' : 'ghost'"
+            size="xs"
+          >
+            <UBadge
+              v-if="f.statusFlagCount"
+              :label="String(f.statusFlagCount)"
+              size="sm"
+              color="primary"
+              variant="subtle"
+            />
+          </UButton>
+        </UTooltip>
+      </UDropdownMenu>
     </div>
 
     <ConversationsToolbar :total="displayedList.length" />

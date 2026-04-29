@@ -46,23 +46,15 @@ provide(forwardSelectedIdsKey, selectedMessageIds)
 
 const list = computed<Message[]>(() => messages.byConversation[props.conversation.id] ?? [])
 
-async function loadMessages() {
-  if (!auth.account?.id) return
-  const res = await api<{ payload: Message[] }>(`/accounts/${auth.account.id}/conversations/${props.conversation.id}/messages`)
-  if (res.payload) {
-    messages.set(props.conversation.id, [...res.payload].reverse())
-  }
-}
-
 // Marca a conversa como lida assim que o agente abre. Optimistic: zera o
-// unreadCount localmente e chama o endpoint que atualiza assignee_last_seen_at
-// e dispara conversation.updated para todos os clientes. Best-effort: erros
-// de rede são silenciados — o badge volta na próxima hidratação.
+// unreadCount localmente (e pina o id em stickyUnreadId pra ela não sumir
+// da aba "Não lidas" enquanto ainda estiver aberta) e chama o endpoint que
+// atualiza assignee_last_seen_at e dispara conversation.updated para todos
+// os clientes. Best-effort: erros de rede são silenciados — o badge volta
+// na próxima hidratação.
 async function markRead(convId: string) {
   if (!auth.account?.id) return
-  if ((props.conversation.unreadCount ?? 0) > 0) {
-    conversations.upsert({ ...props.conversation, unreadCount: 0 })
-  }
+  conversations.markRead(convId)
   try {
     await api(`/accounts/${auth.account.id}/conversations/${convId}/update_last_seen`, { method: 'POST' })
   } catch {
@@ -71,7 +63,10 @@ async function markRead(convId: string) {
 }
 
 watch(() => props.conversation.id, async (id) => {
-  await loadMessages()
+  // fetchMessages dedupa contra o hover-prefetch da List: se o bucket já
+  // foi populado durante o hover, o click só dispara o markRead e a UI
+  // mostra na hora.
+  await messages.fetchMessages(id)
   if (id) markRead(id)
 }, { immediate: true })
 

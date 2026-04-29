@@ -7,14 +7,14 @@ export default defineNuxtRouteMiddleware((to) => {
   const convs = useConversationsStore()
   const path = to.path
 
-  // `conversationType` é dimensão separada (não atendidas) — limpa por
-  // padrão e ativa só na rota /unattended. Sem isso, voltar pra outra rota
-  // mantinha o filtro silenciosamente aplicado.
+  // `conversationType` (Não atendidas) virou preferência persistida em
+  // localStorage — ele NÃO é resetado na navegação geral. O deep-link
+  // /conversations/unattended ainda pode ligar ele explicitamente abaixo,
+  // mas trocar de rota não desliga.
   const clearScope = {
     inboxIds: undefined,
     labelIds: undefined,
-    teamIds: undefined,
-    conversationType: undefined
+    teamIds: undefined
   }
 
   if (path.includes('/conversations/inbox/')) {

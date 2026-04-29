@@ -3,6 +3,7 @@ import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import { Markdown } from 'tiptap-markdown'
+import { ItalicUnderscore, BlockquoteExt } from '~/utils/tiptapExtensions'
 
 const props = defineProps<{
   modelValue: string
@@ -14,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'submit': []
+  'file': [file: File]
 }>()
 
 const editor = shallowRef<Editor | null>(null)
@@ -28,7 +30,12 @@ onMounted(() => {
     content: props.modelValue,
     editable: !props.disabled,
     extensions: [
-      StarterKit.configure({ heading: false, horizontalRule: false, blockquote: false, link: false }),
+      // Desabilitamos o italic/blockquote do StarterKit pra usar nossas
+      // versões custom: italic com `_X_` (compatível com WA) e blockquote
+      // habilitado.
+      StarterKit.configure({ heading: false, horizontalRule: false, blockquote: false, italic: false, link: false }),
+      ItalicUnderscore,
+      BlockquoteExt,
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
       Markdown.configure({ transformPastedText: true, transformCopiedText: true, breaks: true })
     ],
@@ -43,6 +50,27 @@ onMounted(() => {
           return true
         }
         return false
+      },
+      // Paste de arquivos (imagem, áudio, doc): igual ao WhatsApp Web — em
+      // vez de colar como texto, dispara o upload. Texto puro continua
+      // sendo colado normalmente porque o handler só intercepta quando há
+      // arquivo no clipboard.
+      handlePaste(_view, event: ClipboardEvent) {
+        const files = Array.from(event.clipboardData?.files ?? [])
+        if (files.length === 0) return false
+        event.preventDefault()
+        for (const file of files) emit('file', file)
+        return true
+      },
+      // Drag-and-drop pra dentro do editor faz o mesmo. Sem o
+      // `event.preventDefault()` o navegador abriria o arquivo numa nova
+      // aba.
+      handleDrop(_view, event: DragEvent) {
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length === 0) return false
+        event.preventDefault()
+        for (const file of files) emit('file', file)
+        return true
       }
     },
     onUpdate({ editor: ed }) {
@@ -97,6 +125,9 @@ function toggleBold() {
 function toggleItalic() {
   editor.value?.chain().focus().toggleItalic().run()
 }
+function toggleStrike() {
+  editor.value?.chain().focus().toggleStrike().run()
+}
 function toggleCode() {
   editor.value?.chain().focus().toggleCode().run()
 }
@@ -105,6 +136,9 @@ function toggleBulletList() {
 }
 function toggleOrderedList() {
   editor.value?.chain().focus().toggleOrderedList().run()
+}
+function toggleBlockquote() {
+  editor.value?.chain().focus().toggleBlockquote().run()
 }
 function undo() {
   editor.value?.chain().focus().undo().run()
@@ -135,9 +169,11 @@ defineExpose({
   focus,
   toggleBold,
   toggleItalic,
+  toggleStrike,
   toggleCode,
   toggleBulletList,
   toggleOrderedList,
+  toggleBlockquote,
   undo,
   redo,
   setLink,
@@ -182,10 +218,38 @@ defineExpose({
   margin: 0.25rem 0;
   padding-left: 1.5rem;
 }
+.ProseMirror ul { list-style-type: disc; }
+.ProseMirror ol { list-style-type: decimal; }
+.ProseMirror li { margin: 0.125rem 0; }
+.ProseMirror li > p { display: inline; }
+.ProseMirror strong { font-weight: 700; }
+.ProseMirror em { font-style: italic; }
+.ProseMirror s { text-decoration: line-through; }
 .ProseMirror code {
   background: var(--ui-bg-elevated);
   padding: 0 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.85em;
+}
+.ProseMirror blockquote {
+  margin: 0.25rem 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid color-mix(in oklch, currentColor 30%, transparent);
+  opacity: 0.85;
+}
+.ProseMirror blockquote p { margin: 0; }
+.ProseMirror pre {
+  background: var(--ui-bg-elevated);
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+.ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+}
+.ProseMirror a {
+  color: var(--ui-primary);
+  text-decoration: underline;
 }
 </style>
