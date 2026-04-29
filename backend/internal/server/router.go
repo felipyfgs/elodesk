@@ -157,7 +157,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	conversationSvc.SetRealtimeNotifier(realtimeSvc)
 	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub, accountRepo, inboxRepo, conversationRepo)
 
-	notificationSvc := service.NewNotificationService(notificationRepo, hub)
+	notificationSvc := service.NewNotificationService(notificationRepo, realtimeSvc)
 	notificationsHandler := handler.NewNotificationHandler(notificationSvc)
 	conversationSvc.SetNotifications(notificationSvc)
 

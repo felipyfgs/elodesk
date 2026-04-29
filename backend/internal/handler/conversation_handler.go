@@ -254,6 +254,18 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		filter.Query = q
 	}
 
+	// `conversation_type=unattended` ativa o scope homônimo do Chatwoot
+	// (cliente esperando resposta). Outros valores ainda não são tratados.
+	if convType := c.Query("conversation_type"); convType != "" {
+		filter.ConversationType = convType
+	}
+
+	// `unread=true` (ou "1") restringe a conversas com mensagens incoming
+	// não vistas pelo agente desde o último assignee_last_seen_at.
+	if unreadStr := c.Query("unread"); unreadStr == "true" || unreadStr == "1" {
+		filter.Unread = true
+	}
+
 	filter.AssigneeType = parseAssigneeType(c.Query("assignee_type"))
 
 	// assignee_type takes precedence; assignee_id is only honored when no

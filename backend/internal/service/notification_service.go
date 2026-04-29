@@ -5,21 +5,26 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"backend/internal/logger"
 	"backend/internal/model"
-	"backend/internal/realtime"
 	"backend/internal/repo"
 )
 
 // NotificationService persists per-user notifications and broadcasts them on
 // the user's realtime room so UI slideovers/badges update instantly.
+//
+// Eventos emitidos (todos via RealtimeService.BroadcastUserEvent — mesma forma
+// `{type, payload}` dos demais broadcasts):
+//
+//   - notification.new      → payload completo da notificação persistida
+//   - notification.read     → {id}
+//   - notification.read_all → {}
 type NotificationService struct {
 	repo *repo.NotificationRepo
-	hub  *realtime.Hub
+	rt   *RealtimeService
 }
 
-func NewNotificationService(repo *repo.NotificationRepo, hub *realtime.Hub) *NotificationService {
-	return &NotificationService{repo: repo, hub: hub}
+func NewNotificationService(repo *repo.NotificationRepo, rt *RealtimeService) *NotificationService {
+	return &NotificationService{repo: repo, rt: rt}
 }
 
 // Create persists a notification and publishes a realtime `notification.new`
@@ -39,24 +44,15 @@ func (s *NotificationService) Create(ctx context.Context, accountID, userID int6
 	if err := s.repo.Create(ctx, n); err != nil {
 		return err
 	}
-	if s.hub != nil {
-		event := map[string]any{
-			"type": "notification.new",
-			"payload": map[string]any{
-				"id":        n.ID,
-				"accountId": n.AccountID,
-				"userId":    n.UserID,
-				"type":      n.Type,
-				"payload":   json.RawMessage(data),
-				"createdAt": n.CreatedAt,
-			},
-		}
-		encoded, err := json.Marshal(event)
-		if err == nil {
-			s.hub.Broadcast(realtime.UserRoom(accountID, userID), encoded)
-		} else {
-			logger.Warn().Str("component", "notifications").Err(err).Msg("failed to marshal notification event")
-		}
+	if s.rt != nil {
+		s.rt.BroadcastUserEvent(accountID, userID, "notification.new", map[string]any{
+			"id":        n.ID,
+			"accountId": n.AccountID,
+			"userId":    n.UserID,
+			"type":      n.Type,
+			"payload":   json.RawMessage(data),
+			"createdAt": n.CreatedAt,
+		})
 	}
 	return nil
 }
@@ -73,14 +69,8 @@ func (s *NotificationService) MarkRead(ctx context.Context, id, accountID, userI
 	if err := s.repo.MarkRead(ctx, id, accountID, userID); err != nil {
 		return err
 	}
-	if s.hub != nil {
-		event := map[string]any{
-			"type":    "notification.read",
-			"payload": map[string]any{"id": id},
-		}
-		if data, err := json.Marshal(event); err == nil {
-			s.hub.Broadcast(realtime.UserRoom(accountID, userID), data)
-		}
+	if s.rt != nil {
+		s.rt.BroadcastUserEvent(accountID, userID, "notification.read", map[string]any{"id": id})
 	}
 	return nil
 }
@@ -89,14 +79,8 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, accountID, userID
 	if err := s.repo.MarkAllRead(ctx, accountID, userID); err != nil {
 		return err
 	}
-	if s.hub != nil {
-		event := map[string]any{
-			"type":    "notification.read_all",
-			"payload": map[string]any{},
-		}
-		if data, err := json.Marshal(event); err == nil {
-			s.hub.Broadcast(realtime.UserRoom(accountID, userID), data)
-		}
+	if s.rt != nil {
+		s.rt.BroadcastUserEvent(accountID, userID, "notification.read_all", map[string]any{})
 	}
 	return nil
 }

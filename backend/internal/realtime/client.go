@@ -24,6 +24,11 @@ type clientMessage struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
+// pongMessage is the canned reply to a client `ping` text frame. Pre-marshalled
+// to avoid per-ping allocation; the payload is intentionally empty since the
+// client only needs to see *any* response to keep its heartbeat alive.
+var pongMessage = []byte(`{"type":"pong"}`)
+
 type joinPayload struct {
 	ID int64 `json:"id"`
 }
@@ -104,6 +109,13 @@ func (c *Client) WritePump() {
 // membership via the checker before admitting the client to the room: a user
 // can only join rooms belonging to an account they are a member of.
 // Cross-tenant join attempts are dropped silently (do not leak room existence).
+//
+// `leave.*` are membership-free: a client can always remove itself from a room
+// it is currently in. Unknown/foreign rooms are no-ops.
+//
+// `ping` is the application-level keepalive sent by clients (vueuse useWebSocket
+// heartbeat). The hub answers with `pong` so the heartbeat watchdog sees a
+// response on idle conversations — without this, idle sockets die every 30 s.
 func (c *Client) handleMessage(cm clientMessage) {
 	switch cm.Type {
 	case "join.account":
@@ -148,10 +160,45 @@ func (c *Client) handleMessage(cm clientMessage) {
 		}
 		c.hub.JoinRoom(c, ConversationRoom(p.ID))
 
+	case "leave.account":
+		var p joinPayload
+		if err := json.Unmarshal(cm.Payload, &p); err != nil {
+			return
+		}
+		c.hub.LeaveRoom(c, AccountRoom(p.ID))
+		c.hub.LeaveRoom(c, UserRoom(p.ID, c.userID))
+
+	case "leave.inbox":
+		var p joinPayload
+		if err := json.Unmarshal(cm.Payload, &p); err != nil {
+			return
+		}
+		c.hub.LeaveRoom(c, InboxRoom(p.ID))
+
+	case "leave.conversation":
+		var p joinPayload
+		if err := json.Unmarshal(cm.Payload, &p); err != nil {
+			return
+		}
+		c.hub.LeaveRoom(c, ConversationRoom(p.ID))
+
+	case "ping":
+		c.enqueue(pongMessage)
+
 	case "event":
 		return
 
 	default:
 		logger.Debug().Str("component", "realtime").Int64("userId", c.userID).Str("type", cm.Type).Msg("unknown message type")
+	}
+}
+
+// enqueue is a non-blocking send to the writer pump. If the buffer is full the
+// client is too slow to keep up — let the hub drop it on the next broadcast
+// (same backpressure path) instead of stalling the read loop here.
+func (c *Client) enqueue(msg []byte) {
+	select {
+	case c.send <- msg:
+	default:
 	}
 }

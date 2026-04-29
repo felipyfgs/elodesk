@@ -133,8 +133,16 @@ type ConversationFilter struct {
 	Labels       []string
 	SortBy       ConversationSortKey
 	ContactID    *int64
-	Page         int
-	PerPage      int
+	// Unread, quando true, restringe a conversas com pelo menos uma mensagem
+	// incoming (message_type=0) posterior ao assignee_last_seen_at — espelha
+	// a definição de "não lida" usada na UI.
+	Unread bool
+	// ConversationType implementa o filtro `unattended` do Chatwoot:
+	// first_reply_created_at IS NULL OU waiting_since IS NOT NULL.
+	// Hoje só "unattended" é tratado; "mention"/"participating" ficam reservados.
+	ConversationType string
+	Page             int
+	PerPage          int
 }
 
 // whereClause builds the WHERE suffix common to listing and counting queries.
@@ -178,11 +186,35 @@ func (f ConversationFilter) whereClause() (string, []any) {
 		if f.CurrentUser != nil {
 			clause += fmt.Sprintf(" AND assignee_id = $%d", argN)
 			args = append(args, *f.CurrentUser)
+			argN++
 		} else {
 			clause += " AND 1 = 0"
 		}
 	case ConversationAssigneeTypeUnassigned:
 		clause += " AND assignee_id IS NULL"
+	}
+
+	// `unattended`: cliente esperando resposta. Como a tabela `conversations`
+	// não tem as colunas `first_reply_created_at`/`waiting_since` (Chatwoot
+	// tem; o nosso schema não migrou), derivamos do histórico de mensagens:
+	// a conversa está não-atendida quando a mensagem mais recente é incoming
+	// (message_type=0) — ou seja, ninguém respondeu desde a última fala do
+	// cliente. Conversas sem mensagens não entram (LIMIT 1 retorna NULL).
+	if f.ConversationType == "unattended" {
+		clause += " AND (SELECT m.message_type FROM messages m" +
+			" WHERE m.conversation_id = conversations.id" +
+			" ORDER BY m.created_at DESC LIMIT 1) = 0"
+	}
+
+	// `unread`: pelo menos uma mensagem incoming (message_type=0) ainda não
+	// vista pelo agente atribuído. Usa EXISTS pra encerrar a varredura na
+	// primeira mensagem candidata. Conversas sem assignee_last_seen_at também
+	// contam como não-lidas se houver qualquer mensagem incoming.
+	if f.Unread {
+		clause += " AND EXISTS (SELECT 1 FROM messages m" +
+			" WHERE m.conversation_id = conversations.id" +
+			" AND m.message_type = 0" +
+			" AND (conversations.assignee_last_seen_at IS NULL OR m.created_at > conversations.assignee_last_seen_at))"
 	}
 
 	return clause, args
@@ -271,7 +303,10 @@ func (r *ConversationRepo) ListByAccount(ctx context.Context, f ConversationFilt
 }
 
 // ConversationMetaCounts holds conversation counts broken down by status and
-// assignee dimension. Keys inside each status are "all", "mine", "unassigned".
+// assignee dimension. Keys inside each status are "all", "mine", "unassigned",
+// "unread". O bucket "unread" conta conversas com pelo menos 1 mensagem
+// incoming pós-assignee_last_seen_at — global, sem particionar por assignee
+// (decisão de produto: badge "Não lidas" do frontend é sempre global).
 type ConversationMetaCounts struct {
 	Open     map[string]int `json:"open"`
 	Pending  map[string]int `json:"pending"`
@@ -281,26 +316,41 @@ type ConversationMetaCounts struct {
 
 // CountByStatusAndAssignee aggregates conversation counts for every
 // (status × assignee_type) combination in a single query. Used to feed the
-// conversation list tabs with live counters.
+// conversation list tabs with live counters. CTE `unread_convs` pré-computa
+// uma vez os ids de conversas com unread > 0 (em vez de subquery aninhada
+// por linha) e o LEFT JOIN materializa o flag pra cada conversa. Mantém o
+// custo em uma única passada na tabela de mensagens.
 func (r *ConversationRepo) CountByStatusAndAssignee(ctx context.Context, accountID, currentUserID int64, inboxID *int64) (ConversationMetaCounts, error) {
-	query := `SELECT status,
-		COUNT(*) AS total,
-		COUNT(*) FILTER (WHERE assignee_id = $2) AS mine,
-		COUNT(*) FILTER (WHERE assignee_id IS NULL) AS unassigned
-		FROM conversations
-		WHERE account_id = $1`
+	inboxClause := ""
 	args := []any{accountID, currentUserID}
 	if inboxID != nil {
-		query += " AND inbox_id = $3"
+		inboxClause = " AND cv.inbox_id = $3"
 		args = append(args, *inboxID)
 	}
-	query += " GROUP BY status"
+
+	query := `WITH unread_convs AS (
+		SELECT DISTINCT cv.id
+		  FROM conversations cv
+		  JOIN messages m ON m.conversation_id = cv.id
+		 WHERE cv.account_id = $1
+		   AND m.message_type = 0
+		   AND (cv.assignee_last_seen_at IS NULL OR m.created_at > cv.assignee_last_seen_at)` + inboxClause + `
+	)
+	SELECT cv.status,
+		COUNT(*) AS total,
+		COUNT(*) FILTER (WHERE cv.assignee_id = $2) AS mine,
+		COUNT(*) FILTER (WHERE cv.assignee_id IS NULL) AS unassigned,
+		COUNT(*) FILTER (WHERE u.id IS NOT NULL) AS unread_all
+		FROM conversations cv
+		LEFT JOIN unread_convs u ON u.id = cv.id
+		WHERE cv.account_id = $1` + inboxClause + `
+		GROUP BY cv.status`
 
 	out := ConversationMetaCounts{
-		Open:     map[string]int{"all": 0, "mine": 0, "unassigned": 0},
-		Pending:  map[string]int{"all": 0, "mine": 0, "unassigned": 0},
-		Resolved: map[string]int{"all": 0, "mine": 0, "unassigned": 0},
-		Snoozed:  map[string]int{"all": 0, "mine": 0, "unassigned": 0},
+		Open:     map[string]int{"all": 0, "mine": 0, "unassigned": 0, "unread": 0},
+		Pending:  map[string]int{"all": 0, "mine": 0, "unassigned": 0, "unread": 0},
+		Resolved: map[string]int{"all": 0, "mine": 0, "unassigned": 0, "unread": 0},
+		Snoozed:  map[string]int{"all": 0, "mine": 0, "unassigned": 0, "unread": 0},
 	}
 
 	rows, err := r.pool.Query(ctx, query, args...)
@@ -311,11 +361,11 @@ func (r *ConversationRepo) CountByStatusAndAssignee(ctx context.Context, account
 
 	for rows.Next() {
 		var status model.ConversationStatus
-		var all, mine, unassigned int
-		if err := rows.Scan(&status, &all, &mine, &unassigned); err != nil {
+		var all, mine, unassigned, unread int
+		if err := rows.Scan(&status, &all, &mine, &unassigned, &unread); err != nil {
 			return out, fmt.Errorf("failed to scan conversation meta: %w", err)
 		}
-		bucket := map[string]int{"all": all, "mine": mine, "unassigned": unassigned}
+		bucket := map[string]int{"all": all, "mine": mine, "unassigned": unassigned, "unread": unread}
 		switch status {
 		case model.ConversationOpen:
 			out.Open = bucket

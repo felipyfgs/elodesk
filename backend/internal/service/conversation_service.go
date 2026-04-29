@@ -136,9 +136,12 @@ func (s *ConversationService) Delete(ctx context.Context, id, accountID int64) e
 		return err
 	}
 	if s.realtime != nil {
+		// Mantém camelCase como o resto dos eventos realtime — outros payloads
+		// passam por dto.* (que já é camelCase via tags). Aqui é construído à
+		// mão pra evitar refetch da conversa já apagada.
 		payload := map[string]any{
-			"id":       convo.ID,
-			"inbox_id": convo.InboxID,
+			"id":      convo.ID,
+			"inboxId": convo.InboxID,
 		}
 		s.realtime.Broadcast(convo.ID, accountID, realtime.EventConversationDeleted, payload)
 	}

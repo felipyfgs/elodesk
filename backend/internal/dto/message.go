@@ -224,6 +224,17 @@ func MessageToEventResp(m *model.Message, conv *ConversationSummaryEventDTO) Mes
 	return resp
 }
 
+// MessageToEventRespWithSender mirrors MessageToEventResp but also embeds the
+// hydrated polymorphic sender. This is the shape clients expect for realtime
+// `message.created` / `message.updated` so the chat bubble and the list
+// preview render the right avatar/name without an extra fetch.
+func MessageToEventRespWithSender(m *model.Message, conv *ConversationSummaryEventDTO, sender *MessageSenderResp) MessageResp {
+	resp := MessageToResp(m)
+	resp.Conversation = conv
+	resp.Sender = sender
+	return resp
+}
+
 // extractEchoID pulls the `echo_id` key out of a serialized content_attributes
 // blob. Returns nil when absent or unparseable; the blob is opaque JSON so
 // best-effort decoding is acceptable here.

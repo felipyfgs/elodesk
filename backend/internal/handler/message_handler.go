@@ -559,11 +559,21 @@ func buildAttachments(reqs []dto.CreateAttachmentReq) []model.Attachment {
 		fileKey := r.FileKey
 		att := model.Attachment{
 			FileKey:  &fileKey,
-			FileType: service.FileTypeFromMime(r.FileType),
+			FileType: service.FileTypeFromMimeOrName(r.FileType, r.FileName),
 		}
 		if r.FileName != "" {
 			fileName := r.FileName
 			att.FileName = &fileName
+		}
+		// Deriva extensão do filename quando ausente — o caminho JSON não
+		// preenchia, fazendo o frontend cair em previews genéricos.
+		if r.FileName != "" {
+			if i := strings.LastIndex(r.FileName, "."); i >= 0 && i < len(r.FileName)-1 {
+				ext := strings.ToLower(r.FileName[i+1:])
+				if ext != "" {
+					att.Extension = &ext
+				}
+			}
 		}
 		out = append(out, att)
 	}

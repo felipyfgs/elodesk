@@ -394,6 +394,41 @@ func FileTypeFromMime(mime string) model.AttachmentFileType {
 	return fileTypeFromMime(mime)
 }
 
+// extToFileType cobre o caso em que o cliente entrega mime genérico
+// (`application/ogg`, `application/octet-stream`, vazio) — comum quando o
+// browser anexa um arquivo cujo OS não tem associação de mime registrada.
+// A extensão do filename é a fonte secundária.
+var extToFileType = map[string]model.AttachmentFileType{
+	"ogg": model.FileTypeAudio, "oga": model.FileTypeAudio, "opus": model.FileTypeAudio,
+	"mp3": model.FileTypeAudio, "m4a": model.FileTypeAudio, "aac": model.FileTypeAudio,
+	"wav": model.FileTypeAudio, "flac": model.FileTypeAudio, "amr": model.FileTypeAudio,
+	"mp4": model.FileTypeVideo, "mov": model.FileTypeVideo, "webm": model.FileTypeVideo,
+	"3gp": model.FileTypeVideo, "avi": model.FileTypeVideo, "mkv": model.FileTypeVideo,
+	"jpg": model.FileTypeImage, "jpeg": model.FileTypeImage, "png": model.FileTypeImage,
+	"gif": model.FileTypeImage, "webp": model.FileTypeImage, "heic": model.FileTypeImage,
+	"heif": model.FileTypeImage, "svg": model.FileTypeImage,
+}
+
+// FileTypeFromMimeOrName resolve fileType com fallback por extensão. Quando
+// o mime é específico (`audio/*`, `image/*`, `video/*`), usa-o direto.
+// Quando é genérico ou vazio, tenta deduzir do nome — só assim que um
+// `application/ogg` enviado pelo browser deixa de virar "documento".
+func FileTypeFromMimeOrName(mime, name string) model.AttachmentFileType {
+	t := fileTypeFromMime(mime)
+	if t != model.FileTypeFile {
+		return t
+	}
+	i := strings.LastIndex(name, ".")
+	if i < 0 || i == len(name)-1 {
+		return t
+	}
+	ext := strings.ToLower(name[i+1:])
+	if mapped, ok := extToFileType[ext]; ok {
+		return mapped
+	}
+	return t
+}
+
 func (s *MessageService) SoftDelete(ctx context.Context, id, accountID int64) error {
 	msg, err := s.messageRepo.FindByID(ctx, id, accountID)
 	if err != nil {
@@ -445,7 +480,14 @@ func (s *MessageService) broadcastMessageEvent(ctx context.Context, event string
 			convSummary = dto.ConversationSummaryFromModel(conv, unread)
 		}
 	}
-	payload := dto.MessageToEventResp(msg, convSummary)
+	// Hidrata sender (Contact ou User) para o broadcast — sem isso o frontend
+	// recebe `sender: null` em realtime e a bolha/preview da lista renderiza
+	// sem avatar/nome até o próximo refetch via REST.
+	var sender *dto.MessageSenderResp
+	if senders := s.HydrateMessageSenders(ctx, []model.Message{*msg}, msg.AccountID); senders != nil {
+		sender = senders[msg.ID]
+	}
+	payload := dto.MessageToEventRespWithSender(msg, convSummary, sender)
 	s.realtime.Broadcast(msg.ConversationID, msg.AccountID, event, payload)
 }
 

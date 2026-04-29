@@ -2,8 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"sync"
-	"time"
 
 	"backend/internal/dto"
 	"backend/internal/logger"
@@ -21,101 +19,50 @@ import (
 // — there is no separate event per sub-field, clients diff the payload to
 // decide what to re-render.
 
-const contactDebounceInterval = 5 * time.Second
-
-type debounceEntry struct {
-	timer *time.Timer
-	mu    sync.Mutex
-}
-
 type RealtimeService struct {
-	hub              *realtime.Hub
-	contactDebounce  map[int64]*debounceEntry
-	contactDebounceMu sync.Mutex
+	hub *realtime.Hub
 }
 
 func NewRealtimeService(hub *realtime.Hub) *RealtimeService {
-	return &RealtimeService{
-		hub:             hub,
-		contactDebounce: make(map[int64]*debounceEntry),
+	return &RealtimeService{hub: hub}
+}
+
+// marshalEvent é o ponto único de serialização para todos os emissores. Mantém
+// a forma `{type, payload}` consistente entre broadcasts a salas e
+// notificações por usuário.
+func marshalEvent(event string, payload any) ([]byte, bool) {
+	data, err := json.Marshal(dto.RealtimeEvent{Type: event, Payload: payload})
+	if err != nil {
+		logger.Warn().Str("component", "realtime").Str("event", event).Err(err).Msg("marshal realtime event")
+		return nil, false
 	}
+	return data, true
 }
 
 func (s *RealtimeService) BroadcastInboxEvent(inboxID int64, eventType string, payload any) {
-	msg := dto.RealtimeEvent{
-		Type:    eventType,
-		Payload: payload,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
+	data, ok := marshalEvent(eventType, payload)
+	if !ok {
 		return
 	}
 	s.hub.Broadcast(realtime.InboxRoom(inboxID), data)
 }
 
 func (s *RealtimeService) BroadcastConversationEvent(conversationID int64, eventType string, payload any) {
-	msg := dto.RealtimeEvent{
-		Type:    eventType,
-		Payload: payload,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
+	data, ok := marshalEvent(eventType, payload)
+	if !ok {
 		return
 	}
 	s.hub.Broadcast(realtime.ConversationRoom(conversationID), data)
 }
 
-// Broadcast emits `event` with `payload` to both the conversation and
-// account rooms. Used by MessageService as the single emission point for
-// message.* events so the payload goes to agents viewing the thread
-// (conversation:<id>) and to the dashboard/list (account:<aid>).
-// BroadcastContactDebounced broadcasts `contact.updated` with a per-contact
-// debounce. If called multiple times within `contactDebounceInterval` for the
-// same contactID, only the last payload is actually broadcast. This prevents
-// flooding the transport when last_activity_at changes at high frequency (e.g.
-// many incoming messages for the same contact in rapid succession).
-func (s *RealtimeService) BroadcastContactDebounced(contactID, accountID int64, payload any) {
-	s.contactDebounceMu.Lock()
-	entry, ok := s.contactDebounce[contactID]
-	if !ok {
-		entry = &debounceEntry{}
-		s.contactDebounce[contactID] = entry
-		// Cleanup after interval expires
-		entry.timer = time.AfterFunc(contactDebounceInterval, func() {
-			s.contactDebounceMu.Lock()
-			delete(s.contactDebounce, contactID)
-			s.contactDebounceMu.Unlock()
-		})
-	} else {
-		entry.timer.Reset(contactDebounceInterval)
-	}
-	s.contactDebounceMu.Unlock()
-
-	entry.mu.Lock()
-	payloadBytes := marshalPayload(realtime.EventContactUpdated, payload)
-	entry.mu.Unlock()
-
-	if accountID != 0 {
-		s.hub.Broadcast(realtime.AccountRoom(accountID), payloadBytes)
-	}
-}
-
-func marshalPayload(event string, payload any) []byte {
-	msg := dto.RealtimeEvent{Type: event, Payload: payload}
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return nil
-	}
-	return data
-}
-
+// Broadcast emits `event` with `payload` to both the conversation and account
+// rooms. Used by MessageService as the single emission point for message.*
+// events so the payload goes to agents viewing the thread (conversation:<id>)
+// and to the dashboard/list (account:<aid>). The marshal happens once and the
+// resulting bytes are reused across rooms.
 func (s *RealtimeService) Broadcast(conversationID, accountID int64, event string, payload any) {
-	msg := dto.RealtimeEvent{
-		Type:    event,
-		Payload: payload,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
+	data, ok := marshalEvent(event, payload)
+	if !ok {
 		return
 	}
 	logger.Debug().Str("component", "realtime").Str("event", event).
@@ -132,12 +79,8 @@ func (s *RealtimeService) Broadcast(conversationID, accountID int64, event strin
 }
 
 func (s *RealtimeService) BroadcastAccountEvent(accountID int64, eventType string, payload any) {
-	msg := dto.RealtimeEvent{
-		Type:    eventType,
-		Payload: payload,
-	}
-	data, err := json.Marshal(msg)
-	if err != nil {
+	data, ok := marshalEvent(eventType, payload)
+	if !ok {
 		return
 	}
 	logger.Debug().Str("component", "realtime").Str("event", eventType).
@@ -145,4 +88,14 @@ func (s *RealtimeService) BroadcastAccountEvent(accountID int64, eventType strin
 		Int64("account_id", accountID).
 		Msg("broadcast account realtime event")
 	s.hub.Broadcast(realtime.AccountRoom(accountID), data)
+}
+
+// BroadcastUserEvent emits to the per-user room (account:N:user:M). Used for
+// notifications and any other event scoped to a single agent within a tenant.
+func (s *RealtimeService) BroadcastUserEvent(accountID, userID int64, eventType string, payload any) {
+	data, ok := marshalEvent(eventType, payload)
+	if !ok {
+		return
+	}
+	s.hub.Broadcast(realtime.UserRoom(accountID, userID), data)
 }
