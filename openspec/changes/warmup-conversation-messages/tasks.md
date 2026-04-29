@@ -1,43 +1,43 @@
 ## 1. Message store: per-conversation fetch state
 
-- [ ] 1.1 Add `fetchState: Record<string, 'empty' | 'warmed' | 'fetching' | 'fetched'>` to `useMessagesStore` state in `frontend/app/stores/messages.ts`, alongside existing `byConversation` / `fetchedAt` / `inflight`.
-- [ ] 1.2 Replace internal reads of `inflight: Set<string>` with the `fetchState === 'fetching'` check; remove the `inflight` field once no callers remain.
-- [ ] 1.3 Update `set(conversationId, list)` to also write `fetchState[conversationId] = 'fetched'` and `fetchedAt[conversationId] = Date.now()`.
-- [ ] 1.4 Update `mergeFetched` to set `fetchState[conversationId] = 'fetched'` after a successful merge (do not regress `warmed` → `fetched` on partial merges that only re-insert the seed).
-- [ ] 1.5 Update `fetchMessages` to transition state: `empty|warmed → fetching` on entry, `fetching → fetched` on success, `fetching → previous` on error. Keep the freshness TTL guard for `fetched` entries only.
+- [x] 1.1 Add `fetchState: Record<string, 'empty' | 'warmed' | 'fetching' | 'fetched'>` to `useMessagesStore` state in `frontend/app/stores/messages.ts`, alongside existing `byConversation` / `fetchedAt` / `inflight`.
+- [x] 1.2 Replace internal reads of `inflight: Set<string>` with the `fetchState === 'fetching'` check; remove the `inflight` field once no callers remain.
+- [x] 1.3 Update `set(conversationId, list)` to also write `fetchState[conversationId] = 'fetched'` and `fetchedAt[conversationId] = Date.now()`.
+- [x] 1.4 Update `mergeFetched` to set `fetchState[conversationId] = 'fetched'` after a successful merge (do not regress `warmed` → `fetched` on partial merges that only re-insert the seed).
+- [x] 1.5 Update `fetchMessages` to transition state: `empty|warmed → fetching` on entry, `fetching → fetched` on success, `fetching → previous` on error. Keep the freshness TTL guard for `fetched` entries only.
 
 ## 2. Message store: warmup action
 
-- [ ] 2.1 Add `warmIfEmpty(conversation)` action to `useMessagesStore` that seeds `byConversation[c.id]` with `c.lastNonActivityMessage` and sets `fetchState[c.id] = 'warmed'` only when `byConversation[c.id]` is empty/undefined and `c.lastNonActivityMessage` is present.
-- [ ] 2.2 Make `warmIfEmpty` a no-op when `fetchState[c.id]` is `fetching` or `fetched`.
-- [ ] 2.3 Update `prefetch(conversationId)` to dispatch `fetchMessages` for both `empty` and `warmed` states (current heuristic only checks `length > 0` and incorrectly skips warmed buckets).
+- [x] 2.1 Add `warmIfEmpty(conversation)` action to `useMessagesStore` that seeds `byConversation[c.id]` with `c.lastNonActivityMessage` and sets `fetchState[c.id] = 'warmed'` only when `byConversation[c.id]` is empty/undefined and `c.lastNonActivityMessage` is present.
+- [x] 2.2 Make `warmIfEmpty` a no-op when `fetchState[c.id]` is `fetching` or `fetched`.
+- [x] 2.3 Update `prefetch(conversationId)` to dispatch `fetchMessages` for both `empty` and `warmed` states (current heuristic only checks `length > 0` and incorrectly skips warmed buckets).
 
 ## 3. Conversations store: warm on hydration
 
-- [ ] 3.1 In `frontend/app/stores/conversations.ts`, after `setAll(list)` writes the new list, iterate `list` and call `useMessagesStore().warmIfEmpty(c)` for each conversation.
-- [ ] 3.2 In `upsert(c)`, after writing the conversation record, call `useMessagesStore().warmIfEmpty(c)`.
-- [ ] 3.3 Add an inline comment in `upsert` documenting that messages are owned by `useMessagesStore` and must not be touched here, to lock the invariant for future refactors.
+- [x] 3.1 In `frontend/app/stores/conversations.ts`, after `setAll(list)` writes the new list, iterate `list` and call `useMessagesStore().warmIfEmpty(c)` for each conversation.
+- [x] 3.2 In `upsert(c)`, after writing the conversation record, call `useMessagesStore().warmIfEmpty(c)`.
+- [x] 3.3 Add an inline comment in `upsert` documenting that messages are owned by `useMessagesStore` and must not be touched here, to lock the invariant for future refactors.
 
 ## 4. Deep-link path warms before mount
 
-- [ ] 4.1 In `frontend/app/components/conversations/Index.vue`, inside `ensureSelectedLoaded`, after `convs.upsert(conv)` and `convs.setCurrent(conv)`, call `useMessagesStore().prefetch(conv.id)` so the deep-fetched conversation gets a prefetch in addition to the warmup that `upsert` already triggered.
-- [ ] 4.2 Verify that the existing `Thread.vue` watcher (`watch(() => props.conversation.id, ...)`) still fires `messages.fetchMessages` on mount; the store dedup makes this idempotent with the prefetch above.
+- [x] 4.1 In `frontend/app/components/conversations/Index.vue`, inside `ensureSelectedLoaded`, after `convs.upsert(conv)` and `convs.setCurrent(conv)`, call `useMessagesStore().prefetch(conv.id)` so the deep-fetched conversation gets a prefetch in addition to the warmup that `upsert` already triggered.
+- [x] 4.2 Verify that the existing `Thread.vue` watcher (`watch(() => props.conversation.id, ...)`) still fires `messages.fetchMessages` on mount; the store dedup makes this idempotent with the prefetch above.
 
 ## 5. Realtime: warm on conversation events
 
-- [ ] 5.1 In `frontend/app/composables/useConversationRealtime.ts`, the existing `conversation.created` and `conversation.updated` handlers already call `convs.upsert(c)` — no extra wiring needed once task 3.2 lands. Confirm with a manual trace and add a comment in the handler pointing at the warmup invariant.
-- [ ] 5.2 Confirm the `message.created` handler does not need warmup changes (it already calls `messages.upsert`); add an assertion-style comment if helpful.
+- [x] 5.1 In `frontend/app/composables/useConversationRealtime.ts`, the existing `conversation.created` and `conversation.updated` handlers already call `convs.upsert(c)` — no extra wiring needed once task 3.2 lands. Confirm with a manual trace and add a comment in the handler pointing at the warmup invariant.
+- [x] 5.2 Confirm the `message.created` handler does not need warmup changes (it already calls `messages.upsert`); add an assertion-style comment if helpful.
 
 ## 6. Keyboard prefetch in the list
 
-- [ ] 6.1 In `frontend/app/components/conversations/List.vue`, modify the `arrowdown` handler in `defineShortcuts` to compute the next conversation, call `messages.prefetch(next.id)`, then assign it to `selected`.
-- [ ] 6.2 Mirror the change in the `arrowup` handler.
-- [ ] 6.3 Update the row's `@keydown.enter.prevent` and `@keydown.space.prevent` handlers to also call `prefetchMessages(c)` before `selectConversation(c)` (covers the case where the agent tabs into a row and presses Enter without ever hovering).
+- [x] 6.1 In `frontend/app/components/conversations/List.vue`, modify the `arrowdown` handler in `defineShortcuts` to compute the next conversation, call `messages.prefetch(next.id)`, then assign it to `selected`.
+- [x] 6.2 Mirror the change in the `arrowup` handler.
+- [x] 6.3 Update the row's `@keydown.enter.prevent` and `@keydown.space.prevent` handlers to also call `prefetchMessages(c)` before `selectConversation(c)` (covers the case where the agent tabs into a row and presses Enter without ever hovering).
 
 ## 7. Type updates
 
-- [ ] 7.1 Export the `FetchState` type from `frontend/app/stores/messages.ts` so test files and any future consumers can reference the discriminated union by name.
-- [ ] 7.2 If `Conversation` interface in `frontend/app/stores/conversations.ts` doesn't already type `lastNonActivityMessage` strongly enough for the store action, tighten it.
+- [x] 7.1 Export the `FetchState` type from `frontend/app/stores/messages.ts` so test files and any future consumers can reference the discriminated union by name.
+- [x] 7.2 If `Conversation` interface in `frontend/app/stores/conversations.ts` doesn't already type `lastNonActivityMessage` strongly enough for the store action, tighten it.
 
 ## 8. Tests
 
@@ -50,8 +50,8 @@
 
 ## 9. Verification
 
-- [ ] 9.1 Run `pnpm typecheck` from `frontend/` and resolve any new type errors.
-- [ ] 9.2 Run `pnpm lint` from `frontend/`.
+- [x] 9.1 Run `pnpm typecheck` from `frontend/` and resolve any new type errors.
+- [x] 9.2 Run `pnpm lint` from `frontend/`.
 - [ ] 9.3 Manual smoke: cold-load `/conversations`, click a conversation without hovering — confirm the last message renders before any network response.
 - [ ] 9.4 Manual smoke: keyboard nav with `↓`/`↑`, confirm the next thread renders the seed instantly.
 - [ ] 9.5 Manual smoke: deep-link `/conversations/:id` with a freshly loaded tab — confirm the seed renders before history arrives.

@@ -103,10 +103,12 @@ export function useConversationRealtime(
     if (selected.value?.id) rt.joinConversation(selected.value.id)
 
     offHandlers.push(rt.on<Conversation>('conversation.created', (c) => {
+      // convs.upsert also triggers messages.warmIfEmpty(c)
       convs.upsert(c)
       invalidateMeta()
     }))
     offHandlers.push(rt.on<Conversation>('conversation.updated', (c) => {
+      // convs.upsert also triggers messages.warmIfEmpty(c)
       convs.upsert(c)
       invalidateMeta()
     }))
@@ -118,6 +120,9 @@ export function useConversationRealtime(
       invalidateMeta()
     }))
     offHandlers.push(rt.on<MessageWithConversation>('message.created', (m) => {
+      // messages.upsert(m) seeds the bucket; no extra warmup state change
+      // needed here as the next prefetch/fetch will see 'empty'/'warmed'
+      // and pull history.
       messages.upsert(m)
       applyConversationSummary(m.conversation)
       applyLastMessage(m)

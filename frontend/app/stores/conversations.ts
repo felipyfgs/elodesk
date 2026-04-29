@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from '~/stores/auth'
+import { useMessagesStore } from '~/stores/messages'
 
 // Conversation shape mirrors Chatwoot's `_conversation.json.jbuilder` (see
 // backend/internal/dto/conversation.go::ConversationResp). Field names below
@@ -313,6 +314,8 @@ export const useConversationsStore = defineStore('conversations', {
   actions: {
     setAll(list: Conversation[]) {
       this.list = Array.isArray(list) ? list : []
+      const messages = useMessagesStore()
+      for (const c of this.list) messages.warmIfEmpty(c)
     },
     setCurrent(conv: Conversation | null) {
       this.current = conv
@@ -385,6 +388,10 @@ export const useConversationsStore = defineStore('conversations', {
       // ConversationsIndex's `selected` computed (which reads `current` first)
       // returns the stale object after upsert, so child props don't update.
       if (this.current?.id === conv.id) this.current = conv
+
+      // Warm message bucket if empty. Messages are owned by useMessagesStore
+      // and must not be touched or overwritten here.
+      useMessagesStore().warmIfEmpty(conv)
     },
     // applyPatch só mescla campos numa conversa já carregada (em list e/ou
     // current). Diferente de `upsert`, NÃO insere uma conversa nova — usado

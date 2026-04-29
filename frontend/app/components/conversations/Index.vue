@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useConversationsStore, STATUS_CODE, type Conversation, type ConversationMeta, type ConversationStatus } from '~/stores/conversations'
+import { useMessagesStore } from '~/stores/messages'
 import { useAuthStore } from '~/stores/auth'
 import { useInboxesStore, type Inbox } from '~/stores/inboxes'
 import { useLabelsStore, type Label } from '~/stores/labels'
@@ -87,6 +88,8 @@ async function ensureSelectedLoaded(id: string | null) {
     if (conv) {
       convs.upsert(conv)
       convs.setCurrent(conv)
+      const messages = useMessagesStore()
+      messages.prefetch(conv.id)
     }
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status

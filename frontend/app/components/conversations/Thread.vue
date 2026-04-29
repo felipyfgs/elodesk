@@ -65,8 +65,8 @@ async function markRead(convId: string) {
 watch(() => props.conversation.id, async (id) => {
   // fetchMessages dedupa contra o hover-prefetch da List: se o bucket já
   // foi populado durante o hover, o click só dispara o markRead e a UI
-  // mostra na hora.
-  await messages.fetchMessages(id)
+  // mostra na hora. Passamos freshMs para honrar o TTL do prefetch.
+  await messages.fetchMessages(id, { freshMs: 30_000 })
   if (id) markRead(id)
 }, { immediate: true })
 
