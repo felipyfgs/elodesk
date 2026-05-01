@@ -148,7 +148,7 @@ func (h *WebWidgetInboxHandler) Create(c *fiber.Ctx) error {
 	}))
 }
 
-func (h *WebWidgetInboxHandler) GetByInboxID(c *fiber.Ctx) error {
+func (h *WebWidgetInboxHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

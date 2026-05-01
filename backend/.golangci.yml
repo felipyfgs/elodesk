@@ -1,19 +1,28 @@
 version: "2"
 
-runners:
-  allow:
-    - govet
-    - errcheck
-    - staticcheck
-    - unused
-    - gosimple
-    - ineffassign
-    - typecheck
-    - misspell
-    - gofmt
-    - goimports
+# Configuração alinhada com a rubrica de detecção do atlas em
+# openspec/changes/codebase-refactor-audit/atlas/findings.md (design.md D1).
+# Cada linter aqui mapeia um dos sete eixos:
+#   - funlen      → eixo `large-functions` (≥80 linhas Go)
+#   - nestif      → eixo `deep-nesting` (≥4 níveis)
+#   - revive      → eixo `else-after-return` (regras early-return, indent-error-flow, superfluous-else)
+#   - dupl        → eixo `duplication`
+#   - gocognit    → complexidade cognitiva (cobre nesting + branching)
+#   - gocritic    → ifElseChain (else-if longos)
+#   - unused      → eixo `dead-code` (já default)
+# Eixos `god-files` e `missing-tests` não têm linter direto; ficam por convenção e atlas humano.
 
 linters:
+  default: standard
+  enable:
+    - funlen
+    - nestif
+    - revive
+    - dupl
+    - gocognit
+    - gocritic
+    - misspell
+    - goconst
   disable:
     - exhaustive
     - exhaustruct
@@ -21,6 +30,245 @@ linters:
     - varnamelen
     - nilnil
     - ireturn
+
+  settings:
+    funlen:
+      # design.md D1: large-functions Go ≥80 linhas
+      lines: 80
+      statements: 60
+      ignore-comments: true
+
+    nestif:
+      # design.md D1: deep-nesting ≥4. nestif conta `if` aninhados —
+      # complexity 5 ≈ 4 níveis reais (raiz não conta).
+      min-complexity: 5
+
+    gocognit:
+      min-complexity: 30
+
+    dupl:
+      # threshold em tokens; ≥150 ≈ ~10 linhas de código repetido (D1).
+      threshold: 150
+
+    revive:
+      severity: warning
+      rules:
+        # eixo else-after-return — converter para guard clauses
+        - name: early-return
+        - name: indent-error-flow
+        - name: superfluous-else
+        # higiene geral mantida default
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+          disabled: true
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+          disabled: true
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+    gocritic:
+      enabled-checks:
+        - ifElseChain
+        - elseif
+        - singleCaseSwitch
+        - typeSwitchVar
+        - nestingReduce
+
+    goconst:
+      min-len: 3
+      min-occurrences: 4
+
+    misspell:
+      # Strings de domínio em pt-BR (CLAUDE.md §Idioma — user-facing communication).
+      # Suprimir falsos positivos comuns em português que parecem inglês mal escrito.
+      locale: US
+      ignore-rules:
+        - validade
+        - clientes
+        - devolvendo
+        - correspondente
+        - inscricao
+        - inscrito
+        - cadastro
+
+  exclusions:
+    # Exclusões pontuais para achados já registrados no atlas. Cada entrada
+    # cita o ID do achado em findings.md e a change que vai removê-la.
+    # Quando o refactor correspondente for mergeado, remover a entrada aqui.
+    rules:
+      # F13 — server/router.go::SetupRoutes (545 linhas, DI + rotas)
+      # change planejada: refactor-router-split (C cluster mid-priority)
+      - path: internal/server/router\.go
+        linters:
+          - funlen
+          - gocognit
+          - cyclop
+
+      # F38 — model/models.go (591 linhas, structs do domínio, 0 funcs)
+      # change planejada: refactor-model-split (C09)
+      - path: internal/model/models\.go
+        linters:
+          - funlen
+          - gocognit
+          - dupl
+
+      # F14, F22, F37 — service/contact.go (Identify 118 linhas, CreateOrReuseContactInbox 90 linhas)
+      # changes planejadas: refactor-contact-inbox-creation (C04), refactor-contact-identify-split
+      - path: internal/service/contact\.go
+        linters:
+          - funlen
+          - gocognit
+
+      # F20, F36 — service/conversation.go::CreateWithOpts e handler/conversation.go::CreateAuthenticated
+      # change planejada: refactor-contact-inbox-creation (C04)
+      - path: internal/service/conversation\.go
+        linters:
+          - funlen
+          - gocognit
+      - path: internal/handler/conversation\.go
+        linters:
+          - funlen
+          - gocognit
+
+      # F15 — service/macro.go::executeAction (114 linhas, switch por ação)
+      # change planejada: refactor-macro-action-map
+      - path: internal/service/macro\.go
+        linters:
+          - funlen
+          - gocognit
+
+      # F16, F30 — handlers de provisão de canal (9 arquivos)
+      # change planejada: refactor-channel-provisioning-pipeline (C06)
+      - path: internal/handler/(twilio_webhook|twitter_webhook|tiktok_webhook|telegram_webhook|line_webhook|sms_inbox|email_inbox|web_widget_inbox|whatsapp_inbox)\.go
+        linters:
+          - funlen
+          - gocognit
+          - dupl
+          - nestif
+
+      # F17, F21 — webhook/outbound_processor.go + service/outbound_webhook.go
+      # change planejada: refactor-outbound-webhook-pipeline
+      - path: internal/webhook/outbound_processor\.go
+        linters:
+          - funlen
+          - gocognit
+      - path: internal/service/outbound_webhook\.go
+        linters:
+          - funlen
+
+      # F18, F35 — repo/conversation.go (895 linhas, scanner + queries + helpers)
+      # change planejada: refactor-conversation-repo-split (C07)
+      - path: internal/repo/conversation\.go
+        linters:
+          - funlen
+          - gocognit
+          - dupl
+
+      # F23 — service/agent.go::AcceptInvitation
+      # change planejada: refactor-agent-invitation-split
+      - path: internal/service/agent\.go
+        linters:
+          - funlen
+
+      # F24, F25 — realtime/client.go::handleMessage (no limite, 80 linhas)
+      # change planejada: refactor-realtime-dispatch
+      - path: internal/realtime/client\.go
+        linters:
+          - funlen
+
+      # F39, F40, F41, F42 — handler/contact.go, handler/message.go, repo/contact.go, service/message.go
+      # change planejada: refactor-backend-god-files-split (C02)
+      - path: internal/handler/contact\.go
+        linters:
+          - funlen
+          - dupl
+      - path: internal/handler/message\.go
+        linters:
+          - funlen
+          - dupl
+      - path: internal/repo/contact\.go
+        linters:
+          - funlen
+          - dupl
+      - path: internal/service/message\.go
+        linters:
+          - funlen
+
+      # filterquery/build.go::buildCondition (F-out-of-rubric, 92 linhas)
+      # query builder por design — manter
+      - path: internal/filterquery/build\.go
+        linters:
+          - funlen
+          - gocognit
+
+      # repo/audit_log.go::List (83 linhas, query construction)
+      - path: internal/repo/audit_log\.go
+        linters:
+          - funlen
+
+      # handler/upload.go::PublicAttachmentDownload (82 linhas, streaming)
+      - path: internal/handler/upload\.go
+        linters:
+          - funlen
+
+      # Testes podem ter funções longas — table-driven com setup é normal
+      - path: _test\.go
+        linters:
+          - funlen
+          - dupl
+          - goconst
+          - gocognit
+
+      # Generated/migration files (caso existam)
+      - path: migrations/
+        linters:
+          - funlen
+          - dupl
+          - revive
+      - path: docs/
+        linters:
+          - funlen
+          - dupl
+          - revive
+
+      # internal/channel/<provider>/ — fora do escopo desta passada do atlas
+      # (priorities.md "Out of scope (follow-up)"). Cada provider tem peculiaridades
+      # de OAuth/feature-flag e merece auditoria própria. Não bloquear lint até lá.
+      - path: internal/channel/
+        linters:
+          - funlen
+          - gocognit
+          - dupl
+          - nestif
+          - gocritic
+          - goconst
+
+      # Padrão handler boilerplate de extração accountID (F28, 152 ocorrências)
+      # change planejada: refactor-account-id-middleware
+      # O bloco repete por design até o middleware ser extraído — não bloquear lint.
+      - text: "duplicate of"
+        path: internal/handler/.*\.go
+        linters:
+          - dupl
 
 issues:
   max-issues-per-linter: 50

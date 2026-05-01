@@ -71,7 +71,7 @@ func (s *TeamService) Delete(ctx context.Context, id, accountID int64) error {
 	return s.teamRepo.Delete(ctx, id, accountID)
 }
 
-func (s *TeamService) GetByID(ctx context.Context, id, accountID int64) (*model.Team, error) {
+func (s *TeamService) FindByID(ctx context.Context, id, accountID int64) (*model.Team, error) {
 	return s.teamRepo.FindByID(ctx, id, accountID)
 }
 

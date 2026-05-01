@@ -186,7 +186,7 @@ func (s *AgentService) AcceptInvitation(ctx context.Context, token, password str
 func (s *AgentService) UpdateAgent(ctx context.Context, accountID, userID int64, role *int) error {
 	if role != nil {
 		if *role < int(model.RoleOwner) {
-			currentRole, err := s.agentRepo.GetRole(ctx, accountID, userID)
+			currentRole, err := s.agentRepo.FindRole(ctx, accountID, userID)
 			if err != nil {
 				return fmt.Errorf("agent.update: %w", err)
 			}
@@ -220,7 +220,7 @@ func (s *AgentService) RemoveAgent(ctx context.Context, accountID, userID int64)
 	}
 
 	if isMember {
-		role, err := s.agentRepo.GetRole(ctx, accountID, userID)
+		role, err := s.agentRepo.FindRole(ctx, accountID, userID)
 		if err != nil {
 			return fmt.Errorf("agent.remove: %w", err)
 		}

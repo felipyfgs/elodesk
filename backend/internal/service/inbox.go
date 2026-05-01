@@ -278,7 +278,7 @@ func (s *InboxService) DeleteInbox(ctx context.Context, inboxID, accountID int64
 	return s.inboxRepo.Delete(ctx, inboxID, accountID)
 }
 
-func (s *InboxService) GetByID(ctx context.Context, id, accountID int64) (*model.Inbox, error) {
+func (s *InboxService) FindByID(ctx context.Context, id, accountID int64) (*model.Inbox, error) {
 	return s.inboxRepo.FindByID(ctx, id, accountID)
 }
 

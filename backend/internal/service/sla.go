@@ -40,7 +40,7 @@ func (s *SLAService) Create(ctx context.Context, accountID int64, in UpsertSLAIn
 	if err := s.slaRepo.SetBindings(ctx, m.ID, bindings); err != nil {
 		return nil, nil, fmt.Errorf("sla.create: %w", err)
 	}
-	stored, err := s.slaRepo.GetBindings(ctx, []int64{m.ID})
+	stored, err := s.slaRepo.FindBindings(ctx, []int64{m.ID})
 	if err != nil {
 		return nil, nil, fmt.Errorf("sla.create: %w", err)
 	}
@@ -56,7 +56,7 @@ func (s *SLAService) List(ctx context.Context, accountID int64) ([]model.SLAPoli
 	for _, p := range policies {
 		ids = append(ids, p.ID)
 	}
-	bindings, err := s.slaRepo.GetBindings(ctx, ids)
+	bindings, err := s.slaRepo.FindBindings(ctx, ids)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,7 +72,7 @@ func (s *SLAService) Get(ctx context.Context, accountID, id int64) (*model.SLAPo
 	if err != nil {
 		return nil, nil, err
 	}
-	bindings, err := s.slaRepo.GetBindings(ctx, []int64{m.ID})
+	bindings, err := s.slaRepo.FindBindings(ctx, []int64{m.ID})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,7 +121,7 @@ func (s *SLAService) Update(ctx context.Context, accountID, id int64, in UpdateS
 			return nil, nil, fmt.Errorf("sla.update: %w", err)
 		}
 	}
-	bindings, err := s.slaRepo.GetBindings(ctx, []int64{m.ID})
+	bindings, err := s.slaRepo.FindBindings(ctx, []int64{m.ID})
 	if err != nil {
 		return nil, nil, err
 	}

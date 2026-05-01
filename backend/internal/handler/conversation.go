@@ -554,7 +554,7 @@ func (h *ConversationHandler) ShowPublic(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	convo, err := h.svc.FindByID(c.Context(), id, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -608,7 +608,7 @@ func (h *ConversationHandler) TogglePublicStatus(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	convo, err := h.svc.FindByID(c.Context(), id, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -661,7 +661,7 @@ func (h *ConversationHandler) ToggleTyping(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	convo, err := h.svc.FindByID(c.Context(), id, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -708,7 +708,7 @@ func (h *ConversationHandler) UpdateLastSeenPublic(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	convo, err := h.svc.GetByID(c.Context(), id, accountID)
+	convo, err := h.svc.FindByID(c.Context(), id, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

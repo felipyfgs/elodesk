@@ -85,8 +85,8 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, accountID, userID
 	return nil
 }
 
-func (s *NotificationService) GetUserPreferences(ctx context.Context, userID int64) (string, error) {
-	return s.repo.GetUserPreferences(ctx, userID)
+func (s *NotificationService) FindUserPreferences(ctx context.Context, userID int64) (string, error) {
+	return s.repo.FindUserPreferences(ctx, userID)
 }
 
 func (s *NotificationService) SetUserPreferences(ctx context.Context, userID int64, prefs string) error {

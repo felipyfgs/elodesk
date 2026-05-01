@@ -121,7 +121,7 @@ func (r *NotificationRepo) MarkAllRead(ctx context.Context, accountID, userID in
 	return nil
 }
 
-func (r *NotificationRepo) GetUserPreferences(ctx context.Context, userID int64) (string, error) {
+func (r *NotificationRepo) FindUserPreferences(ctx context.Context, userID int64) (string, error) {
 	var prefs string
 	err := r.pool.QueryRow(ctx, `SELECT notification_preferences FROM users WHERE id = $1`, userID).Scan(&prefs)
 	if err != nil {

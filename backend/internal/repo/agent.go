@@ -86,7 +86,7 @@ func (r *AgentRepo) Remove(ctx context.Context, accountID, userID int64) error {
 	return nil
 }
 
-func (r *AgentRepo) GetRole(ctx context.Context, accountID, userID int64) (int, error) {
+func (r *AgentRepo) FindRole(ctx context.Context, accountID, userID int64) (int, error) {
 	var role int
 	err := r.pool.QueryRow(ctx, `SELECT role FROM account_users WHERE account_id = $1 AND user_id = $2`, accountID, userID).Scan(&role)
 	if err != nil {

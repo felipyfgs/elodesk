@@ -166,7 +166,7 @@ func (h *WhatsAppInboxHandler) SyncTemplates(c *fiber.Ctx) error {
 	}))
 }
 
-func (h *WhatsAppInboxHandler) GetByID(c *fiber.Ctx) error {
+func (h *WhatsAppInboxHandler) FindByID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

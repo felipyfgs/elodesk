@@ -226,7 +226,7 @@ func (s *ConversationService) FindByIDFull(ctx context.Context, accountID, id in
 	return s.conversationRepo.FindByIDFull(ctx, accountID, id)
 }
 
-func (s *ConversationService) GetByID(ctx context.Context, id, accountID int64) (*model.Conversation, error) {
+func (s *ConversationService) FindByID(ctx context.Context, id, accountID int64) (*model.Conversation, error) {
 	return s.conversationRepo.FindByID(ctx, id, accountID)
 }
 

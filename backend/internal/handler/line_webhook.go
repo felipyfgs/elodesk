@@ -197,7 +197,7 @@ func (h *LineWebhookHandler) Provision(c *fiber.Ctx) error {
 //	@Failure		404		{object}	dto.APIError
 //	@Router			/api/v1/accounts/{aid}/inboxes/{id}/line [delete]
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/line.
-func (h *LineWebhookHandler) GetByInboxID(c *fiber.Ctx) error {
+func (h *LineWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -293,7 +293,7 @@ func (h *LineWebhookHandler) Update(c *fiber.Ctx) error {
 		}
 	}
 
-	return h.GetByInboxID(c)
+	return h.FindByInboxID(c)
 }
 
 func (h *LineWebhookHandler) Delete(c *fiber.Ctx) error {

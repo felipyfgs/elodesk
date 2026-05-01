@@ -235,7 +235,7 @@ func (h *InboxHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(payload))
 }
 
-func (h *InboxHandler) GetByID(c *fiber.Ctx) error {
+func (h *InboxHandler) FindByID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -246,7 +246,7 @@ func (h *InboxHandler) GetByID(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid inbox id"))
 	}
 
-	inbox, err := h.svc.GetByID(c.Context(), int64(id), accountID)
+	inbox, err := h.svc.FindByID(c.Context(), int64(id), accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

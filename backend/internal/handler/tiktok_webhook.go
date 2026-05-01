@@ -235,7 +235,7 @@ func (h *TiktokHandler) Receive(c *fiber.Ctx) error {
 
 // Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/tiktok.
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/tiktok.
-func (h *TiktokHandler) GetByInboxID(c *fiber.Ctx) error {
+func (h *TiktokHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))

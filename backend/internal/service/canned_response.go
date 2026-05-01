@@ -73,6 +73,6 @@ func (s *CannedResponseService) Delete(ctx context.Context, id, accountID int64)
 	return s.repo.Delete(ctx, id, accountID)
 }
 
-func (s *CannedResponseService) GetByID(ctx context.Context, id, accountID int64) (*model.CannedResponse, error) {
+func (s *CannedResponseService) FindByID(ctx context.Context, id, accountID int64) (*model.CannedResponse, error) {
 	return s.repo.FindByID(ctx, id, accountID)
 }

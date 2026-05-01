@@ -129,7 +129,7 @@ func (h *NotificationHandler) GetPreferences(c *fiber.Ctx) error {
 	if authUser.ID != userID {
 		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("Forbidden", "cannot read other user preferences"))
 	}
-	prefs, err := h.svc.GetUserPreferences(c.Context(), userID)
+	prefs, err := h.svc.FindUserPreferences(c.Context(), userID)
 	if err != nil {
 		logger.Error().Str("component", "notifications").Err(err).Msg("failed to get prefs")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed"))

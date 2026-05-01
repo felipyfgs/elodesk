@@ -309,7 +309,7 @@ func (h *TwilioWebhookHandler) SyncTemplates(c *fiber.Ctx) error {
 //	@Success		200	{object}	dto.APIResponse
 //	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio [delete]
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twilio.
-func (h *TwilioWebhookHandler) GetByInboxID(c *fiber.Ctx) error {
+func (h *TwilioWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -390,7 +390,7 @@ func (h *TwilioWebhookHandler) Update(c *fiber.Ctx) error {
 		}
 	}
 
-	return h.GetByInboxID(c)
+	return h.FindByInboxID(c)
 }
 
 func (h *TwilioWebhookHandler) Delete(c *fiber.Ctx) error {

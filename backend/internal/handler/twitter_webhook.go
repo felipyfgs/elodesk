@@ -297,7 +297,7 @@ func (h *TwitterHandler) Receive(c *fiber.Ctx) error {
 //	@Failure		404	{object}	dto.APIError
 //	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twitter [delete]
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twitter.
-func (h *TwitterHandler) GetByInboxID(c *fiber.Ctx) error {
+func (h *TwitterHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -369,7 +369,7 @@ func (h *TwitterHandler) Update(c *fiber.Ctx) error {
 		}
 	}
 
-	return h.GetByInboxID(c)
+	return h.FindByInboxID(c)
 }
 
 func (h *TwitterHandler) Delete(c *fiber.Ctx) error {

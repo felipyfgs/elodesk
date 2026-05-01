@@ -125,7 +125,7 @@ func (r *SLARepo) SetBindings(ctx context.Context, slaID int64, bindings []model
 	return tx.Commit(ctx)
 }
 
-func (r *SLARepo) GetBindings(ctx context.Context, slaIDs []int64) ([]model.SLABinding, error) {
+func (r *SLARepo) FindBindings(ctx context.Context, slaIDs []int64) ([]model.SLABinding, error) {
 	if len(slaIDs) == 0 {
 		return nil, nil
 	}
