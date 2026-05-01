@@ -8,7 +8,7 @@ interface Row {
   createdAt: string
 }
 
-defineProps<{ items: Row[], loading: boolean }>()
+defineProps<{ items: Row[], isLoading: boolean }>()
 const { t: _t } = useI18n()
 
 function statusLabel(s: number) {
@@ -39,7 +39,7 @@ function statusLabel(s: number) {
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
+        <tr v-if="isLoading">
           <td colspan="5" class="px-4 py-6 text-center text-muted">
             …
           </td>

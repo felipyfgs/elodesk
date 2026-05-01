@@ -14,7 +14,7 @@ export interface Label {
 export const useLabelsStore = defineStore('labels', {
   state: () => ({
     list: [] as Label[],
-    loading: false
+    isLoading: false
   }),
   getters: {
     byId(): (id: string) => Label | undefined {

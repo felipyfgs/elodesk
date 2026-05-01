@@ -216,7 +216,7 @@ export const useConversationsStore = defineStore('conversations', {
   state: () => ({
     list: [] as Conversation[],
     current: null as Conversation | null,
-    loading: false,
+    isLoading: false,
     filters: {
       tab: 'mine' as ConversationTab,
       sortBy: 'last_activity_desc' as ConversationSort,

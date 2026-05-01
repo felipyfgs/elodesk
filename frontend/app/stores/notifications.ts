@@ -16,17 +16,17 @@ interface State {
   items: Notification[]
   unreadCount: number
   cursor: number
-  loading: boolean
+  isLoading: boolean
 }
 
 export const useNotificationsStore = defineStore('notifications', {
-  state: (): State => ({ items: [], unreadCount: 0, cursor: 0, loading: false }),
+  state: (): State => ({ items: [], unreadCount: 0, cursor: 0, isLoading: false }),
   actions: {
     async fetchRecent(limit = 25, unreadOnly = false) {
       const api = useApi()
       const auth = useAuthStore()
       if (!auth.account?.id) return
-      this.loading = true
+      this.isLoading = true
       try {
         const res = await api<{ items: Notification[], unreadCount: number, nextCursor: number }>(
           `/accounts/${auth.account.id}/notifications`,
@@ -36,7 +36,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.unreadCount = res.unreadCount ?? 0
         this.cursor = res.nextCursor ?? 0
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
     async fetchMore() {

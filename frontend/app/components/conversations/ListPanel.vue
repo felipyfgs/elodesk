@@ -25,7 +25,7 @@ interface FiltersBundle {
 const props = defineProps<{
   filters: FiltersBundle
   displayedList: Conversation[]
-  loading: boolean
+  isLoading: boolean
 }>()
 
 const selected = defineModel<Conversation | null>('selected')
@@ -151,7 +151,7 @@ const panelTitle = computed(() => {
 
     <ConversationsToolbar :total="displayedList.length" />
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div v-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-muted" />
     </div>
     <ConversationsList v-else-if="displayedList.length" v-model="selected" :items="displayedList" />

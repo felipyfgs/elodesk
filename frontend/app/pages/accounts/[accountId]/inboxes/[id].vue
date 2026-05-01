@@ -30,11 +30,11 @@ const links = computed<NavigationMenuItem[][]>(() => {
 })
 
 const inbox = ref<Inbox | null>(null)
-const loading = ref(true)
+const isLoading = ref(true)
 
 async function loadInbox() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const base = await api<Inbox>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}`)
     const channelKey = formatChannelType(base.channelType)
@@ -76,7 +76,7 @@ async function loadInbox() {
   } catch {
     inbox.value = null
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -115,7 +115,7 @@ const breadcrumb = computed(() => [
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <div v-if="loading" class="flex flex-col gap-4 py-4">
+        <div v-if="isLoading" class="flex flex-col gap-4 py-4">
           <USkeleton class="h-12 w-full rounded-lg" />
           <USkeleton class="h-64 w-full rounded-lg" />
         </div>

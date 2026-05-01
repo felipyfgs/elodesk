@@ -14,7 +14,7 @@ export interface SavedFilter {
 export const useSavedFiltersStore = defineStore('savedFilters', {
   state: () => ({
     list: [] as SavedFilter[],
-    loading: false
+    isLoading: false
   }),
   getters: {
     byType(): (filterType: string) => SavedFilter[] {

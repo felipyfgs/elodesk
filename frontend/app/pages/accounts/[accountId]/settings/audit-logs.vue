@@ -22,12 +22,12 @@ const api = useApi()
 const auth = useAuthStore()
 
 const items = ref<AuditLogEntry[]>([])
-const loading = ref(false)
+const isLoading = ref(false)
 const filters = reactive({ from: '', to: '', action: '', entityType: '' })
 
 async function fetchPage() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ payload?: AuditLogEntry[] } | AuditLogEntry[]>(
       `/accounts/${auth.account.id}/audit_logs`,
@@ -35,7 +35,7 @@ async function fetchPage() {
     )
     items.value = Array.isArray(res) ? res : (res.payload ?? [])
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -65,7 +65,7 @@ onMounted(fetchPage)
           {{ t('common.apply') ?? 'Apply' }}
         </UButton>
       </aside>
-      <SettingsAuditLogsTable :items="items" :loading="loading" />
+      <SettingsAuditLogsTable :items="items" :is-loading="isLoading" />
     </div>
   </UPageCard>
 </template>

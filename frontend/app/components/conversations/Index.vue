@@ -198,7 +198,7 @@ const ASSIGNEE_TYPE: Record<string, string> = { mine: 'mine', unassigned: 'unass
 
 async function load() {
   if (!auth.account?.id) return
-  convs.loading = true
+  convs.isLoading = true
   try {
     if (filters.advancedQuery.value) {
       const res = await api<import('~/stores/conversations').ConversationListResponse>(
@@ -239,7 +239,7 @@ async function load() {
       if (res.meta) convs.setListMeta(res.meta)
     }
   } finally {
-    convs.loading = false
+    convs.isLoading = false
   }
 
   loadMeta()
@@ -308,7 +308,7 @@ const filtersBundle = computed(() => ({
     v-model:active-tab="filters.activeTab.value"
     :filters="filtersBundle"
     :displayed-list="filters.displayedList.value"
-    :loading="convs.loading"
+    :loading="convs.isLoading"
     @open-advanced-filter="filters.openAdvancedFilter"
     @clear-advanced-filter="filters.clearAdvancedFilter"
     @edit-active-filter="filters.editActiveFilter"

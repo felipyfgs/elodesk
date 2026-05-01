@@ -23,7 +23,7 @@ const form = reactive<TeamForm>({
   allow_auto_assign: false
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 
 function resetForm() {
   form.name = ''
@@ -46,7 +46,7 @@ function openEdit(team: Team) {
 }
 
 async function submit(event: FormSubmitEvent<TeamForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     if (editing.value) {
       const updated = await api<Team>(`/accounts/${auth.account?.id}/teams/${editing.value.id}`, { method: 'PATCH', body: event.data })
@@ -62,7 +62,7 @@ async function submit(event: FormSubmitEvent<TeamForm>) {
       saved.value = false
     }, 2000)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -170,7 +170,7 @@ onMounted(fetchTeams)
           <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
-          <UButton type="submit" :loading="loading">
+          <UButton type="submit" :loading="isLoading">
             {{ t('common.save') }}
           </UButton>
         </div>

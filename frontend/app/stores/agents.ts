@@ -19,18 +19,18 @@ function roleToInt(role: string): number {
 }
 
 export const useAgentsStore = defineStore('agents', {
-  state: () => ({ items: [] as Agent[], loading: false }),
+  state: () => ({ items: [] as Agent[], isLoading: false }),
   actions: {
     async fetch() {
       const api = useApi()
       const auth = useAuthStore()
       if (!auth.account?.id) return
-      this.loading = true
+      this.isLoading = true
       try {
         const res = await api<{ payload?: Agent[] } | Agent[]>(`/accounts/${auth.account.id}/agents`)
         this.items = Array.isArray(res) ? res : (res.payload ?? [])
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
     async invite(email: string, role: string, name?: string) {

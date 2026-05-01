@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SlaPolicy } from '~/stores/sla'
 
-defineProps<{ items: SlaPolicy[], loading: boolean }>()
+defineProps<{ items: SlaPolicy[], isLoading: boolean }>()
 const emit = defineEmits<{ edit: [policy: SlaPolicy], remove: [policy: SlaPolicy] }>()
 
 const { t } = useI18n()
@@ -25,7 +25,7 @@ const { t } = useI18n()
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
+        <tr v-if="isLoading">
           <td colspan="4" class="px-4 py-6 text-center text-muted">
             …
           </td>

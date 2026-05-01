@@ -17,7 +17,7 @@ const contactsStore = useContactsStore()
 const toast = useToast()
 
 const contactId = route.params.id as string
-const loading = ref(true)
+const isLoading = ref(true)
 const contact = ref<Contact | null>(null)
 const contactConversations = ref<Conversation[]>([])
 
@@ -43,7 +43,7 @@ const breadcrumb = computed(() => [
 
 async function load() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const [c, labels, notes, attrs, convs] = await Promise.all([
       api<Contact>(`/accounts/${auth.account.id}/contacts/${contactId}`),
@@ -59,7 +59,7 @@ async function load() {
     useCustomAttributesStore().setAll(attrs)
     contactConversations.value = convs
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -139,7 +139,7 @@ onMounted(load)
     </template>
 
     <template #body>
-      <div v-if="loading" class="flex items-center justify-center py-24 text-muted">
+      <div v-if="isLoading" class="flex items-center justify-center py-24 text-muted">
         {{ t('common.loading') }}
       </div>
 

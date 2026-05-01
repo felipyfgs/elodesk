@@ -28,7 +28,7 @@ const fields: AuthFormField[] = [
   }
 ]
 
-const loading = ref(false)
+const isLoading = ref(false)
 const tokenValid = ref<boolean | null>(null)
 const validating = ref(true)
 
@@ -50,7 +50,7 @@ onMounted(async () => {
 })
 
 async function onSubmit(event: FormSubmitEvent<ResetForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     await api('/auth/reset', { method: 'POST', body: { token, newPassword: event.data.password } })
     toast.add({ title: t('auth.reset.success'), color: 'success' })
@@ -58,7 +58,7 @@ async function onSubmit(event: FormSubmitEvent<ResetForm>) {
   } catch {
     toast.add({ title: t('auth.reset.invalidToken'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -78,7 +78,7 @@ definePageMeta({ layout: 'auth' })
       :schema="resetSchema"
       :state="state"
       :fields="fields"
-      :loading="loading"
+      :loading="isLoading"
       icon="i-lucide-lock-keyhole"
       :title="t('auth.reset.title')"
       :description="t('auth.reset.description')"

@@ -15,7 +15,7 @@ const state = reactive<Partial<MacroForm>>({
   conditions: {},
   actions: []
 })
-const loading = ref(false)
+const isLoading = ref(false)
 
 watch(() => props.open, (open) => {
   if (!open) return
@@ -37,7 +37,7 @@ watch(() => props.open, (open) => {
 })
 
 async function onSubmit() {
-  loading.value = true
+  isLoading.value = true
   try {
     await store.save({
       id: props.macro?.id,
@@ -51,7 +51,7 @@ async function onSubmit() {
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -79,7 +79,7 @@ async function onSubmit() {
             <UButton variant="outline" @click="emit('update:open', false)">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton type="submit" :loading="loading">
+            <UButton type="submit" :loading="isLoading">
               {{ t('common.save') }}
             </UButton>
           </div>

@@ -18,7 +18,7 @@ const state = reactive<WebWidgetInboxForm>({
   replyTime: 'in_a_few_minutes'
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 const setupFormRef = ref()
 const appearanceFormRef = ref()
 
@@ -57,7 +57,7 @@ async function validateStep(step: number): Promise<boolean> {
 
 async function submit() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ id: number }>(`/accounts/${auth.account.id}/inboxes/web_widget`, {
       method: 'POST',
@@ -69,7 +69,7 @@ async function submit() {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -82,7 +82,7 @@ async function submit() {
     :cancel-to="`/accounts/${auth.account?.id}/inboxes/new`"
     :validate-step="validateStep"
     :submit="submit"
-    :loading="loading"
+    :is-loading="isLoading"
   >
     <template #setup>
       <UPageCard variant="subtle">

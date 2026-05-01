@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Agent } from '~/stores/agents'
 
-defineProps<{ items: Agent[], loading: boolean }>()
+defineProps<{ items: Agent[], isLoading: boolean }>()
 const emit = defineEmits<{ edit: [agent: Agent], remove: [agent: Agent] }>()
 
 const { t } = useI18n()
@@ -31,7 +31,7 @@ function roleLabel(role: number) {
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
+        <tr v-if="isLoading">
           <td colspan="4" class="px-4 py-6 text-center text-muted">
             {{ t('common.loading') ?? 'Loading...' }}
           </td>

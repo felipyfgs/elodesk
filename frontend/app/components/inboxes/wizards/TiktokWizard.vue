@@ -8,7 +8,7 @@ const auth = useAuthStore()
 const toast = useToast()
 
 const state = reactive<TiktokInboxForm>({ name: '' })
-const loading = ref(false)
+const isLoading = ref(false)
 const formRef = ref()
 
 async function authorize() {
@@ -20,7 +20,7 @@ async function authorize() {
     )
     return
   }
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ url: string }>(
       `/accounts/${auth.account.id}/inboxes/tiktok/authorize`,
@@ -32,7 +32,7 @@ async function authorize() {
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -76,7 +76,7 @@ async function authorize() {
       <UButton
         type="button"
         icon="i-simple-icons-tiktok"
-        :loading="loading"
+        :loading="isLoading"
         @click="authorize"
       >
         {{ t('inboxes.wizards.tiktok.connect') }}

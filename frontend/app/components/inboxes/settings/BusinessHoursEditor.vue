@@ -30,7 +30,7 @@ interface BusinessHoursResponse {
   updatedAt?: string
 }
 
-const loading = ref(true)
+const isLoading = ref(true)
 const saving = ref(false)
 const timezone = ref(String(auth.account?.settings?.timezone ?? 'America/Sao_Paulo'))
 
@@ -87,13 +87,13 @@ function applySchedule(value: unknown) {
 
 async function load() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<BusinessHoursResponse>(`/accounts/${auth.account.id}/inboxes/${props.inbox.id}/business_hours`)
     timezone.value = res.timezone || timezone.value
     applySchedule(res.schedule)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -151,7 +151,7 @@ onMounted(load)
       />
     </UFormField>
 
-    <div v-if="loading" class="flex flex-col gap-2">
+    <div v-if="isLoading" class="flex flex-col gap-2">
       <USkeleton v-for="n in 7" :key="n" class="h-14 w-full rounded-lg" />
     </div>
 

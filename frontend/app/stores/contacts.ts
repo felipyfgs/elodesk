@@ -64,14 +64,14 @@ export const useContactsStore = defineStore('contacts', {
   state: () => ({
     list: [] as Contact[],
     meta: { page: 1, pageSize: 25, total: 0 } as ContactMeta,
-    loading: false
+    isLoading: false
   }),
   actions: {
     async fetchPage(params: { search?: string, labels?: string, page?: number, pageSize?: number, append?: boolean } = {}) {
       const auth = useAuthStore()
       if (!auth.account?.id) return
 
-      this.loading = true
+      this.isLoading = true
       try {
         const api = useApi()
         const query = new URLSearchParams()
@@ -92,7 +92,7 @@ export const useContactsStore = defineStore('contacts', {
 
         this.meta = res.meta
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
 

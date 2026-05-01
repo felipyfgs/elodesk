@@ -75,7 +75,7 @@ function onRemove(h: OutboundWebhook) {
 
       <WebhookTable
         :items="store.items"
-        :loading="store.loading"
+        :loading="store.isLoading"
         @edit="onEdit"
         @remove="onRemove"
       />

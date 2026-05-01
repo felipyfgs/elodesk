@@ -50,7 +50,7 @@ function onRemove(p: SlaPolicy) {
 
     <SettingsSlaTable
       :items="store.items"
-      :loading="store.loading"
+      :is-loading="store.isLoading"
       @edit="onEdit"
       @remove="onRemove"
     />

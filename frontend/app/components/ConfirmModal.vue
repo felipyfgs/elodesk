@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   confirmLabel: undefined,
   cancelLabel: undefined,
   confirmColor: 'error',
-  loading: false,
+  isLoading: false,
   confirmValue: undefined,
   confirmPlaceholder: undefined
 })

@@ -30,11 +30,11 @@ const schema = z.object({
 type Schema = z.output<typeof schema>
 
 const error = ref<string | null>(null)
-const loading = ref(false)
+const isLoading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   error.value = null
-  loading.value = true
+  isLoading.value = true
   try {
     await register({
       email: event.data.email,
@@ -53,7 +53,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       error.value = e?.data?.message ?? t('common.error')
     }
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -65,7 +65,7 @@ definePageMeta({ layout: 'auth' })
     <UAuthForm
       :schema="schema"
       :fields="fields"
-      :loading="loading"
+      :loading="isLoading"
       icon="i-lucide-user-plus"
       :title="t('auth.register.title')"
       :description="t('auth.register.description')"

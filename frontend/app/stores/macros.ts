@@ -14,18 +14,18 @@ export interface Macro {
 }
 
 export const useMacrosStore = defineStore('macros', {
-  state: () => ({ items: [] as Macro[], loading: false }),
+  state: () => ({ items: [] as Macro[], isLoading: false }),
   actions: {
     async fetch() {
       const api = useApi()
       const auth = useAuthStore()
       if (!auth.account?.id) return
-      this.loading = true
+      this.isLoading = true
       try {
         const res = await api<{ payload?: Macro[] } | Macro[]>(`/accounts/${auth.account.id}/macros`)
         this.items = Array.isArray(res) ? res : (res.payload ?? [])
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
     async save(macro: Partial<Macro>) {

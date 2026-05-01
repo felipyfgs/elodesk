@@ -13,7 +13,7 @@ const state = reactive<Partial<SlaFormType>>({
   name: '', firstResponseMinutes: 60, resolutionMinutes: 1440,
   businessHoursOnly: false, inboxIds: [], labelIds: []
 })
-const loading = ref(false)
+const isLoading = ref(false)
 
 watch(() => props.open, (o) => {
   if (!o) return
@@ -35,7 +35,7 @@ watch(() => props.open, (o) => {
 })
 
 async function onSubmit() {
-  loading.value = true
+  isLoading.value = true
   try {
     await store.save({
       id: props.policy?.id,
@@ -49,7 +49,7 @@ async function onSubmit() {
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -89,7 +89,7 @@ async function onSubmit() {
             <UButton variant="outline" @click="emit('update:open', false)">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton type="submit" :loading="loading">
+            <UButton type="submit" :loading="isLoading">
               {{ t('common.save') }}
             </UButton>
           </div>

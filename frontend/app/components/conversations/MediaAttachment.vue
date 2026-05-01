@@ -12,7 +12,7 @@ const props = defineProps<{
   isSticker?: boolean
 }>()
 
-const { src, errored, loading } = useAttachmentSrc(props.attachment, props.accountId)
+const { src, errored, isLoading } = useAttachmentSrc(props.attachment, props.accountId)
 const lightboxOpen = ref(false)
 
 const kind = computed<'image' | 'video' | 'audio' | 'sticker' | 'pdf' | 'file'>(() => {
@@ -84,7 +84,7 @@ const fileSizeLabel = computed(() => {
       :aria-label="$t('common.open', 'Abrir')"
       @click="lightboxOpen = true"
     >
-      <div v-if="loading" class="flex h-32 w-48 items-center justify-center text-xs text-muted">
+      <div v-if="isLoading" class="flex h-32 w-48 items-center justify-center text-xs text-muted">
         <UIcon name="i-lucide-loader-2" class="size-4 animate-spin" />
       </div>
       <div v-else-if="errored || !src" class="flex h-32 w-48 items-center justify-center text-xs text-muted">

@@ -23,7 +23,7 @@ const schema = z.object({
 type Schema = z.output<typeof schema>
 
 const error = ref<string | null>(null)
-const loading = ref(false)
+const isLoading = ref(false)
 
 // MFA step
 const mfaRequired = ref(false)
@@ -61,7 +61,7 @@ function lockMfa() {
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   error.value = null
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await login(event.data.email, event.data.password)
     if ('mfaRequired' in res && res.mfaRequired) {
@@ -78,7 +78,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       ? t('auth.errors.invalidCredentials')
       : (e?.data?.message ?? t('common.error'))
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -136,7 +136,7 @@ definePageMeta({ layout: 'auth' })
       :schema="schema"
       :fields="fields"
       :providers="providers"
-      :loading="loading"
+      :loading="isLoading"
       icon="i-lucide-lock"
       :title="t('auth.login.title')"
       :description="t('auth.login.description')"

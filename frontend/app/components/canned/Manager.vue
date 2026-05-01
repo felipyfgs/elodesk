@@ -22,7 +22,7 @@ const form = reactive<CannedResponseForm>({
   content: ''
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 
 function resetForm() {
   form.short_code = ''
@@ -43,7 +43,7 @@ function openEdit(item: CannedResponse) {
 }
 
 async function submit(event: FormSubmitEvent<CannedResponseForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     if (editing.value) {
       const updated = await api<CannedResponse>(`/accounts/${auth.account?.id}/canned_responses/${editing.value.id}`, { method: 'PATCH', body: event.data })
@@ -59,7 +59,7 @@ async function submit(event: FormSubmitEvent<CannedResponseForm>) {
       saved.value = false
     }, 2000)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -162,7 +162,7 @@ onMounted(fetchItems)
           <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
-          <UButton type="submit" :loading="loading">
+          <UButton type="submit" :loading="isLoading">
             {{ t('common.save') }}
           </UButton>
         </div>

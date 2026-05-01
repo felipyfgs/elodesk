@@ -12,7 +12,7 @@ const props = defineProps<{
   cancelTo: string
   validateStep: (step: number) => Promise<boolean>
   submit: () => Promise<void>
-  loading: boolean
+  isLoading: boolean
   submitLabel?: string
 }>()
 
@@ -58,13 +58,13 @@ async function doSubmit() {
       <UButton :to="cancelTo" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
-      <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">
+      <UButton v-if="!isLastStep" :disabled="isLoading" @click="nextStep">
         {{ t('common.next') }}
       </UButton>
       <UButton
         v-else
         type="button"
-        :loading="loading"
+        :loading="isLoading"
         @click="doSubmit"
       >
         {{ submitLabel ?? t('common.create') }}

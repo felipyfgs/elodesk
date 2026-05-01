@@ -15,7 +15,7 @@ const errorHandler = useErrorHandler()
 const open = ref(false)
 const editing = ref<Label | null>(null)
 const fetching = ref(false)
-const loading = ref(false)
+const isLoading = ref(false)
 const formRef = useTemplateRef('formRef')
 
 const initialState = (): LabelForm => ({
@@ -51,7 +51,7 @@ watch(open, (value) => {
 })
 
 async function submit(event: FormSubmitEvent<LabelForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     const body = {
       ...event.data,
@@ -73,7 +73,7 @@ async function submit(event: FormSubmitEvent<LabelForm>) {
       title: editing.value ? t('labels.updateFailed') : t('labels.createFailed')
     })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -249,12 +249,12 @@ onMounted(fetchLabels)
           <UButton
             color="neutral"
             variant="ghost"
-            :disabled="loading"
+            :disabled="isLoading"
             @click="open = false"
           >
             {{ t('common.cancel') }}
           </UButton>
-          <UButton :loading="loading" @click="formRef?.submit()">
+          <UButton :loading="isLoading" @click="formRef?.submit()">
             {{ t('common.save') }}
           </UButton>
         </div>

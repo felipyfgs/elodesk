@@ -16,7 +16,7 @@ const toast = useToast()
 const auth = useAuthStore()
 
 const canManage = computed(() => (auth.accountUser?.role ?? 0) >= 1)
-const loading = ref(false)
+const isLoading = ref(false)
 
 const localeOptions = computed(() => [
   { label: 'Português (Brasil)', value: 'pt-BR' },
@@ -71,7 +71,7 @@ async function load() {
 
 async function onSubmit(event: FormSubmitEvent<AccountSettingsForm>) {
   if (!auth.account?.id || !canManage.value) return
-  loading.value = true
+  isLoading.value = true
   try {
     const settings = {
       ...(auth.account.settings ?? {}),
@@ -90,7 +90,7 @@ async function onSubmit(event: FormSubmitEvent<AccountSettingsForm>) {
   } catch {
     toast.add({ title: t('settings.account.saveFailed'), color: 'error', icon: 'i-lucide-triangle-alert' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -145,7 +145,7 @@ onMounted(load)
           <UButton
             type="submit"
             icon="i-lucide-save"
-            :loading="loading"
+            :loading="isLoading"
             :disabled="!canManage"
           >
             {{ t('common.save') }}

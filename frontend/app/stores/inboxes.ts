@@ -133,7 +133,7 @@ export interface Inbox {
 export const useInboxesStore = defineStore('inboxes', {
   state: () => ({
     list: [] as Inbox[],
-    loading: false
+    isLoading: false
   }),
   actions: {
     setAll(list: Inbox[]) {

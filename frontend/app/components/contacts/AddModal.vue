@@ -41,7 +41,7 @@ const initialState = (): ContactCreateForm => ({
 })
 
 const state = reactive<ContactCreateForm>(initialState())
-const loading = ref(false)
+const isLoading = ref(false)
 const formRef = useTemplateRef('formRef')
 
 function resetState() {
@@ -87,7 +87,7 @@ function buildAdditionalAttributes(data: ContactCreateForm) {
 }
 
 async function onSubmit(event: FormSubmitEvent<ContactCreateForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     const data = event.data
     const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim()
@@ -113,7 +113,7 @@ async function onSubmit(event: FormSubmitEvent<ContactCreateForm>) {
       onRetry: () => onSubmit(event)
     })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -234,7 +234,7 @@ async function onSubmit(event: FormSubmitEvent<ContactCreateForm>) {
         />
         <UButton
           :label="t('contacts.form.save')"
-          :loading="loading"
+          :loading="isLoading"
           @click="formRef?.submit()"
         />
       </div>

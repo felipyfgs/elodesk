@@ -15,11 +15,11 @@ const state = reactive<Partial<ProfileForm>>({
   email: auth.user?.email ?? '',
   avatarUrl: undefined
 })
-const loading = ref(false)
+const isLoading = ref(false)
 
 async function onSubmit() {
   if (!auth.user?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     await api(`/users/${auth.user.id}`, {
       method: 'PUT',
@@ -31,7 +31,7 @@ async function onSubmit() {
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -53,7 +53,7 @@ async function onSubmit() {
           <UInput v-model="state.email" type="email" />
         </UFormField>
         <div class="flex justify-end">
-          <UButton type="submit" :loading="loading">
+          <UButton type="submit" :loading="isLoading">
             {{ t('common.save') }}
           </UButton>
         </div>

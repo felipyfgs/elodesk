@@ -21,7 +21,7 @@ export const useCustomAttributesStore = defineStore('customAttributes', {
       contact: [] as CustomAttributeDefinition[],
       conversation: [] as CustomAttributeDefinition[]
     },
-    loading: false
+    isLoading: false
   }),
   getters: {
     byModel(): (model: string) => CustomAttributeDefinition[] {

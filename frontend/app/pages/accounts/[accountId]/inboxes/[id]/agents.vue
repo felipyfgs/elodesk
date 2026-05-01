@@ -15,7 +15,7 @@ const toast = useToast()
 const inboxAgents = ref<InboxAgent[]>([])
 const accountAgents = ref<Agent[]>([])
 const formState = reactive({ userIds: [] as number[] })
-const loading = ref(true)
+const isLoading = ref(true)
 const saving = ref(false)
 
 const activeAccountAgents = computed(() => accountAgents.value.filter(agent => agent.userId > 0))
@@ -23,7 +23,7 @@ const selectedAgents = computed(() => activeAccountAgents.value.filter(agent => 
 
 async function loadAgents() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const [inboxAgentsRes, accountAgentsRes] = await Promise.all([
       api<InboxAgent[]>(`/accounts/${auth.account.id}/inboxes/${props.inbox.id}/agents`),
@@ -36,7 +36,7 @@ async function loadAgents() {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -67,7 +67,7 @@ onMounted(loadAgents)
     :description="t('inboxes.agentsDescription')"
     variant="subtle"
   >
-    <div v-if="loading" class="flex items-center justify-center py-8">
+    <div v-if="isLoading" class="flex items-center justify-center py-8">
       <UIcon name="i-lucide-loader-2" class="size-6 animate-spin text-muted" />
     </div>
 

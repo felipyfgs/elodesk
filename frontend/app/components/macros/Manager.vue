@@ -59,7 +59,7 @@ async function onDelete(m: Macro) {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="store.loading">
+          <tr v-if="store.isLoading">
             <td colspan="3" class="px-4 py-6 text-center text-muted">
               …
             </td>

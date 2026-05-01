@@ -19,7 +19,7 @@ const api = useApi()
 const auth = useAuthStore()
 
 const items = ref<Row[]>([])
-const loading = ref(false)
+const isLoading = ref(false)
 const range = ref<Range>({
   start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
   end: new Date()
@@ -28,7 +28,7 @@ const filters = reactive({ inboxId: '', labelId: '' })
 
 async function load() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ meta?: unknown, payload?: Row[] } | Row[]>(
       `/accounts/${auth.account.id}/reports/conversations`,
@@ -43,7 +43,7 @@ async function load() {
     )
     items.value = Array.isArray(res) ? res : (res.payload ?? [])
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -71,7 +71,7 @@ onMounted(load)
         <aside>
           <ReportsConversationsFilters v-model:inbox-id="filters.inboxId" v-model:label-id="filters.labelId" />
         </aside>
-        <ReportsConversationsTable :items="items" :loading="loading" />
+        <ReportsConversationsTable :items="items" :is-loading="isLoading" />
       </div>
     </template>
   </UDashboardPanel>

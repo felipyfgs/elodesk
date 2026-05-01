@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OutboundWebhook } from '~/stores/webhooks'
 
-defineProps<{ items: OutboundWebhook[], loading: boolean }>()
+defineProps<{ items: OutboundWebhook[], isLoading: boolean }>()
 const emit = defineEmits<{ edit: [hook: OutboundWebhook], remove: [hook: OutboundWebhook] }>()
 
 const { t } = useI18n()
@@ -25,7 +25,7 @@ const { t } = useI18n()
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
+        <tr v-if="isLoading">
           <td colspan="4" class="px-4 py-6 text-center text-muted">
             …
           </td>

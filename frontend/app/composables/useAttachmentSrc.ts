@@ -22,7 +22,7 @@ export function useAttachmentSrc(
   _accountId?: string | number,
 ) {
   const src = computed<string | null>(() => resolveAttachmentMediaUrl(att))
-  const loading = ref(false)
+  const isLoading = ref(false)
   const errored = ref(false)
-  return { src, loading, errored }
+  return { src, isLoading, errored }
 }

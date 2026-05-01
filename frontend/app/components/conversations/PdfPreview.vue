@@ -7,14 +7,14 @@ const props = defineProps<{
 
 const thumbDataUrl = ref<string | null>(null)
 const pageCount = ref<number | null>(null)
-const loading = ref(true)
+const isLoading = ref(true)
 const errored = ref(false)
 
 // Renderiza a primeira página do PDF para um canvas e gera dataURL pra usar
 // como thumbnail. PDF.js é carregado dinamicamente pra não inflar o bundle
 // inicial — só quando uma mensagem com PDF aparece na tela.
 async function renderThumbnail() {
-  loading.value = true
+  isLoading.value = true
   errored.value = false
   try {
     const pdfjs = await import('pdfjs-dist')
@@ -50,7 +50,7 @@ async function renderThumbnail() {
     console.error('[PdfPreview] failed to render', err)
     errored.value = true
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -79,7 +79,7 @@ const metaLine = computed(() => {
   >
     <!-- Thumbnail da primeira página -->
     <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-white/90">
-      <div v-if="loading" class="absolute inset-0 flex items-center justify-center text-current/60">
+      <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center text-current/60">
         <UIcon name="i-lucide-loader-2" class="size-6 animate-spin" />
       </div>
       <div v-else-if="errored || !thumbDataUrl" class="absolute inset-0 flex flex-col items-center justify-center gap-1 text-current/60">

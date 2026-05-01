@@ -16,7 +16,7 @@ const state = reactive<NotificationPreferences>({
   sla_breach: true,
   email_enabled: false
 })
-const loading = ref(false)
+const isLoading = ref(false)
 
 const eventSections = computed(() => [
   { key: 'mentions', label: t('settings.notifications.mentions'), icon: 'i-lucide-at-sign' },
@@ -38,7 +38,7 @@ async function load() {
 
 async function onSubmit(event: FormSubmitEvent<NotificationPreferences>) {
   if (!auth.user?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     await api(`/users/${auth.user.id}/notification_preferences`, {
       method: 'PUT',
@@ -51,7 +51,7 @@ async function onSubmit(event: FormSubmitEvent<NotificationPreferences>) {
       onRetry: () => onSubmit(event)
     })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -110,7 +110,7 @@ onMounted(load)
       </div>
 
       <div class="flex justify-end">
-        <UButton type="submit" icon="i-lucide-save" :loading="loading">
+        <UButton type="submit" icon="i-lucide-save" :loading="isLoading">
           {{ t('common.save') }}
         </UButton>
       </div>

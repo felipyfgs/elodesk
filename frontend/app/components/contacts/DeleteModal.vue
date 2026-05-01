@@ -15,7 +15,7 @@ const emit = defineEmits<{
   'deleted': []
 }>()
 
-const loading = ref(false)
+const isLoading = ref(false)
 const { t } = useI18n()
 const errorHandler = useErrorHandler()
 const contactsStore = useContactsStore()
@@ -27,7 +27,7 @@ const isOpen = computed({
 
 async function onSubmit() {
   if (!props.ids.length) return
-  loading.value = true
+  isLoading.value = true
   let success = 0
   let failure = 0
   try {
@@ -53,7 +53,7 @@ async function onSubmit() {
     emit('deleted')
     isOpen.value = false
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -70,14 +70,14 @@ async function onSubmit() {
           :label="t('common.cancel')"
           color="neutral"
           variant="subtle"
-          :disabled="loading"
+          :disabled="isLoading"
           @click="isOpen = false"
         />
         <UButton
           :label="t('common.delete')"
           color="error"
           variant="solid"
-          :loading="loading"
+          :loading="isLoading"
           :disabled="!ids.length"
           @click="onSubmit"
         />

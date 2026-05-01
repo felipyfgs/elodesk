@@ -10,7 +10,7 @@ const toast = useToast()
 const router = useRouter()
 
 const state = reactive<TelegramInboxForm>({ name: '', botToken: '' })
-const loading = ref(false)
+const isLoading = ref(false)
 const setupFormRef = ref()
 const credentialsFormRef = ref()
 
@@ -41,7 +41,7 @@ async function validateStep(step: number): Promise<boolean> {
 
 async function submit() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ id: number }>(`/accounts/${auth.account.id}/inboxes/telegram`, {
       method: 'POST',
@@ -53,7 +53,7 @@ async function submit() {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -66,7 +66,7 @@ async function submit() {
     :cancel-to="`/accounts/${auth.account?.id}/inboxes/new`"
     :validate-step="validateStep"
     :submit="submit"
-    :loading="loading"
+    :is-loading="isLoading"
   >
     <template #setup>
       <UPageCard variant="subtle">

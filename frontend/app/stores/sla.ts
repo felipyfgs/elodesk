@@ -13,18 +13,18 @@ export interface SlaPolicy {
 }
 
 export const useSlaStore = defineStore('sla', {
-  state: () => ({ items: [] as SlaPolicy[], loading: false }),
+  state: () => ({ items: [] as SlaPolicy[], isLoading: false }),
   actions: {
     async fetch() {
       const api = useApi()
       const auth = useAuthStore()
       if (!auth.account?.id) return
-      this.loading = true
+      this.isLoading = true
       try {
         const res = await api<{ payload?: SlaPolicy[] } | SlaPolicy[]>(`/accounts/${auth.account.id}/slas`)
         this.items = Array.isArray(res) ? res : (res.payload ?? [])
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
     async save(sla: Partial<SlaPolicy>) {

@@ -21,11 +21,11 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 const state = reactive<Partial<Schema>>({ email: '' })
-const loading = ref(false)
+const isLoading = ref(false)
 const sent = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  loading.value = true
+  isLoading.value = true
   try {
     await api('/auth/forgot', { method: 'POST', body: { email: event.data.email } })
     sent.value = true
@@ -33,7 +33,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     // Always show success message per spec (never leak email existence).
     sent.value = true
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -49,7 +49,7 @@ definePageMeta({ layout: 'auth' })
       :schema="schema"
       :state="state"
       :fields="fields"
-      :loading="loading"
+      :loading="isLoading"
       icon="i-lucide-key-round"
       :title="t('auth.forgot.title')"
       :description="t('auth.forgot.description')"

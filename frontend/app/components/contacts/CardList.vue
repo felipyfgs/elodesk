@@ -63,7 +63,7 @@ function handleAvatarHover(id: string, isHovered: boolean) {
       :is-expanded="expandedCardId === contact.id"
       :is-selected="isSelected(contact.id)"
       :selectable="shouldShowSelection(contact.id)"
-      :loading="loading"
+      :loading="isLoading"
       @toggle="toggleExpanded(contact.id)"
       @select="(value) => handleSelect(contact.id, value)"
       @update="handleUpdate"

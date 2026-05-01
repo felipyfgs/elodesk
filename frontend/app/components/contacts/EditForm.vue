@@ -149,7 +149,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput
           v-model="state.firstName"
           :placeholder="t('contacts.form.firstNamePlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           icon="i-lucide-user"
           class="w-full"
         />
@@ -158,7 +158,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput
           v-model="state.lastName"
           :placeholder="t('contacts.form.lastNamePlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           class="w-full"
         />
       </UFormField>
@@ -167,7 +167,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           v-model="state.email"
           type="email"
           :placeholder="t('contacts.form.emailPlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           icon="i-lucide-mail"
           class="w-full"
         />
@@ -175,14 +175,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UFormField name="phoneNumber">
         <PhoneNumberInput
           v-model="state.phoneNumber"
-          :disabled="loading"
+          :disabled="isLoading"
         />
       </UFormField>
       <UFormField name="city">
         <UInput
           v-model="state.city"
           :placeholder="t('contacts.form.cityPlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           icon="i-lucide-map-pin"
           class="w-full"
         />
@@ -198,7 +198,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             icon: 'i-lucide-search'
           }"
           :filter-fields="['label']"
-          :disabled="loading"
+          :disabled="isLoading"
           icon="i-lucide-globe"
           class="w-full"
         >
@@ -211,7 +211,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput
           v-model="state.companyName"
           :placeholder="t('contacts.form.companyPlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           icon="i-lucide-building-2"
           class="w-full"
         />
@@ -220,7 +220,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UTextarea
           v-model="state.bio"
           :placeholder="t('contacts.form.bioPlaceholder')"
-          :disabled="loading"
+          :disabled="isLoading"
           :rows="2"
           autoresize
           class="w-full"
@@ -237,7 +237,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput
           v-model="state[field.key]"
           :placeholder="t(`contacts.form.${field.key}Placeholder`)"
-          :disabled="loading"
+          :disabled="isLoading"
           :icon="field.icon"
           type="url"
           class="w-full"
@@ -249,8 +249,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UButton
         type="submit"
         :label="t('contacts.card.updateButton')"
-        :loading="loading"
-        :disabled="loading"
+        :loading="isLoading"
+        :disabled="isLoading"
         icon="i-lucide-save"
       />
     </div>

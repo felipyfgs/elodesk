@@ -12,7 +12,7 @@ interface AuditLogEntry {
   createdAt: string
 }
 
-defineProps<{ items: AuditLogEntry[], loading: boolean }>()
+defineProps<{ items: AuditLogEntry[], isLoading: boolean }>()
 
 const { t } = useI18n()
 
@@ -45,7 +45,7 @@ function fmt(ts: string) {
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading">
+        <tr v-if="isLoading">
           <td colspan="4" class="px-4 py-6 text-center text-muted">
             …
           </td>

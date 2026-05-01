@@ -17,7 +17,7 @@ const state = reactive<EmailInboxForm>({
   smtpAddress: '', smtpPort: 587, smtpLogin: '', smtpPassword: '', smtpEnableSsl: true
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 const isOAuth = computed(() => state.provider === 'google' || state.provider === 'microsoft')
 
 const stepperItems = computed<StepperItem[]>(() => {
@@ -75,7 +75,7 @@ async function validateStep(step: number): Promise<boolean> {
 
 async function submit() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ inboxId: number, authorizeUrl?: string }>(`/accounts/${auth.account.id}/inboxes/email`, {
       method: 'POST',
@@ -92,7 +92,7 @@ async function submit() {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -105,7 +105,7 @@ async function submit() {
     :cancel-to="`/accounts/${auth.account?.id}/inboxes/new`"
     :validate-step="validateStep"
     :submit="submit"
-    :loading="loading"
+    :is-loading="isLoading"
     :submit-label="isOAuth ? t('inboxes.wizards.email.authorize') : t('common.create')"
   >
     <template #setup>

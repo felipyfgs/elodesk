@@ -6,11 +6,11 @@ const api = useApi()
 const auth = useAuthStore()
 const toast = useToast()
 
-const loading = ref(false)
+const isLoading = ref(false)
 
 async function connect() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ url: string }>(
       `/accounts/${auth.account.id}/inboxes/twitter/authorize`,
@@ -22,7 +22,7 @@ async function connect() {
   } catch (err: unknown) {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -55,7 +55,7 @@ async function connect() {
       <UButton
         type="button"
         icon="i-simple-icons-x"
-        :loading="loading"
+        :loading="isLoading"
         @click="connect"
       >
         {{ t('inboxes.wizards.twitter.connect') }}

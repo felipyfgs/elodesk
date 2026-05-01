@@ -21,7 +21,7 @@ export const useTeamsStore = defineStore('teams', {
   state: () => ({
     list: [] as Team[],
     membersByTeam: {} as Record<string, TeamMember[]>,
-    loading: false
+    isLoading: false
   }),
   getters: {
     byId(): (id: string) => Team | undefined {

@@ -9,7 +9,7 @@ const errorHandler = useErrorHandler()
 const store = useWebhooksStore()
 
 const state = reactive({ url: '', subscriptionsText: '', secret: '' })
-const loading = ref(false)
+const isLoading = ref(false)
 
 watch(() => props.open, (o) => {
   if (!o) return
@@ -25,7 +25,7 @@ watch(() => props.open, (o) => {
 })
 
 async function onSubmit() {
-  loading.value = true
+  isLoading.value = true
   try {
     const subs = state.subscriptionsText.split(',').map(s => s.trim()).filter(Boolean)
     await store.save({
@@ -42,7 +42,7 @@ async function onSubmit() {
       onRetry: onSubmit
     })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -64,7 +64,7 @@ async function onSubmit() {
           <UButton variant="outline" @click="emit('update:open', false)">
             {{ t('common.cancel') }}
           </UButton>
-          <UButton :loading="loading" @click="onSubmit">
+          <UButton :loading="isLoading" @click="onSubmit">
             {{ t('common.save') }}
           </UButton>
         </div>

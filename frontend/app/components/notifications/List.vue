@@ -31,7 +31,7 @@ const emptyDescription = computed(() => props.emptyDescription ?? '')
 
 <template>
   <div class="flex flex-col gap-3">
-    <div v-if="store.loading && store.items.length === 0" class="flex flex-col gap-1">
+    <div v-if="store.isLoading && store.items.length === 0" class="flex flex-col gap-1">
       <USkeleton v-for="n in 6" :key="n" class="h-16 w-full rounded-md" />
     </div>
 

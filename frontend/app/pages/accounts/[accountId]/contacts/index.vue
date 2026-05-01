@@ -109,7 +109,7 @@ async function loadContacts(params: { page?: number, pageSize?: number, append?:
   const auth = useAuthStore()
   if (!auth.account?.id) return
 
-  contactsStore.loading = true
+  contactsStore.isLoading = true
   try {
     const api = useApi()
     const res = await api<FilterContactsResponse>(
@@ -127,7 +127,7 @@ async function loadContacts(params: { page?: number, pageSize?: number, append?:
     contactsStore.setAll(params.append ? [...contactsStore.list, ...normalized] : normalized)
     contactsStore.meta = res.meta
   } finally {
-    contactsStore.loading = false
+    contactsStore.isLoading = false
   }
 }
 
@@ -212,7 +212,7 @@ function handlePageChange(page: number) {
 
 // Infinite scroll (for search)
 async function loadMore() {
-  if (!hasMore.value || contactsStore.loading) return
+  if (!hasMore.value || contactsStore.isLoading) return
   const nextPage = contactsStore.meta.page + 1
   await loadContacts({
     page: nextPage,
@@ -357,7 +357,7 @@ const headerMenuItems = computed(() => [
       <div class="max-w-6xl mx-auto w-full">
         <!-- Empty state -->
         <div
-          v-if="!contactsStore.loading && !contactsStore.list.length"
+          v-if="!contactsStore.isLoading && !contactsStore.list.length"
           class="flex flex-1 items-center justify-center py-24 text-muted text-center"
         >
           <div>
@@ -370,7 +370,7 @@ const headerMenuItems = computed(() => [
 
         <!-- Loading state -->
         <div
-          v-else-if="contactsStore.loading && !contactsStore.list.length"
+          v-else-if="contactsStore.isLoading && !contactsStore.list.length"
           class="flex items-center justify-center py-12"
         >
           <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
@@ -381,7 +381,7 @@ const headerMenuItems = computed(() => [
           v-else
           :contacts="contactsStore.list"
           :selected-contact-ids="selectedIds"
-          :loading="contactsStore.loading"
+          :loading="contactsStore.isLoading"
           @toggle-contact="toggleContact"
           @update-contact="handleUpdateContact"
           @delete-contact="handleDeleteContact"
@@ -390,7 +390,7 @@ const headerMenuItems = computed(() => [
 
         <!-- Infinite scroll trigger (only in search) -->
         <div
-          v-if="isSearchView && hasMore && !contactsStore.loading"
+          v-if="isSearchView && hasMore && !contactsStore.isLoading"
           class="flex justify-center py-4"
         >
           <UButton

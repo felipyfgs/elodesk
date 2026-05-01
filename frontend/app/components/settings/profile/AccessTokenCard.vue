@@ -10,19 +10,19 @@ const confirm = useOverlay().create(ConfirmModal)
 const auth = useAuthStore()
 
 const token = ref<string | null>(null)
-const loading = ref(false)
+const isLoading = ref(false)
 const resetting = ref(false)
 
 async function fetchToken() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ token: string }>(`/accounts/${auth.account.id}/profile/access_token`)
     token.value = res.token
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -59,7 +59,7 @@ onMounted(fetchToken)
 
 <template>
   <UPageCard :title="t('settings.profile.accessToken')" :description="t('settings.profile.accessTokenDesc')" variant="subtle">
-    <div v-if="loading" class="flex items-center gap-2">
+    <div v-if="isLoading" class="flex items-center gap-2">
       <UIcon name="i-lucide-loader-circle" class="animate-spin text-muted" />
     </div>
     <div v-else class="flex items-center gap-2">

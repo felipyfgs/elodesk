@@ -17,7 +17,7 @@ const state = reactive<FacebookPageInboxForm>({
   instagramId: ''
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 const step = ref(0)
 
 const stepperItems: StepperItem[] = [
@@ -69,7 +69,7 @@ async function nextStep() {
 async function submit() {
   if (!auth.account?.id) return
   if (!(await validateCurrentStep())) return
-  loading.value = true
+  isLoading.value = true
   try {
     const res = await api<{ id: number }>(`/accounts/${auth.account.id}/inboxes/facebook_page`, {
       method: 'POST',
@@ -81,7 +81,7 @@ async function submit() {
     const e = err as { data?: { message?: string } }
     toast.add({ title: e?.data?.message || t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -147,13 +147,13 @@ const isLastStep = computed(() => step.value >= stepperItems.length - 1)
       <UButton :to="`/accounts/${auth.account?.id}/inboxes/new`" variant="ghost" color="neutral">
         {{ t('common.cancel') }}
       </UButton>
-      <UButton v-if="!isLastStep" :disabled="loading" @click="nextStep">
+      <UButton v-if="!isLastStep" :disabled="isLoading" @click="nextStep">
         {{ t('common.next') }}
       </UButton>
       <UButton
         v-else
         type="button"
-        :loading="loading"
+        :loading="isLoading"
         @click="submit"
       >
         {{ t('common.create') }}

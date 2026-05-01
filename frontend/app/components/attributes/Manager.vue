@@ -30,7 +30,7 @@ const form = reactive<CustomAttributeForm>({
   default_value: null
 })
 
-const loading = ref(false)
+const isLoading = ref(false)
 
 function resetForm() {
   form.attribute_key = ''
@@ -63,7 +63,7 @@ function openEdit(def: CustomAttributeDefinition) {
 }
 
 async function submit(event: FormSubmitEvent<CustomAttributeForm>) {
-  loading.value = true
+  isLoading.value = true
   try {
     const body = {
       ...event.data,
@@ -87,7 +87,7 @@ async function submit(event: FormSubmitEvent<CustomAttributeForm>) {
       saved.value = false
     }, 2000)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -229,7 +229,7 @@ onMounted(fetchAttributes)
           <UButton type="button" variant="ghost" @click="open = false">
             {{ t('common.cancel') }}
           </UButton>
-          <UButton type="submit" :loading="loading">
+          <UButton type="submit" :loading="isLoading">
             {{ t('common.save') }}
           </UButton>
         </div>

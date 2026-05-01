@@ -23,7 +23,7 @@ const assignAgentOpen = ref(false)
 const assignTeamOpen = ref(false)
 const labelOpen = ref(false)
 const labelAction = ref<'add' | 'remove'>('add')
-const loading = ref(false)
+const isLoading = ref(false)
 
 const selectedIds = computed(() => convs.selection)
 const allSelected = computed(() => (props.total ?? 0) > 0 && selectedIds.value.length === props.total)
@@ -35,8 +35,8 @@ function toggleSelectAll(value: boolean | string) {
 
 async function bulkToggleStatus(status: keyof typeof STATUS_MAP) {
   const accountId = auth.account?.id
-  if (!accountId || loading.value) return
-  loading.value = true
+  if (!accountId || isLoading.value) return
+  isLoading.value = true
   try {
     await Promise.all(
       selectedIds.value.map(id =>
@@ -51,14 +51,14 @@ async function bulkToggleStatus(status: keyof typeof STATUS_MAP) {
   } catch {
     toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
 async function bulkAssignTeam(teamId: string) {
   const accountId = auth.account?.id
-  if (!accountId || loading.value) return
-  loading.value = true
+  if (!accountId || isLoading.value) return
+  isLoading.value = true
   try {
     await Promise.all(
       selectedIds.value.map(id =>
@@ -74,14 +74,14 @@ async function bulkAssignTeam(teamId: string) {
   } catch {
     toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
 async function bulkToggleLabel(labelId: string, action: 'add' | 'remove') {
   const accountId = auth.account?.id
-  if (!accountId || loading.value) return
-  loading.value = true
+  if (!accountId || isLoading.value) return
+  isLoading.value = true
   try {
     await Promise.all(
       selectedIds.value.map(id =>
@@ -98,7 +98,7 @@ async function bulkToggleLabel(labelId: string, action: 'add' | 'remove') {
   } catch {
     toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -107,7 +107,7 @@ const router = useRouter()
 
 async function bulkDelete() {
   const accountId = auth.account?.id
-  if (!accountId || loading.value) return
+  if (!accountId || isLoading.value) return
 
   const confirmed = await confirm.open({
     title: t('conversations.bulk.deleteConfirm'),
@@ -117,7 +117,7 @@ async function bulkDelete() {
 
   if (!confirmed) return
 
-  loading.value = true
+  isLoading.value = true
   const ids = [...selectedIds.value]
   try {
     await Promise.all(
@@ -136,7 +136,7 @@ async function bulkDelete() {
   } catch {
     toast.add({ title: t('common.error'), icon: 'i-lucide-x-circle', color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 
@@ -192,7 +192,7 @@ const statusMenuItems = computed(() => [
               variant="ghost"
               size="xs"
               :aria-label="t('conversations.bulk.statusLabel')"
-              :loading="loading"
+              :loading="isLoading"
             />
           </UTooltip>
         </UDropdownMenu>
@@ -228,7 +228,7 @@ const statusMenuItems = computed(() => [
             variant="ghost"
             size="xs"
             :aria-label="t('conversations.bulk.delete')"
-            :loading="loading"
+            :loading="isLoading"
             @click="bulkDelete()"
           />
         </UTooltip>

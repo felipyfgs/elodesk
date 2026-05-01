@@ -12,18 +12,18 @@ export interface OutboundWebhook {
 }
 
 export const useWebhooksStore = defineStore('webhooks', {
-  state: () => ({ items: [] as OutboundWebhook[], loading: false }),
+  state: () => ({ items: [] as OutboundWebhook[], isLoading: false }),
   actions: {
     async fetch() {
       const api = useApi()
       const auth = useAuthStore()
       if (!auth.account?.id) return
-      this.loading = true
+      this.isLoading = true
       try {
         const res = await api<{ payload?: OutboundWebhook[] } | OutboundWebhook[]>(`/accounts/${auth.account.id}/webhooks`)
         this.items = Array.isArray(res) ? res : (res.payload ?? [])
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
     },
     async save(hook: Partial<OutboundWebhook> & { secret?: string }) {

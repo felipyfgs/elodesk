@@ -85,12 +85,12 @@ async function openDeleteModal(inbox: Inbox) {
 
 async function loadInboxes() {
   if (!auth.account?.id) return
-  inboxes.loading = true
+  inboxes.isLoading = true
   try {
     const list = await api<Inbox[]>(`/accounts/${auth.account.id}/inboxes`)
     inboxes.setAll(list)
   } finally {
-    inboxes.loading = false
+    inboxes.isLoading = false
   }
 }
 
@@ -122,7 +122,7 @@ onMounted(async () => {
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <div v-if="inboxes.loading" class="flex flex-col gap-4 py-4">
+        <div v-if="inboxes.isLoading" class="flex flex-col gap-4 py-4">
           <USkeleton v-for="n in 5" :key="n" class="h-16 w-full rounded-lg" />
         </div>
 

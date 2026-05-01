@@ -12,15 +12,15 @@ const auth = useAuthStore()
 
 const entity = computed(() => String(route.params.entity))
 const items = ref<EntityMetric[]>([])
-const loading = ref(false)
+const isLoading = ref(false)
 
 async function load() {
   if (!auth.account?.id) return
-  loading.value = true
+  isLoading.value = true
   try {
     items.value = await api<EntityMetric[]>(`/accounts/${auth.account.id}/reports/${entity.value}`)
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 

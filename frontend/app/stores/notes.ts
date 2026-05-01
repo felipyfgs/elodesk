@@ -13,7 +13,7 @@ export interface Note {
 export const useNotesStore = defineStore('notes', {
   state: () => ({
     byContact: {} as Record<string, Note[]>,
-    loading: false
+    isLoading: false
   }),
   actions: {
     setForContact(contactId: string, list: Note[]) {

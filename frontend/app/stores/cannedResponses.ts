@@ -12,7 +12,7 @@ export interface CannedResponse {
 export const useCannedResponsesStore = defineStore('cannedResponses', {
   state: () => ({
     list: [] as CannedResponse[],
-    loading: false
+    isLoading: false
   }),
   actions: {
     setAll(list: CannedResponse[]) {

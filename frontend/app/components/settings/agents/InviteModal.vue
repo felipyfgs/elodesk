@@ -10,10 +10,10 @@ const toast = useToast()
 const store = useAgentsStore()
 
 const state = reactive<Partial<AgentInviteForm>>({ email: '', role: 'agent', name: '' })
-const loading = ref(false)
+const isLoading = ref(false)
 
 async function onSubmit() {
-  loading.value = true
+  isLoading.value = true
   try {
     await store.invite(state.email ?? '', state.role ?? 'agent', state.name || undefined)
     toast.add({ title: t('settings.agents.inviteSent'), color: 'success' })
@@ -21,7 +21,7 @@ async function onSubmit() {
   } catch {
     toast.add({ title: t('common.error'), color: 'error' })
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 }
 </script>
@@ -49,7 +49,7 @@ async function onSubmit() {
             <UButton variant="outline" @click="emit('update:open', false)">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton type="submit" :loading="loading">
+            <UButton type="submit" :loading="isLoading">
               {{ t('settings.agents.invite') }}
             </UButton>
           </div>

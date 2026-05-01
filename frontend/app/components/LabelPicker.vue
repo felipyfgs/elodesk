@@ -12,7 +12,7 @@ const api = useApi()
 const auth = useAuthStore()
 const store = useLabelsStore()
 
-const loading = ref(false)
+const isLoading = ref(false)
 const appliedLabels = ref<Label[]>([])
 
 const availableLabels = computed(() =>
@@ -51,18 +51,18 @@ async function ensureStoreLoaded() {
 }
 
 onMounted(async () => {
-  loading.value = true
+  isLoading.value = true
   try {
     await Promise.all([loadLabels(), ensureStoreLoaded()])
   } finally {
-    loading.value = false
+    isLoading.value = false
   }
 })
 </script>
 
 <template>
   <div>
-    <div v-if="loading" class="text-sm text-muted">
+    <div v-if="isLoading" class="text-sm text-muted">
       {{ t('common.loading') }}
     </div>
 

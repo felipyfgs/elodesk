@@ -45,7 +45,7 @@ function onRemove(agent: Agent) {
 
     <SettingsAgentsTable
       :items="store.items"
-      :loading="store.loading"
+      :is-loading="store.isLoading"
       @edit="onEdit"
       @remove="onRemove"
     />
