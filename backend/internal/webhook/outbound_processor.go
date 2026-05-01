@@ -49,12 +49,12 @@ func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 // retries of the same delivery.
 type OutboundPayload struct {
 	EventType              string          `json:"event"`
-	AccountID              int64           `json:"accountId"`
-	InboxID                int64           `json:"inboxId"`
-	WebhookURL             string          `json:"webhookUrl"`
+	AccountID              int64           `taccount_id`
+	InboxID                int64           `xinbox_id`
+	WebhookURL             string          `kwebhook_url`
 	Secret                 string          `json:"secret"`
-	HMACCiphertext         string          `json:"hmacCiphertext"`
-	DeliveryID             string          `json:"deliveryId"`
+	HMACCiphertext         string          `chmac_ciphertext`
+	DeliveryID             string          `ydelivery_id`
 	Conversation           json.RawMessage `json:"conversation,omitempty"`
 	Message                json.RawMessage `json:"message,omitempty"`
 	ConversationAttributes json.RawMessage `json:"conversation_attributes,omitempty"`
@@ -92,9 +92,9 @@ func NewOutboundTask(payload *OutboundPayload) (*asynq.Task, error) {
 // webhookUrl and hmacCiphertext).
 type publicBody struct {
 	EventType              string          `json:"event"`
-	AccountID              int64           `json:"accountId"`
-	InboxID                int64           `json:"inboxId"`
-	DeliveryID             string          `json:"deliveryId"`
+	AccountID              int64           `taccount_id`
+	InboxID                int64           `xinbox_id`
+	DeliveryID             string          `ydelivery_id`
 	Conversation           json.RawMessage `json:"conversation,omitempty"`
 	Message                json.RawMessage `json:"message,omitempty"`
 	ConversationAttributes json.RawMessage `json:"conversation_attributes,omitempty"`

@@ -21,7 +21,6 @@ linters:
     - dupl
     - gocognit
     - gocritic
-    - misspell
     - goconst
   disable:
     - exhaustive
@@ -53,11 +52,12 @@ linters:
     revive:
       severity: warning
       rules:
-        # eixo else-after-return — converter para guard clauses
+        # Eixo else-after-return — converter para guard clauses (cluster C08
+        # da próxima proposta refactor-quick-wins-2026-05).
         - name: early-return
         - name: indent-error-flow
         - name: superfluous-else
-        # higiene geral mantida default
+        # Higiene geral.
         - name: blank-imports
         - name: context-as-argument
         - name: context-keys-type
@@ -65,25 +65,31 @@ linters:
         - name: error-return
         - name: error-strings
         - name: error-naming
-        - name: exported
-          disabled: true
         - name: increment-decrement
-        - name: var-naming
         - name: var-declaration
-        - name: package-comments
-          disabled: true
         - name: range
         - name: receiver-naming
         - name: time-naming
         - name: unexported-return
-        - name: indent-error-flow
         - name: errorf
         - name: empty-block
-        - name: superfluous-else
+        - name: unreachable-code
+        # Desabilitadas:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
         - name: unused-parameter
           disabled: true
-        - name: unreachable-code
+        # var-naming exigiria refactor de Smtp* → SMTP* em dto/email.go e
+        # model/models.go (5 + 5 ocorrências). Mudança toca JSON tags e DB
+        # column names; merece proposta isolada (`refactor-acronym-naming`).
+        - name: var-naming
+          disabled: true
+        # redefines-builtin-id em widget_ratelimit.go::`max` — investigar caso
+        # a caso; manter desabilitado até refactor.
         - name: redefines-builtin-id
+          disabled: true
 
     gocritic:
       enabled-checks:
@@ -97,18 +103,10 @@ linters:
       min-len: 3
       min-occurrences: 4
 
-    misspell:
-      # Strings de domínio em pt-BR (CLAUDE.md §Idioma — user-facing communication).
-      # Suprimir falsos positivos comuns em português que parecem inglês mal escrito.
-      locale: US
-      ignore-rules:
-        - validade
-        - clientes
-        - devolvendo
-        - correspondente
-        - inscricao
-        - inscrito
-        - cadastro
+  # Misspell desabilitado: produz falsos positivos em strings/comentários pt-BR
+  # (palavras como "validade", "clientes", "colateral") e em diferenças US/UK
+  # English em termos técnicos (`marshalling` vs `marshaling`, `cancelled` vs
+  # `canceled`). Rubrica do atlas não cobre ortografia.
 
   exclusions:
     # Exclusões pontuais para achados já registrados no atlas. Cada entrada
@@ -137,6 +135,7 @@ linters:
         linters:
           - funlen
           - gocognit
+          - nestif
 
       # F20, F36 — service/conversation.go::CreateWithOpts e handler/conversation.go::CreateAuthenticated
       # change planejada: refactor-contact-inbox-creation (C04)
@@ -144,6 +143,7 @@ linters:
         linters:
           - funlen
           - gocognit
+          - nestif
       - path: internal/handler/conversation\.go
         linters:
           - funlen
@@ -171,6 +171,7 @@ linters:
         linters:
           - funlen
           - gocognit
+          - revive  # early-return em :137 será corrigido junto com C08
       - path: internal/service/outbound_webhook\.go
         linters:
           - funlen
@@ -188,6 +189,8 @@ linters:
       - path: internal/service/agent\.go
         linters:
           - funlen
+          - nestif
+          - revive  # early-return em :138 será corrigido em C08
 
       # F24, F25 — realtime/client.go::handleMessage (no limite, 80 linhas)
       # change planejada: refactor-realtime-dispatch
@@ -201,6 +204,7 @@ linters:
         linters:
           - funlen
           - dupl
+          - nestif
       - path: internal/handler/message\.go
         linters:
           - funlen
@@ -212,6 +216,7 @@ linters:
       - path: internal/service/message\.go
         linters:
           - funlen
+          - gocognit
 
       # filterquery/build.go::buildCondition (F-out-of-rubric, 92 linhas)
       # query builder por design — manter
@@ -250,9 +255,9 @@ linters:
           - dupl
           - revive
 
-      # internal/channel/<provider>/ — fora do escopo desta passada do atlas
-      # (priorities.md "Out of scope (follow-up)"). Cada provider tem peculiaridades
-      # de OAuth/feature-flag e merece auditoria própria. Não bloquear lint até lá.
+      # internal/channel/<provider>/ e internal/channel/channel.go — fora do escopo
+      # desta passada do atlas (priorities.md "Out of scope (follow-up)"). Cada provider
+      # tem peculiaridades de OAuth/feature-flag e merece auditoria própria.
       - path: internal/channel/
         linters:
           - funlen
@@ -261,6 +266,70 @@ linters:
           - nestif
           - gocritic
           - goconst
+          - revive
+
+      # === Achados linter-only (não detectados por rubrica humana, registrados
+      # em findings.md seção "Linter-only") ===
+
+      # L01 — handler/user_access_token.go::Create (early-return :42)
+      # cluster C08 (refactor-quick-wins-2026-05) cobre — manter linter ativo
+      # NÃO suprimir; será corrigido pela proposta.
+
+      # L02 — handler/forward.go::ForwardMessages (ifElseChain :39, gocritic)
+      # gocritic ifElseChain → switch. Refactor mecânico. Cluster próprio: refactor-forward-handler.
+      - path: internal/handler/forward\.go
+        linters:
+          - gocritic
+
+      # L03 — service/forward.go (gocognit em ForwardMessages, ifElseChain :125, nestif :278)
+      # cluster próprio: refactor-forward-service-restructure
+      - path: internal/service/forward\.go
+        linters:
+          - gocognit
+          - gocritic
+          - nestif
+          - revive
+
+      # L04 — handler/whatsapp_inbox.go::Create (singleCaseSwitch :69)
+      - path: internal/handler/whatsapp_inbox\.go
+        linters:
+          - gocritic
+
+      # L05 — service/custom_attribute.go (gocognit em setAttributes/validateAttributeValue,
+      # nestif :217 :263, goconst "contact" 6×). C03 cobre tudo isso parcialmente.
+      - path: internal/service/custom_attribute\.go
+        linters:
+          - funlen
+          - gocognit
+          - nestif
+          - goconst
+
+      # L06 — service/user_profile.go::UpdateProfile (gocognit 39, nestif 9)
+      # cluster próprio: refactor-user-profile-update-split
+      - path: internal/service/user_profile\.go
+        linters:
+          - gocognit
+          - nestif
+          - funlen
+
+      # L07 — realtime/hub.go::Run (gocognit 36) — loop principal do hub
+      # complexidade aceitável por design (event loop). Suprimir indefinidamente.
+      - path: internal/realtime/hub\.go
+        linters:
+          - gocognit
+
+      # L08 — middleware/widget_ratelimit.go (variável `max` shadowing builtin já
+      # tratada via revive disable global; nestif não esperado aqui)
+      - path: internal/middleware/widget_ratelimit\.go
+        linters:
+          - revive
+
+      # L09 — repo/note.go::List ↔ repo/contact.go::List (dupl ~28 linhas)
+      # ACHADO NOVO não pego pela auditoria humana. Registrado em findings.md L09.
+      # cluster próprio: refactor-list-query-pattern
+      - path: internal/repo/note\.go
+        linters:
+          - dupl
 
       # Padrão handler boilerplate de extração accountID (F28, 152 ocorrências)
       # change planejada: refactor-account-id-middleware

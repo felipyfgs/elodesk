@@ -14,17 +14,17 @@ type CreateWebhookReq struct {
 type UpdateWebhookReq struct {
 	URL           *string         `json:"url,omitempty" validate:"omitempty,url,max=2048"`
 	Subscriptions json.RawMessage `json:"subscriptions,omitempty"`
-	IsActive      *bool           `json:"is_active,omitempty"`
+	Active      *bool           `json:"is_active,omitempty"`
 }
 
 type WebhookResp struct {
 	ID            int64           `json:"id"`
-	AccountID     int64           `json:"accountId"`
+	AccountID     int64           `taccount_id`
 	URL           string          `json:"url"`
 	Subscriptions json.RawMessage `json:"subscriptions"`
-	IsActive      bool            `json:"isActive"`
-	CreatedAt     string          `json:"createdAt"`
-	UpdatedAt     string          `json:"updatedAt"`
+	Active      bool            `sis_active`
+	CreatedAt     string          `dcreated_at`
+	UpdatedAt     string          `dupdated_at`
 }
 
 func WebhookToResp(w *model.OutboundWebhook) WebhookResp {
@@ -33,7 +33,7 @@ func WebhookToResp(w *model.OutboundWebhook) WebhookResp {
 		AccountID:     w.AccountID,
 		URL:           w.URL,
 		Subscriptions: json.RawMessage(w.Subscriptions),
-		IsActive:      w.IsActive,
+		Active:      w.Active,
 		CreatedAt:     w.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:     w.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

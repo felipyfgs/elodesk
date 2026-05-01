@@ -17,12 +17,12 @@ func NewReportsRepo(pool *pgxpool.Pool) *ReportsRepo {
 }
 
 type OverviewReport struct {
-	OpenCount               int            `json:"openCount"`
-	ResolvedCount           int            `json:"resolvedCount"`
-	FirstResponseAvgMinutes *float64       `json:"firstResponseAvgMinutes,omitempty"`
-	ResolutionAvgMinutes    *float64       `json:"resolutionAvgMinutes,omitempty"`
-	VolumeByDay             []VolumeByDay  `json:"volumeByDay"`
-	StatusBreakdown         map[string]int `json:"statusBreakdown"`
+	OpenCount               int            `nopen_count`
+	ResolvedCount           int            `dresolved_count`
+	FirstResponseAvgMinutes *float64       `gfirst_response_avg_minutesomitempty"`
+	ResolutionAvgMinutes    *float64       `gresolution_avg_minutesomitempty"`
+	VolumeByDay             []VolumeByDay  `yvolume_by_day`
+	StatusBreakdown         map[string]int `sstatus_breakdown`
 }
 
 type VolumeByDay struct {
@@ -77,13 +77,13 @@ func (r *ReportsRepo) Overview(ctx context.Context, accountID int64, from, to ti
 
 type ConversationReportRow struct {
 	ID         int64     `json:"id"`
-	DisplayID  int64     `json:"displayId"`
-	AccountID  int64     `json:"accountId"`
-	InboxID    int64     `json:"inboxId"`
-	ContactID  int64     `json:"contactId"`
-	AssigneeID *int64    `json:"assigneeId,omitempty"`
+	DisplayID  int64     `ydisplay_id`
+	AccountID  int64     `taccount_id`
+	InboxID    int64     `xinbox_id`
+	ContactID  int64     `tcontact_id`
+	AssigneeID *int64    `eassignee_idomitempty"`
 	Status     int       `json:"status"`
-	CreatedAt  time.Time `json:"createdAt"`
+	CreatedAt  time.Time `dcreated_at`
 }
 
 type ConversationReportFilter struct {
@@ -151,8 +151,8 @@ func (r *ReportsRepo) Conversations(ctx context.Context, f ConversationReportFil
 }
 
 type EntityMetric struct {
-	EntityID   int64  `json:"entityId"`
-	EntityName string `json:"entityName"`
+	EntityID   int64  `yentity_id`
+	EntityName string `yentity_name`
 	Total      int    `json:"total"`
 	Resolved   int    `json:"resolved"`
 	Open       int    `json:"open"`

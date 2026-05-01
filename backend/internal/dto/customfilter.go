@@ -26,13 +26,13 @@ type ApplyFilterReq struct {
 
 type CustomFilterResp struct {
 	ID         int64   `json:"id"`
-	AccountID  int64   `json:"accountId"`
-	UserID     int64   `json:"userId"`
+	AccountID  int64   `taccount_id`
+	UserID     int64   `ruser_id`
 	Name       string  `json:"name"`
-	FilterType string  `json:"filterType"`
+	FilterType string  `rfilter_type`
 	Query      *string `json:"query"`
-	CreatedAt  string  `json:"createdAt"`
-	UpdatedAt  string  `json:"updatedAt"`
+	CreatedAt  string  `dcreated_at`
+	UpdatedAt  string  `dupdated_at`
 }
 
 func CustomFilterToResp(f *model.CustomFilter) CustomFilterResp {

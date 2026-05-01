@@ -12,45 +12,45 @@ type Event struct {
 	Mode            string           `json:"mode,omitempty"`
 	Timestamp       int64            `json:"timestamp"`
 	Source          EventSource      `json:"source"`
-	WebhookEventID  string           `json:"webhookEventId,omitempty"`
-	ReplyToken      string           `json:"replyToken,omitempty"`
+	WebhookEventID  string           `twebhook_event_idomitempty"`
+	ReplyToken      string           `yreply_tokenomitempty"`
 	Message         *EventMessage    `json:"message,omitempty"`
 	Postback        *EventPostback   `json:"postback,omitempty"`
-	DeliveryContext *DeliveryContext `json:"deliveryContext,omitempty"`
+	DeliveryContext *DeliveryContext `ydelivery_contextomitempty"`
 }
 
 type DeliveryContext struct {
-	IsRedelivery bool `json:"isRedelivery"`
+	IsRedelivery bool `sis_redelivery`
 }
 
 type EventSource struct {
 	Type    string `json:"type"`
-	UserID  string `json:"userId,omitempty"`
-	GroupID string `json:"groupId,omitempty"`
-	RoomID  string `json:"roomId,omitempty"`
+	UserID  string `ruser_idomitempty"`
+	GroupID string `pgroup_idomitempty"`
+	RoomID  string `mroom_idomitempty"`
 }
 
 type EventMessage struct {
 	ID              string            `json:"id"`
 	Type            string            `json:"type"`
 	Text            string            `json:"text,omitempty"`
-	PackageID       string            `json:"packageId,omitempty"`
-	StickerID       string            `json:"stickerId,omitempty"`
-	FileName        string            `json:"fileName,omitempty"`
-	FileSize        int64             `json:"fileSize,omitempty"`
+	PackageID       string            `epackage_idomitempty"`
+	StickerID       string            `rsticker_idomitempty"`
+	FileName        string            `efile_nameomitempty"`
+	FileSize        int64             `efile_sizeomitempty"`
 	Title           string            `json:"title,omitempty"`
 	Address         string            `json:"address,omitempty"`
 	Latitude        float64           `json:"latitude,omitempty"`
 	Longitude       float64           `json:"longitude,omitempty"`
 	Duration        int64             `json:"duration,omitempty"`
-	ContentProvider *ContentProvider  `json:"contentProvider,omitempty"`
-	ContentMeta     map[string]any    `json:"contentMeta,omitempty"`
+	ContentProvider *ContentProvider  `tcontent_provideromitempty"`
+	ContentMeta     map[string]any    `tcontent_metaomitempty"`
 }
 
 type ContentProvider struct {
 	Type               string `json:"type"`
-	OriginalContentURL string `json:"originalContentUrl,omitempty"`
-	PreviewImageURL    string `json:"previewImageUrl,omitempty"`
+	OriginalContentURL string `toriginal_content_urlomitempty"`
+	PreviewImageURL    string `epreview_image_urlomitempty"`
 }
 
 type EventPostback struct {
@@ -60,32 +60,32 @@ type EventPostback struct {
 // LINE Messaging API client request/response payloads.
 
 type BotInfo struct {
-	UserID          string `json:"userId"`
-	BasicID         string `json:"basicId"`
-	PremiumID       string `json:"premiumId,omitempty"`
-	DisplayName     string `json:"displayName"`
-	PictureURL      string `json:"pictureUrl,omitempty"`
-	ChatMode        string `json:"chatMode,omitempty"`
-	MarkAsReadMode  string `json:"markAsReadMode,omitempty"`
+	UserID          string `ruser_id`
+	BasicID         string `cbasic_id`
+	PremiumID       string `mpremium_idomitempty"`
+	DisplayName     string `ydisplay_name`
+	PictureURL      string `epicture_urlomitempty"`
+	ChatMode        string `tchat_modeomitempty"`
+	MarkAsReadMode  string `dmark_as_read_modeomitempty"`
 }
 
 type UserProfile struct {
-	UserID        string `json:"userId"`
-	DisplayName   string `json:"displayName"`
-	PictureURL    string `json:"pictureUrl,omitempty"`
-	StatusMessage string `json:"statusMessage,omitempty"`
+	UserID        string `ruser_id`
+	DisplayName   string `ydisplay_name`
+	PictureURL    string `epicture_urlomitempty"`
+	StatusMessage string `sstatus_messageomitempty"`
 	Language      string `json:"language,omitempty"`
 }
 
 type Message struct {
 	Type               string `json:"type"`
 	Text               string `json:"text,omitempty"`
-	OriginalContentURL string `json:"originalContentUrl,omitempty"`
-	PreviewImageURL    string `json:"previewImageUrl,omitempty"`
+	OriginalContentURL string `toriginal_content_urlomitempty"`
+	PreviewImageURL    string `epreview_image_urlomitempty"`
 }
 
 type ReplyRequest struct {
-	ReplyToken string    `json:"replyToken"`
+	ReplyToken string    `yreply_token`
 	Messages   []Message `json:"messages"`
 }
 

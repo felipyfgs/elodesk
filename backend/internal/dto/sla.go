@@ -22,15 +22,15 @@ type UpdateSLAReq struct {
 
 type SLAResp struct {
 	ID                   int64   `json:"id"`
-	AccountID            int64   `json:"accountId"`
+	AccountID            int64   `taccount_id`
 	Name                 string  `json:"name"`
-	FirstResponseMinutes int     `json:"firstResponseMinutes"`
-	ResolutionMinutes    int     `json:"resolutionMinutes"`
-	BusinessHoursOnly    bool    `json:"businessHoursOnly"`
-	InboxIDs             []int64 `json:"inboxIds"`
-	LabelIDs             []int64 `json:"labelIds"`
-	CreatedAt            string  `json:"createdAt"`
-	UpdatedAt            string  `json:"updatedAt"`
+	FirstResponseMinutes int     `efirst_response_minutes`
+	ResolutionMinutes    int     `nresolution_minutes`
+	BusinessHoursOnly    bool    `sbusiness_hours_only`
+	InboxIDs             []int64 `xinbox_ids`
+	LabelIDs             []int64 `llabel_ids`
+	CreatedAt            string  `dcreated_at`
+	UpdatedAt            string  `dupdated_at`
 }
 
 func SLAToResp(s *model.SLAPolicy, bindings []model.SLABinding) SLAResp {

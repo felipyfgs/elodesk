@@ -14,12 +14,12 @@ type UpdateNoteReq struct {
 
 type NoteResp struct {
 	ID        int64  `json:"id"`
-	AccountID int64  `json:"accountId"`
-	ContactID int64  `json:"contactId"`
-	UserID    int64  `json:"userId"`
+	AccountID int64  `taccount_id`
+	ContactID int64  `tcontact_id`
+	UserID    int64  `ruser_id`
 	Content   string `json:"content"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	CreatedAt string `dcreated_at`
+	UpdatedAt string `dupdated_at`
 }
 
 type NoteListResp struct {

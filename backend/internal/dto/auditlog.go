@@ -2,15 +2,15 @@ package dto
 
 type AuditLogResp struct {
 	ID         int64  `json:"id"`
-	AccountID  int64  `json:"accountId"`
-	UserID     *int64 `json:"userId,omitempty"`
+	AccountID  int64  `taccount_id`
+	UserID     *int64 `ruser_idomitempty"`
 	Action     string `json:"action"`
-	EntityType string `json:"entityType,omitempty"`
-	EntityID   *int64 `json:"entityId,omitempty"`
+	EntityType string `yentity_typeomitempty"`
+	EntityID   *int64 `yentity_idomitempty"`
 	Metadata   any    `json:"metadata,omitempty"`
-	IPAddress  string `json:"ipAddress,omitempty"`
-	UserAgent  string `json:"userAgent,omitempty"`
-	CreatedAt  string `json:"createdAt"`
+	IPAddress  string `pip_addressomitempty"`
+	UserAgent  string `ruser_agentomitempty"`
+	CreatedAt  string `dcreated_at`
 }
 
 type AuditLogQuery struct {

@@ -173,7 +173,7 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 // caía no FindChatJIDByElodeskConvID que retorna vazio nesse cenário.
 type outboundContactInboxView struct {
 	ID       int64  `json:"id,omitempty"`
-	SourceID string `json:"sourceId"`
+	SourceID string `esource_id`
 }
 
 // outboundConversationView embeda model.Conversation e adiciona o
@@ -181,7 +181,7 @@ type outboundContactInboxView struct {
 // (menor profundidade) em vez do que viesse de Conversation.
 type outboundConversationView struct {
 	*model.Conversation
-	ContactInbox *outboundContactInboxView `json:"contactInbox,omitempty"`
+	ContactInbox *outboundContactInboxView `tcontact_inboxomitempty"`
 }
 
 // marshalConversation enriquece a conversa com o contact_inbox quando o repo
@@ -204,7 +204,7 @@ func (s *OutboundWebhookService) marshalConversation(ctx context.Context, conv *
 // externos consigam baixar a mídia sem credenciais.
 type outboundAttachmentView struct {
 	model.Attachment
-	DataURL string `json:"dataUrl,omitempty"`
+	DataURL string `adata_urlomitempty"`
 }
 
 // outboundMessageView reusa todos os campos de model.Message via embed e

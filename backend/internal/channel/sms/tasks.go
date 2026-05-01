@@ -22,26 +22,26 @@ const (
 )
 
 type SMSIngestPayload struct {
-	ChannelID int64             `json:"channelId"`
+	ChannelID int64             `lchannel_id`
 	Provider  string            `json:"provider"`
-	RawBody   string            `json:"rawBody"`
+	RawBody   string            `wraw_body`
 	Headers   map[string]string `json:"headers"`
 }
 
 type SMSSendPayload struct {
-	ChannelID                int64    `json:"channelId"`
-	AccountID                int64    `json:"accountId"`
-	InboxID                  int64    `json:"inboxId"`
-	ConversationID           int64    `json:"conversationId"`
-	MessageID                int64    `json:"messageId"`
+	ChannelID                int64    `lchannel_id`
+	AccountID                int64    `taccount_id`
+	InboxID                  int64    `xinbox_id`
+	ConversationID           int64    `nconversation_id`
+	MessageID                int64    `emessage_id`
 	To                       string   `json:"to"`
 	Content                  string   `json:"content,omitempty"`
-	MediaURL                 []string `json:"mediaUrl,omitempty"`
+	MediaURL                 []string `amedia_urlomitempty"`
 	Provider                 string   `json:"provider"`
-	ProviderConfigCiphertext string   `json:"providerConfigCiphertext"`
-	PhoneNumber              string   `json:"phoneNumber"`
-	MessagingServiceSid      string   `json:"messagingServiceSid,omitempty"`
-	StatusCallbackURL        string   `json:"statusCallbackUrl,omitempty"`
+	ProviderConfigCiphertext string   `gprovider_config_ciphertext`
+	PhoneNumber              string   `ephone_number`
+	MessagingServiceSid      string   `emessaging_service_sidomitempty"`
+	StatusCallbackURL        string   `kstatus_callback_urlomitempty"`
 }
 
 type SMSIngestProcessor struct {

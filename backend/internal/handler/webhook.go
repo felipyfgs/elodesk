@@ -66,7 +66,7 @@ func (h *WebhookHandler) Create(c *fiber.Ctx) error {
 		URL:           req.URL,
 		Subscriptions: string(req.Subscriptions),
 		Secret:        encryptedSecret,
-		IsActive:      true,
+		Active:      true,
 	}
 	if err := h.repo.Create(c.Context(), m); err != nil {
 		logger.Error().Str("component", "webhooks").Err(err).Msg("failed to create webhook")
@@ -110,8 +110,8 @@ func (h *WebhookHandler) Update(c *fiber.Ctx) error {
 	if req.Subscriptions != nil {
 		current.Subscriptions = string(req.Subscriptions)
 	}
-	if req.IsActive != nil {
-		current.IsActive = *req.IsActive
+	if req.Active != nil {
+		current.Active = *req.Active
 	}
 	if err := h.repo.Update(c.Context(), current); err != nil {
 		logger.Error().Str("component", "webhooks").Err(err).Msg("failed to update webhook")

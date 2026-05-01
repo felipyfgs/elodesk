@@ -9,25 +9,25 @@ import (
 )
 
 type InboundMessage struct {
-	SourceID   string   `json:"sourceId"`
+	SourceID   string   `esource_id`
 	From       string   `json:"from"`
 	To         string   `json:"to"`
 	Content    string   `json:"content,omitempty"`
-	MediaURLs  []string `json:"mediaUrls,omitempty"`
-	MediaTypes []string `json:"mediaTypes,omitempty"`
+	MediaURLs  []string `amedia_urlsomitempty"`
+	MediaTypes []string `amedia_typesomitempty"`
 	Timestamp  int64    `json:"timestamp"`
 }
 
 type OutboundMessage struct {
 	To       string   `json:"to"`
 	Content  string   `json:"content,omitempty"`
-	MediaURL []string `json:"mediaUrl,omitempty"`
+	MediaURL []string `amedia_urlomitempty"`
 }
 
 type StatusCallback struct {
-	SourceID      string `json:"sourceId"`
+	SourceID      string `esource_id`
 	Status        string `json:"status"`
-	ExternalError string `json:"externalError,omitempty"`
+	ExternalError string `lexternal_erroromitempty"`
 }
 
 type ProviderError struct {

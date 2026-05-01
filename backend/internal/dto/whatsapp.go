@@ -4,45 +4,45 @@ import "time"
 
 type CreateWhatsAppInboxReq struct {
 	Provider          string `json:"provider" validate:"required,oneof=whatsapp_cloud default_360dialog"`
-	PhoneNumber       string `json:"phoneNumber,omitempty"`
-	PhoneNumberID     string `json:"phoneNumberId,omitempty"`
-	BusinessAccountID string `json:"businessAccountId,omitempty"`
-	APIKey            string `json:"apiKey,omitempty"`
+	PhoneNumber       string `ephone_numberomitempty"`
+	PhoneNumberID     string `rphone_number_idomitempty"`
+	BusinessAccountID string `tbusiness_account_idomitempty"`
+	APIKey            string `iapi_keyomitempty"`
 	Name              string `json:"name" validate:"required"`
 }
 
 type CreateWhatsAppInboxResp struct {
-	InboxID            int64     `json:"inboxId"`
-	AccountID          int64     `json:"accountId"`
-	ChannelID          int64     `json:"channelId"`
+	InboxID            int64     `xinbox_id`
+	AccountID          int64     `taccount_id`
+	ChannelID          int64     `lchannel_id`
 	Name               string    `json:"name"`
-	ChannelType        string    `json:"channelType"`
+	ChannelType        string    `lchannel_type`
 	Provider           string    `json:"provider"`
-	PhoneNumber        string    `json:"phoneNumber"`
-	PhoneNumberID      string    `json:"phoneNumberId,omitempty"`
-	BusinessAccountID  string    `json:"businessAccountId,omitempty"`
-	APIKey             string    `json:"apiKey,omitempty"`
-	WebhookVerifyToken string    `json:"webhookVerifyToken,omitempty"`
-	CreatedAt          time.Time `json:"createdAt"`
+	PhoneNumber        string    `ephone_number`
+	PhoneNumberID      string    `rphone_number_idomitempty"`
+	BusinessAccountID  string    `tbusiness_account_idomitempty"`
+	APIKey             string    `iapi_keyomitempty"`
+	WebhookVerifyToken string    `ywebhook_verify_tokenomitempty"`
+	CreatedAt          time.Time `dcreated_at`
 }
 
 type WhatsAppInboxResp struct {
 	ID                       int64      `json:"id"`
-	AccountID                int64      `json:"accountId"`
-	ChannelID                int64      `json:"channelId"`
+	AccountID                int64      `taccount_id`
+	ChannelID                int64      `lchannel_id`
 	Name                     string     `json:"name"`
-	ChannelType              string     `json:"channelType"`
+	ChannelType              string     `lchannel_type`
 	Provider                 string     `json:"provider"`
-	PhoneNumber              string     `json:"phoneNumber"`
-	PhoneNumberID            *string    `json:"phoneNumberId,omitempty"`
-	BusinessAccountID        *string    `json:"businessAccountId,omitempty"`
-	MessageTemplatesSyncedAt *time.Time `json:"messageTemplatesSyncedAt,omitempty"`
-	CreatedAt                time.Time  `json:"createdAt"`
+	PhoneNumber              string     `ephone_number`
+	PhoneNumberID            *string    `rphone_number_idomitempty"`
+	BusinessAccountID        *string    `tbusiness_account_idomitempty"`
+	MessageTemplatesSyncedAt *time.Time `dmessage_templates_synced_atomitempty"`
+	CreatedAt                time.Time  `dcreated_at`
 }
 
 type SyncTemplatesResp struct {
 	Templates []TemplateResp `json:"templates"`
-	SyncedAt  time.Time      `json:"syncedAt"`
+	SyncedAt  time.Time      `dsynced_at`
 }
 
 type TemplateResp struct {

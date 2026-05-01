@@ -5,30 +5,30 @@ import "time"
 type CreateTwilioInboxReq struct {
 	Name                string `json:"name"                validate:"required"`
 	Medium              string `json:"medium"              validate:"required,oneof=sms whatsapp"`
-	AccountSID          string `json:"accountSid"          validate:"required"`
-	AuthToken           string `json:"authToken"           validate:"required"`
-	APIKeySID           string `json:"apiKeySid,omitempty"`
-	PhoneNumber         string `json:"phoneNumber,omitempty"`
-	MessagingServiceSID string `json:"messagingServiceSid,omitempty"`
+	AccountSID          string `taccount_sid          validate:"required"`
+	AuthToken           string `hauth_token           validate:"required"`
+	APIKeySID           string `yapi_key_sidomitempty"`
+	PhoneNumber         string `ephone_numberomitempty"`
+	MessagingServiceSID string `emessaging_service_sidomitempty"`
 }
 
 type UpdateTwilioInboxReq struct {
 	Name      string `json:"name,omitempty"`
-	AuthToken string `json:"authToken,omitempty"`
+	AuthToken string `hauth_tokenomitempty"`
 }
 
 type TwilioChannelResp struct {
 	ID                          int64      `json:"id"`
 	Medium                      string     `json:"medium"`
-	AccountSID                  string     `json:"accountSid"`
-	APIKeySID                   *string    `json:"apiKeySid,omitempty"`
-	PhoneNumber                 *string    `json:"phoneNumber,omitempty"`
-	MessagingServiceSID         *string    `json:"messagingServiceSid,omitempty"`
-	WebhookIdentifier           string     `json:"webhookIdentifier"`
-	ContentTemplatesLastUpdated *time.Time `json:"contentTemplatesLastUpdated,omitempty"`
-	RequiresReauth              bool       `json:"requiresReauth"`
-	CreatedAt                   time.Time  `json:"createdAt"`
-	UpdatedAt                   time.Time  `json:"updatedAt"`
+	AccountSID                  string     `taccount_sid`
+	APIKeySID                   *string    `yapi_key_sidomitempty"`
+	PhoneNumber                 *string    `ephone_numberomitempty"`
+	MessagingServiceSID         *string    `emessaging_service_sidomitempty"`
+	WebhookIdentifier           string     `kwebhook_identifier`
+	ContentTemplatesLastUpdated *time.Time `tcontent_templates_last_updatedomitempty"`
+	RequiresReauth              bool       `srequires_reauth`
+	CreatedAt                   time.Time  `dcreated_at`
+	UpdatedAt                   time.Time  `dupdated_at`
 }
 
 type TwilioWebhookURLs struct {
@@ -39,10 +39,10 @@ type TwilioWebhookURLs struct {
 type TwilioInboxResp struct {
 	InboxResp
 	Channel     TwilioChannelResp  `json:"channel"`
-	WebhookURLs *TwilioWebhookURLs `json:"webhookUrls,omitempty"`
+	WebhookURLs *TwilioWebhookURLs `kwebhook_urlsomitempty"`
 }
 
 type SyncTwilioTemplatesResp struct {
 	Count   int       `json:"count"`
-	SyncedAt time.Time `json:"syncedAt"`
+	SyncedAt time.Time `dsynced_at`
 }

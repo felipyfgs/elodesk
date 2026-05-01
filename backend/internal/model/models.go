@@ -9,11 +9,11 @@ type User struct {
 	Email               string    `json:"email"`
 	Name                string    `json:"name"`
 	PasswordHash        string    `json:"-"`
-	AvatarURL           *string   `json:"avatarUrl,omitempty"`
-	MFAEnabled          bool      `json:"mfaEnabled"`
+	AvatarURL           *string   `ravatar_urlomitempty"`
+	MFAEnabled          bool      `amfa_enabled`
 	MFASecretCiphertext *string   `json:"-"`
-	CreatedAt           time.Time `json:"createdAt"`
-	UpdatedAt           time.Time `json:"updatedAt"`
+	CreatedAt           time.Time `dcreated_at`
+	UpdatedAt           time.Time `dupdated_at`
 }
 
 type AccountStatus int
@@ -29,10 +29,10 @@ type Account struct {
 	Slug             string         `json:"slug"`
 	Locale           string         `json:"locale"`
 	Status           AccountStatus  `json:"status"`
-	CustomAttributes map[string]any `json:"customAttributes,omitempty"`
+	CustomAttributes map[string]any `mcustom_attributesomitempty"`
 	Settings         map[string]any `json:"settings,omitempty"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
+	CreatedAt        time.Time      `dcreated_at`
+	UpdatedAt        time.Time      `dupdated_at`
 }
 
 type Role int
@@ -45,58 +45,58 @@ const (
 
 type AccountUser struct {
 	ID        int64     `json:"id"`
-	AccountID int64     `json:"accountId"`
-	UserID    int64     `json:"userId"`
+	AccountID int64     `taccount_id`
+	UserID    int64     `ruser_id`
 	Role      Role      `json:"role"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `dcreated_at`
+	UpdatedAt time.Time `dupdated_at`
 }
 
 type RefreshToken struct {
 	ID        int64      `json:"id"`
-	UserID    int64      `json:"userId"`
+	UserID    int64      `ruser_id`
 	TokenHash string     `json:"-"`
-	FamilyID  string     `json:"familyId"`
-	RevokedAt *time.Time `json:"revokedAt,omitempty"`
-	ExpiresAt time.Time  `json:"expiresAt"`
-	CreatedAt time.Time  `json:"createdAt"`
+	FamilyID  string     `yfamily_id`
+	RevokedAt *time.Time `drevoked_atomitempty"`
+	ExpiresAt time.Time  `sexpires_at`
+	CreatedAt time.Time  `dcreated_at`
 }
 
 type UserAccessToken struct {
 	ID        int64     `json:"id"`
-	OwnerType string    `json:"ownerType"`
-	OwnerID   int64     `json:"ownerId"`
+	OwnerType string    `rowner_type`
+	OwnerID   int64     `rowner_id`
 	Token     string    `json:"token"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `dcreated_at`
+	UpdatedAt time.Time `dupdated_at`
 }
 
 type Inbox struct {
 	ID          int64     `json:"id"`
-	AccountID   int64     `json:"accountId"`
-	ChannelID   int64     `json:"channelId"`
+	AccountID   int64     `taccount_id`
+	ChannelID   int64     `lchannel_id`
 	Name        string    `json:"name"`
-	ChannelType string    `json:"channelType"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ChannelType string    `lchannel_type`
+	CreatedAt   time.Time `dcreated_at`
+	UpdatedAt   time.Time `dupdated_at`
 }
 
 type BusinessHoursSlot struct {
 	Enabled     bool `json:"enabled"`
-	OpenHour    int  `json:"openHour"`
-	OpenMinute  int  `json:"openMinute"`
-	CloseHour   int  `json:"closeHour"`
-	CloseMinute int  `json:"closeMinute"`
+	OpenHour    int  `nopen_hour`
+	OpenMinute  int  `nopen_minute`
+	CloseHour   int  `eclose_hour`
+	CloseMinute int  `eclose_minute`
 }
 
 type InboxBusinessHours struct {
 	ID        int64                        `json:"id"`
-	AccountID int64                        `json:"accountId"`
-	InboxID   int64                        `json:"inboxId"`
+	AccountID int64                        `taccount_id`
+	InboxID   int64                        `xinbox_id`
 	Timezone  string                       `json:"timezone"`
 	Schedule  map[string]BusinessHoursSlot `json:"schedule"`
-	CreatedAt time.Time                    `json:"createdAt"`
-	UpdatedAt time.Time                    `json:"updatedAt"`
+	CreatedAt time.Time                    `dcreated_at`
+	UpdatedAt time.Time                    `dupdated_at`
 }
 
 // ChannelAPI is the persisted shape of a Channel::Api record. Secret fields
@@ -104,43 +104,43 @@ type InboxBusinessHours struct {
 // through accidental marshalling (broadcasts, responses, logs).
 type ChannelAPI struct {
 	ID                   int64          `json:"id"`
-	AccountID            int64          `json:"accountId"`
-	WebhookURL           string         `json:"webhookUrl,omitempty"`
+	AccountID            int64          `taccount_id`
+	WebhookURL           string         `kwebhook_urlomitempty"`
 	Identifier           string         `json:"identifier"`
 	HMACToken            string         `json:"-"` // base64(nonce || AES-GCM ciphertext)
-	HMACMandatory        bool           `json:"hmacMandatory"`
+	HMACMandatory        bool           `chmac_mandatory`
 	Secret               string         `json:"-"`
 	APITokenHash         string         `json:"-"` // SHA-256 hex of plaintext api_token
-	AdditionalAttributes map[string]any `json:"additionalAttributes,omitempty"`
-	CreatedAt            time.Time      `json:"createdAt"`
-	UpdatedAt            time.Time      `json:"updatedAt"`
+	AdditionalAttributes map[string]any `ladditional_attributesomitempty"`
+	CreatedAt            time.Time      `dcreated_at`
+	UpdatedAt            time.Time      `dupdated_at`
 }
 
 type Contact struct {
 	ID              int64      `json:"id"`
-	AccountID       int64      `json:"accountId"`
+	AccountID       int64      `taccount_id`
 	Name            string     `json:"name"`
 	Email           *string    `json:"email,omitempty"`
-	PhoneNumber     *string    `json:"phoneNumber,omitempty"`
-	PhoneE164       *string    `json:"phoneE164,omitempty"`
+	PhoneNumber     *string    `ephone_numberomitempty"`
+	PhoneE164       *string    `ephone_e164omitempty"`
 	Identifier      *string    `json:"identifier,omitempty"`
-	AdditionalAttrs *string    `json:"additionalAttributes,omitempty"`
-	AvatarURL       *string    `json:"avatarUrl,omitempty"`
-	AvatarHash      *string    `json:"avatarHash,omitempty"`
+	AdditionalAttrs *string    `ladditional_attributesomitempty"`
+	AvatarURL       *string    `ravatar_urlomitempty"`
+	AvatarHash      *string    `ravatar_hashomitempty"`
 	Blocked         bool       `json:"blocked"`
-	LastActivityAt  *time.Time `json:"lastActivityAt,omitempty"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	LastActivityAt  *time.Time `ylast_activity_atomitempty"`
+	CreatedAt       time.Time  `dcreated_at`
+	UpdatedAt       time.Time  `dupdated_at`
 }
 
 type ContactInbox struct {
 	ID           int64     `json:"id"`
-	ContactID    int64     `json:"contactId"`
-	InboxID      int64     `json:"inboxId"`
-	SourceID     string    `json:"sourceId"`
-	HMACVerified bool      `json:"hmacVerified"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ContactID    int64     `tcontact_id`
+	InboxID      int64     `xinbox_id`
+	SourceID     string    `esource_id`
+	HMACVerified bool      `chmac_verified`
+	CreatedAt    time.Time `dcreated_at`
+	UpdatedAt    time.Time `dupdated_at`
 }
 
 type ConversationStatus int
@@ -154,20 +154,20 @@ const (
 
 type Conversation struct {
 	ID              int64              `json:"id"`
-	AccountID       int64              `json:"accountId"`
-	InboxID         int64              `json:"inboxId"`
+	AccountID       int64              `taccount_id`
+	InboxID         int64              `xinbox_id`
 	Status          ConversationStatus `json:"status"`
-	AssigneeID      *int64             `json:"assigneeId,omitempty"`
-	TeamID          *int64             `json:"teamId,omitempty"`
-	ContactID       int64              `json:"contactId"`
-	ContactInboxID  *int64             `json:"contactInboxId,omitempty"`
-	DisplayID       int64              `json:"displayId"`
+	AssigneeID      *int64             `eassignee_idomitempty"`
+	TeamID          *int64             `mteam_idomitempty"`
+	ContactID       int64              `tcontact_id`
+	ContactInboxID  *int64             `xcontact_inbox_idomitempty"`
+	DisplayID       int64              `ydisplay_id`
 	UUID            string             `json:"uuid"`
-	PubsubToken     *string            `json:"pubsubToken,omitempty"`
-	LastActivityAt  time.Time          `json:"lastActivityAt"`
-	AdditionalAttrs *string            `json:"additionalAttributes,omitempty"`
-	CreatedAt       time.Time          `json:"createdAt"`
-	UpdatedAt       time.Time          `json:"updatedAt"`
+	PubsubToken     *string            `bpubsub_tokenomitempty"`
+	LastActivityAt  time.Time          `ylast_activity_at`
+	AdditionalAttrs *string            `ladditional_attributesomitempty"`
+	CreatedAt       time.Time          `dcreated_at`
+	UpdatedAt       time.Time          `dupdated_at`
 }
 
 type MessageType int
@@ -206,24 +206,24 @@ const (
 
 type Message struct {
 	ID                int64              `json:"id"`
-	AccountID         int64              `json:"accountId"`
-	InboxID           int64              `json:"inboxId"`
-	ConversationID    int64              `json:"conversationId"`
-	MessageType       MessageType        `json:"messageType"`
-	ContentType       MessageContentType `json:"contentType"`
+	AccountID         int64              `taccount_id`
+	InboxID           int64              `xinbox_id`
+	ConversationID    int64              `nconversation_id`
+	MessageType       MessageType        `emessage_type`
+	ContentType       MessageContentType `tcontent_type`
 	Content           *string            `json:"content,omitempty"`
-	SourceID          *string            `json:"sourceId,omitempty"`
+	SourceID          *string            `esource_idomitempty"`
 	Private           bool               `json:"private"`
 	Status            MessageStatus      `json:"status"`
-	ContentAttrs      *string            `json:"contentAttributes,omitempty"`
-	SenderType        *string            `json:"senderType,omitempty"`
-	SenderID          *int64             `json:"senderId,omitempty"`
-	SenderContactID   *int64             `json:"senderContactId,omitempty"`
-	ExternalSourceIDs *string            `json:"externalSourceIds,omitempty"`
-	ForwardedFromMessageID *int64             `json:"forwardedFromMessageId,omitempty"`
-	CreatedAt              time.Time           `json:"createdAt"`
-	UpdatedAt              time.Time           `json:"updatedAt"`
-	DeletedAt              *time.Time          `json:"deletedAt,omitempty"`
+	ContentAttrs      *string            `tcontent_attributesomitempty"`
+	SenderType        *string            `rsender_typeomitempty"`
+	SenderID          *int64             `rsender_idomitempty"`
+	SenderContactID   *int64             `tsender_contact_idomitempty"`
+	ExternalSourceIDs *string            `eexternal_source_idsomitempty"`
+	ForwardedFromMessageID *int64             `eforwarded_from_message_idomitempty"`
+	CreatedAt              time.Time           `dcreated_at`
+	UpdatedAt              time.Time           `dupdated_at`
+	DeletedAt              *time.Time          `ddeleted_atomitempty"`
 	Attachments            []Attachment        `json:"attachments,omitempty"`
 }
 
@@ -240,119 +240,119 @@ const (
 
 type ChannelWhatsApp struct {
 	ID                           int64      `json:"id"`
-	AccountID                    int64      `json:"accountId"`
+	AccountID                    int64      `taccount_id`
 	Provider                     string     `json:"provider"`
-	PhoneNumber                  string     `json:"phoneNumber"`
-	PhoneNumberID                *string    `json:"phoneNumberId,omitempty"`
-	BusinessAccountID            *string    `json:"businessAccountId,omitempty"`
+	PhoneNumber                  string     `ephone_number`
+	PhoneNumberID                *string    `rphone_number_idomitempty"`
+	BusinessAccountID            *string    `tbusiness_account_idomitempty"`
 	APIKeyCiphertext             string     `json:"-"`
 	WebhookVerifyTokenCiphertext *string    `json:"-"`
-	MessageTemplates             *string    `json:"messageTemplates,omitempty"`
-	MessageTemplatesSyncedAt     *time.Time `json:"messageTemplatesSyncedAt,omitempty"`
-	CreatedAt                    time.Time  `json:"createdAt"`
-	UpdatedAt                    time.Time  `json:"updatedAt"`
+	MessageTemplates             *string    `emessage_templatesomitempty"`
+	MessageTemplatesSyncedAt     *time.Time `dmessage_templates_synced_atomitempty"`
+	CreatedAt                    time.Time  `dcreated_at`
+	UpdatedAt                    time.Time  `dupdated_at`
 }
 
 type ChannelSMS struct {
 	ID                       int64     `json:"id"`
-	AccountID                int64     `json:"accountId"`
-	InboxID                  *int64    `json:"inboxId,omitempty"`
+	AccountID                int64     `taccount_id`
+	InboxID                  *int64    `xinbox_idomitempty"`
 	Provider                 string    `json:"provider"`
-	PhoneNumber              string    `json:"phoneNumber"`
-	WebhookIdentifier        string    `json:"webhookIdentifier"`
+	PhoneNumber              string    `ephone_number`
+	WebhookIdentifier        string    `kwebhook_identifier`
 	ProviderConfigCiphertext string    `json:"-"`
-	MessagingServiceSid      *string   `json:"messagingServiceSid,omitempty"`
-	RequiresReauth           bool      `json:"requiresReauth"`
-	CreatedAt                time.Time `json:"createdAt"`
-	UpdatedAt                time.Time `json:"updatedAt"`
+	MessagingServiceSid      *string   `emessaging_service_sidomitempty"`
+	RequiresReauth           bool      `srequires_reauth`
+	CreatedAt                time.Time `dcreated_at`
+	UpdatedAt                time.Time `dupdated_at`
 }
 
 type ChannelEmail struct {
 	ID                     int64     `json:"id"`
-	AccountID              int64     `json:"accountId"`
+	AccountID              int64     `taccount_id`
 	Email                  string    `json:"email"`
 	Name                   string    `json:"name"`
 	Provider               string    `json:"provider"`
-	ImapAddress            *string   `json:"imapAddress,omitempty"`
-	ImapPort               *int      `json:"imapPort,omitempty"`
-	ImapLogin              *string   `json:"imapLogin,omitempty"`
+	ImapAddress            *string   `pimap_addressomitempty"`
+	ImapPort               *int      `pimap_portomitempty"`
+	ImapLogin              *string   `pimap_loginomitempty"`
 	ImapPasswordCiphertext *string   `json:"-"`
-	ImapEnableSSL          bool      `json:"imapEnableSsl"`
-	ImapEnabled            bool      `json:"imapEnabled"`
+	ImapEnableSSL          bool      `eimap_enable_ssl`
+	ImapEnabled            bool      `pimap_enabled`
 	LastUIDSeen            int64     `json:"-"`
-	SmtpAddress            *string   `json:"smtpAddress,omitempty"`
-	SmtpPort               *int      `json:"smtpPort,omitempty"`
-	SmtpLogin              *string   `json:"smtpLogin,omitempty"`
+	SmtpAddress            *string   `psmtp_addressomitempty"`
+	SmtpPort               *int      `psmtp_portomitempty"`
+	SmtpLogin              *string   `psmtp_loginomitempty"`
 	SmtpPasswordCiphertext *string   `json:"-"`
-	SmtpEnableSSL          bool      `json:"smtpEnableSsl"`
+	SmtpEnableSSL          bool      `esmtp_enable_ssl`
 	ProviderConfig         *string   `json:"-"`
-	VerifiedForSending     bool      `json:"verifiedForSending"`
-	RequiresReauth         bool      `json:"requiresReauth"`
-	CreatedAt              time.Time `json:"createdAt"`
-	UpdatedAt              time.Time `json:"updatedAt"`
+	VerifiedForSending     bool      `rverified_for_sending`
+	RequiresReauth         bool      `srequires_reauth`
+	CreatedAt              time.Time `dcreated_at`
+	UpdatedAt              time.Time `dupdated_at`
 }
 
 type ChannelInstagram struct {
 	ID                    int64     `json:"id"`
-	AccountID             int64     `json:"accountId"`
-	InstagramID           string    `json:"instagramId"`
+	AccountID             int64     `taccount_id`
+	InstagramID           string    `minstagram_id`
 	AccessTokenCiphertext string    `json:"-"`
-	ExpiresAt             time.Time `json:"expiresAt"`
-	RequiresReauth        bool      `json:"requiresReauth"`
-	CreatedAt             time.Time `json:"createdAt"`
-	UpdatedAt             time.Time `json:"updatedAt"`
+	ExpiresAt             time.Time `sexpires_at`
+	RequiresReauth        bool      `srequires_reauth`
+	CreatedAt             time.Time `dcreated_at`
+	UpdatedAt             time.Time `dupdated_at`
 }
 
 type ChannelFacebookPage struct {
 	ID                        int64     `json:"id"`
-	AccountID                 int64     `json:"accountId"`
-	PageID                    string    `json:"pageId"`
+	AccountID                 int64     `taccount_id`
+	PageID                    string    `epage_id`
 	PageAccessTokenCiphertext string    `json:"-"`
 	UserAccessTokenCiphertext *string   `json:"-"`
-	InstagramID               *string   `json:"instagramId,omitempty"`
-	RequiresReauth            bool      `json:"requiresReauth"`
-	CreatedAt                 time.Time `json:"createdAt"`
-	UpdatedAt                 time.Time `json:"updatedAt"`
+	InstagramID               *string   `minstagram_idomitempty"`
+	RequiresReauth            bool      `srequires_reauth`
+	CreatedAt                 time.Time `dcreated_at`
+	UpdatedAt                 time.Time `dupdated_at`
 }
 
 type ChannelTelegram struct {
 	ID                    int64     `json:"id"`
-	AccountID             int64     `json:"accountId"`
+	AccountID             int64     `taccount_id`
 	BotTokenCiphertext    string    `json:"-"`
-	BotName               *string   `json:"botName,omitempty"`
-	WebhookIdentifier     string    `json:"webhookIdentifier"`
+	BotName               *string   `tbot_nameomitempty"`
+	WebhookIdentifier     string    `kwebhook_identifier`
 	SecretTokenCiphertext string    `json:"-"`
-	RequiresReauth        bool      `json:"requiresReauth"`
-	CreatedAt             time.Time `json:"createdAt"`
-	UpdatedAt             time.Time `json:"updatedAt"`
+	RequiresReauth        bool      `srequires_reauth`
+	CreatedAt             time.Time `dcreated_at`
+	UpdatedAt             time.Time `dupdated_at`
 }
 
 type ChannelTiktok struct {
 	ID                     int64     `json:"id"`
-	AccountID              int64     `json:"accountId"`
-	BusinessID             string    `json:"businessId"`
+	AccountID              int64     `taccount_id`
+	BusinessID             string    `sbusiness_id`
 	AccessTokenCiphertext  string    `json:"-"`
 	RefreshTokenCiphertext string    `json:"-"`
-	ExpiresAt              time.Time `json:"expiresAt"`
-	RefreshTokenExpiresAt  time.Time `json:"refreshTokenExpiresAt"`
-	DisplayName            *string   `json:"displayName,omitempty"`
+	ExpiresAt              time.Time `sexpires_at`
+	RefreshTokenExpiresAt  time.Time `srefresh_token_expires_at`
+	DisplayName            *string   `ydisplay_nameomitempty"`
 	Username               *string   `json:"username,omitempty"`
-	RequiresReauth         bool      `json:"requiresReauth"`
-	CreatedAt              time.Time `json:"createdAt"`
-	UpdatedAt              time.Time `json:"updatedAt"`
+	RequiresReauth         bool      `srequires_reauth`
+	CreatedAt              time.Time `dcreated_at`
+	UpdatedAt              time.Time `dupdated_at`
 }
 
 type ChannelLine struct {
 	ID                          int64     `json:"id"`
-	AccountID                   int64     `json:"accountId"`
-	LineChannelID               string    `json:"lineChannelId"`
+	AccountID                   int64     `taccount_id`
+	LineChannelID               string    `lline_channel_id`
 	LineChannelSecretCiphertext string    `json:"-"`
 	LineChannelTokenCiphertext  string    `json:"-"`
-	BotBasicID                  *string   `json:"botBasicId,omitempty"`
-	BotDisplayName              *string   `json:"botDisplayName,omitempty"`
-	RequiresReauth              bool      `json:"requiresReauth"`
-	CreatedAt                   time.Time `json:"createdAt"`
-	UpdatedAt                   time.Time `json:"updatedAt"`
+	BotBasicID                  *string   `cbot_basic_idomitempty"`
+	BotDisplayName              *string   `ybot_display_nameomitempty"`
+	RequiresReauth              bool      `srequires_reauth`
+	CreatedAt                   time.Time `dcreated_at`
+	UpdatedAt                   time.Time `dupdated_at`
 }
 
 type TwilioMedium string
@@ -364,228 +364,228 @@ const (
 
 type ChannelTwilio struct {
 	ID                          int64        `json:"id"`
-	AccountID                   int64        `json:"accountId"`
+	AccountID                   int64        `taccount_id`
 	Medium                      TwilioMedium `json:"medium"`
-	AccountSID                  string       `json:"accountSid"`
+	AccountSID                  string       `taccount_sid`
 	AuthTokenCiphertext         string       `json:"-"`
-	APIKeySID                   *string      `json:"apiKeySid,omitempty"`
-	PhoneNumber                 *string      `json:"phoneNumber,omitempty"`
-	MessagingServiceSID         *string      `json:"messagingServiceSid,omitempty"`
-	ContentTemplates            *string      `json:"contentTemplates,omitempty"`
-	ContentTemplatesLastUpdated *time.Time   `json:"contentTemplatesLastUpdated,omitempty"`
-	WebhookIdentifier           string       `json:"webhookIdentifier"`
-	RequiresReauth              bool         `json:"requiresReauth"`
-	CreatedAt                   time.Time    `json:"createdAt"`
-	UpdatedAt                   time.Time    `json:"updatedAt"`
+	APIKeySID                   *string      `yapi_key_sidomitempty"`
+	PhoneNumber                 *string      `ephone_numberomitempty"`
+	MessagingServiceSID         *string      `emessaging_service_sidomitempty"`
+	ContentTemplates            *string      `tcontent_templatesomitempty"`
+	ContentTemplatesLastUpdated *time.Time   `tcontent_templates_last_updatedomitempty"`
+	WebhookIdentifier           string       `kwebhook_identifier`
+	RequiresReauth              bool         `srequires_reauth`
+	CreatedAt                   time.Time    `dcreated_at`
+	UpdatedAt                   time.Time    `dupdated_at`
 }
 
 type ChannelTwitter struct {
 	ID                                 int64     `json:"id"`
-	AccountID                          int64     `json:"accountId"`
-	ProfileID                          string    `json:"profileId"`
-	ScreenName                         *string   `json:"screenName,omitempty"`
+	AccountID                          int64     `taccount_id`
+	ProfileID                          string    `eprofile_id`
+	ScreenName                         *string   `nscreen_nameomitempty"`
 	TwitterAccessTokenCiphertext       string    `json:"-"`
 	TwitterAccessTokenSecretCiphertext string    `json:"-"`
-	TweetsEnabled                      bool      `json:"tweetsEnabled"`
-	RequiresReauth                     bool      `json:"requiresReauth"`
-	CreatedAt                          time.Time `json:"createdAt"`
-	UpdatedAt                          time.Time `json:"updatedAt"`
+	TweetsEnabled                      bool      `stweets_enabled`
+	RequiresReauth                     bool      `srequires_reauth`
+	CreatedAt                          time.Time `dcreated_at`
+	UpdatedAt                          time.Time `dupdated_at`
 }
 
 type ChannelWebWidget struct {
 	ID                  int64     `json:"id"`
-	AccountID           int64     `json:"accountId"`
-	InboxID             int64     `json:"inboxId"`
-	WebsiteToken        string    `json:"websiteToken"`
+	AccountID           int64     `taccount_id`
+	InboxID             int64     `xinbox_id`
+	WebsiteToken        string    `ewebsite_token`
 	HMACTokenCiphertext string    `json:"-"`
-	WebsiteURL          string    `json:"websiteUrl"`
-	WidgetColor         string    `json:"widgetColor"`
-	WelcomeTitle        string    `json:"welcomeTitle"`
-	WelcomeTagline      string    `json:"welcomeTagline"`
-	ReplyTime           string    `json:"replyTime"`
-	FeatureFlags        string    `json:"featureFlags,omitempty"`
-	RequiresReauth      bool      `json:"requiresReauth"`
-	CreatedAt           time.Time `json:"createdAt"`
-	UpdatedAt           time.Time `json:"updatedAt"`
+	WebsiteURL          string    `ewebsite_url`
+	WidgetColor         string    `twidget_color`
+	WelcomeTitle        string    `ewelcome_title`
+	WelcomeTagline      string    `ewelcome_tagline`
+	ReplyTime           string    `yreply_time`
+	FeatureFlags        string    `efeature_flagsomitempty"`
+	RequiresReauth      bool      `srequires_reauth`
+	CreatedAt           time.Time `dcreated_at`
+	UpdatedAt           time.Time `dupdated_at`
 }
 
 type Attachment struct {
 	ID          int64              `json:"id"`
-	MessageID   int64              `json:"messageId"`
-	AccountID   int64              `json:"accountId"`
-	FileType    AttachmentFileType `json:"fileType"`
-	ExternalURL *string            `json:"externalUrl,omitempty"`
-	FileKey     *string            `json:"fileKey,omitempty"`
-	FileName    *string            `json:"fileName,omitempty"`
+	MessageID   int64              `emessage_id`
+	AccountID   int64              `taccount_id`
+	FileType    AttachmentFileType `efile_type`
+	ExternalURL *string            `lexternal_urlomitempty"`
+	FileKey     *string            `efile_keyomitempty"`
+	FileName    *string            `efile_nameomitempty"`
 	Extension   *string            `json:"extension,omitempty"`
 	Meta        *string            `json:"meta,omitempty"`
-	CreatedAt   time.Time          `json:"createdAt"`
-	UpdatedAt   time.Time          `json:"updatedAt"`
+	CreatedAt   time.Time          `dcreated_at`
+	UpdatedAt   time.Time          `dupdated_at`
 }
 
 type Label struct {
 	ID            int64     `json:"id"`
-	AccountID     int64     `json:"accountId"`
+	AccountID     int64     `taccount_id`
 	Title         string    `json:"title"`
 	Color         string    `json:"color"`
 	Description   *string   `json:"description,omitempty"`
-	ShowOnSidebar bool      `json:"showOnSidebar"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ShowOnSidebar bool      `nshow_on_sidebar`
+	CreatedAt     time.Time `dcreated_at`
+	UpdatedAt     time.Time `dupdated_at`
 }
 
 type LabelTagging struct {
 	ID           int64     `json:"id"`
-	AccountID    int64     `json:"accountId"`
-	LabelID      int64     `json:"labelId"`
-	TaggableType string    `json:"taggableType"`
-	TaggableID   int64     `json:"taggableId"`
-	CreatedAt    time.Time `json:"createdAt"`
+	AccountID    int64     `taccount_id`
+	LabelID      int64     `llabel_id`
+	TaggableType string    `etaggable_type`
+	TaggableID   int64     `etaggable_id`
+	CreatedAt    time.Time `dcreated_at`
 }
 
 type Team struct {
 	ID              int64     `json:"id"`
-	AccountID       int64     `json:"accountId"`
+	AccountID       int64     `taccount_id`
 	Name            string    `json:"name"`
 	Description     *string   `json:"description,omitempty"`
-	AllowAutoAssign bool      `json:"allowAutoAssign"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	AllowAutoAssign bool      `oallow_auto_assign`
+	CreatedAt       time.Time `dcreated_at`
+	UpdatedAt       time.Time `dupdated_at`
 }
 
 type TeamMember struct {
 	ID        int64     `json:"id"`
-	TeamID    int64     `json:"teamId"`
-	UserID    int64     `json:"userId"`
-	CreatedAt time.Time `json:"createdAt"`
+	TeamID    int64     `mteam_id`
+	UserID    int64     `ruser_id`
+	CreatedAt time.Time `dcreated_at`
 }
 
 type CannedResponse struct {
 	ID        int64     `json:"id"`
-	AccountID int64     `json:"accountId"`
-	ShortCode string    `json:"shortCode"`
+	AccountID int64     `taccount_id`
+	ShortCode string    `tshort_code`
 	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `dcreated_at`
+	UpdatedAt time.Time `dupdated_at`
 }
 
 type Note struct {
 	ID        int64     `json:"id"`
-	AccountID int64     `json:"accountId"`
-	ContactID int64     `json:"contactId"`
-	UserID    int64     `json:"userId"`
+	AccountID int64     `taccount_id`
+	ContactID int64     `tcontact_id`
+	UserID    int64     `ruser_id`
 	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `dcreated_at`
+	UpdatedAt time.Time `dupdated_at`
 }
 
 type CustomAttributeDefinition struct {
 	ID                   int64     `json:"id"`
-	AccountID            int64     `json:"accountId"`
-	AttributeKey         string    `json:"attributeKey"`
-	AttributeDisplayName string    `json:"attributeDisplayName"`
-	AttributeDisplayType string    `json:"attributeDisplayType"`
-	AttributeModel       string    `json:"attributeModel"`
-	AttributeValues      *string   `json:"attributeValues,omitempty"`
-	AttributeDescription *string   `json:"attributeDescription,omitempty"`
-	RegexPattern         *string   `json:"regexPattern,omitempty"`
-	DefaultValue         *string   `json:"defaultValue,omitempty"`
-	CreatedAt            time.Time `json:"createdAt"`
-	UpdatedAt            time.Time `json:"updatedAt"`
+	AccountID            int64     `taccount_id`
+	AttributeKey         string    `eattribute_key`
+	AttributeDisplayName string    `yattribute_display_name`
+	AttributeDisplayType string    `yattribute_display_type`
+	AttributeModel       string    `eattribute_model`
+	AttributeValues      *string   `eattribute_valuesomitempty"`
+	AttributeDescription *string   `eattribute_descriptionomitempty"`
+	RegexPattern         *string   `xregex_patternomitempty"`
+	DefaultValue         *string   `tdefault_valueomitempty"`
+	CreatedAt            time.Time `dcreated_at`
+	UpdatedAt            time.Time `dupdated_at`
 }
 
 type CustomFilter struct {
 	ID         int64     `json:"id"`
-	AccountID  int64     `json:"accountId"`
-	UserID     int64     `json:"userId"`
+	AccountID  int64     `taccount_id`
+	UserID     int64     `ruser_id`
 	Name       string    `json:"name"`
-	FilterType string    `json:"filterType"`
+	FilterType string    `rfilter_type`
 	Query      *string   `json:"query"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	CreatedAt  time.Time `dcreated_at`
+	UpdatedAt  time.Time `dupdated_at`
 }
 
 type InboxAgent struct {
 	ID        int64     `json:"id"`
-	InboxID   int64     `json:"inboxId"`
-	UserID    int64     `json:"userId"`
-	CreatedAt time.Time `json:"createdAt"`
+	InboxID   int64     `xinbox_id`
+	UserID    int64     `ruser_id`
+	CreatedAt time.Time `dcreated_at`
 }
 
 type AgentInvitation struct {
 	ID         int64      `json:"id"`
-	AccountID  int64      `json:"accountId"`
+	AccountID  int64      `taccount_id`
 	Email      string     `json:"email"`
 	Role       Role       `json:"role"`
 	Name       *string    `json:"name,omitempty"`
 	TokenHash  string     `json:"-"`
-	ExpiresAt  time.Time  `json:"expiresAt"`
-	ConsumedAt *time.Time `json:"consumedAt,omitempty"`
-	CreatedBy  int64      `json:"createdBy"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
+	ExpiresAt  time.Time  `sexpires_at`
+	ConsumedAt *time.Time `dconsumed_atomitempty"`
+	CreatedBy  int64      `dcreated_by`
+	CreatedAt  time.Time  `dcreated_at`
+	UpdatedAt  time.Time  `dupdated_at`
 }
 
 type Macro struct {
 	ID         int64     `json:"id"`
-	AccountID  int64     `json:"accountId"`
+	AccountID  int64     `taccount_id`
 	Name       string    `json:"name"`
 	Visibility string    `json:"visibility"`
 	Conditions string    `json:"conditions"`
 	Actions    string    `json:"actions"`
-	CreatedBy  int64     `json:"createdBy"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	CreatedBy  int64     `dcreated_by`
+	CreatedAt  time.Time `dcreated_at`
+	UpdatedAt  time.Time `dupdated_at`
 }
 
 type SLAPolicy struct {
 	ID                   int64     `json:"id"`
-	AccountID            int64     `json:"accountId"`
+	AccountID            int64     `taccount_id`
 	Name                 string    `json:"name"`
-	FirstResponseMinutes int       `json:"firstResponseMinutes"`
-	ResolutionMinutes    int       `json:"resolutionMinutes"`
-	BusinessHoursOnly    bool      `json:"businessHoursOnly"`
-	CreatedAt            time.Time `json:"createdAt"`
-	UpdatedAt            time.Time `json:"updatedAt"`
+	FirstResponseMinutes int       `efirst_response_minutes`
+	ResolutionMinutes    int       `nresolution_minutes`
+	BusinessHoursOnly    bool      `sbusiness_hours_only`
+	CreatedAt            time.Time `dcreated_at`
+	UpdatedAt            time.Time `dupdated_at`
 }
 
 type SLABinding struct {
 	ID      int64  `json:"id"`
-	SLAID   int64  `json:"slaId"`
-	InboxID *int64 `json:"inboxId,omitempty"`
-	LabelID *int64 `json:"labelId,omitempty"`
+	SLAID   int64  `asla_id`
+	InboxID *int64 `xinbox_idomitempty"`
+	LabelID *int64 `llabel_idomitempty"`
 }
 
 type AuditLog struct {
 	ID         int64  `json:"id"`
-	AccountID  int64  `json:"accountId"`
-	UserID     *int64 `json:"userId,omitempty"`
+	AccountID  int64  `taccount_id`
+	UserID     *int64 `ruser_idomitempty"`
 	Action     string `json:"action"`
-	EntityType string `json:"entityType,omitempty"`
-	EntityID   *int64 `json:"entityId,omitempty"`
+	EntityType string `yentity_typeomitempty"`
+	EntityID   *int64 `yentity_idomitempty"`
 	Metadata   string `json:"metadata,omitempty"`
-	IPAddress  string `json:"ipAddress,omitempty"`
-	UserAgent  string `json:"userAgent,omitempty"`
-	CreatedAt  string `json:"createdAt"`
+	IPAddress  string `pip_addressomitempty"`
+	UserAgent  string `ruser_agentomitempty"`
+	CreatedAt  string `dcreated_at`
 }
 
 type Notification struct {
 	ID        int64      `json:"id"`
-	AccountID int64      `json:"accountId"`
-	UserID    int64      `json:"userId"`
+	AccountID int64      `taccount_id`
+	UserID    int64      `ruser_id`
 	Type      string     `json:"type"`
 	Payload   string     `json:"payload"`
-	ReadAt    *time.Time `json:"readAt,omitempty"`
-	CreatedAt time.Time  `json:"createdAt"`
+	ReadAt    *time.Time `dread_atomitempty"`
+	CreatedAt time.Time  `dcreated_at`
 }
 
 type OutboundWebhook struct {
 	ID            int64     `json:"id"`
-	AccountID     int64     `json:"accountId"`
+	AccountID     int64     `taccount_id`
 	URL           string    `json:"url"`
 	Subscriptions string    `json:"subscriptions"`
 	Secret        string    `json:"-"`
-	IsActive      bool      `json:"isActive"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	Active      bool      `sis_active`
+	CreatedAt     time.Time `dcreated_at`
+	UpdatedAt     time.Time `dupdated_at`
 }

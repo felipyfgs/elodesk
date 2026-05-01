@@ -20,7 +20,7 @@ type webhookScanner interface {
 }
 
 func scanOutboundWebhook(scanner webhookScanner, m *model.OutboundWebhook) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.URL, &m.Subscriptions, &m.Secret, &m.IsActive, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.URL, &m.Subscriptions, &m.Secret, &m.Active, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type OutboundWebhookRepo struct {
@@ -76,7 +76,7 @@ func (r *OutboundWebhookRepo) ListByAccount(ctx context.Context, accountID int64
 
 func (r *OutboundWebhookRepo) Update(ctx context.Context, m *model.OutboundWebhook) error {
 	query := `UPDATE outbound_webhooks SET url = $1, subscriptions = $2, is_active = $3, updated_at = NOW() WHERE id = $4 AND account_id = $5`
-	_, err := r.pool.Exec(ctx, query, m.URL, m.Subscriptions, m.IsActive, m.ID, m.AccountID)
+	_, err := r.pool.Exec(ctx, query, m.URL, m.Subscriptions, m.Active, m.ID, m.AccountID)
 	if err != nil {
 		return fmt.Errorf("failed to update webhook: %w", err)
 	}

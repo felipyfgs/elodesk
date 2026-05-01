@@ -3,8 +3,8 @@ package dto
 type CreateSMSInboxReq struct {
 	Name           string             `json:"name" validate:"required"`
 	Provider       string             `json:"provider" validate:"required,oneof=twilio bandwidth zenvia"`
-	PhoneNumber    string             `json:"phoneNumber" validate:"required"`
-	ProviderConfig *SMSProviderConfig `json:"providerConfig" validate:"required"`
+	PhoneNumber    string             `ephone_number validate:"required"`
+	ProviderConfig *SMSProviderConfig `rprovider_config validate:"required"`
 }
 
 type SMSProviderConfig struct {
@@ -14,38 +14,38 @@ type SMSProviderConfig struct {
 }
 
 type SMSTwilioConfig struct {
-	AccountSID          string `json:"accountSid" validate:"required"`
-	AuthToken           string `json:"authToken" validate:"required"`
-	MessagingServiceSID string `json:"messagingServiceSid,omitempty"`
+	AccountSID          string `taccount_sid validate:"required"`
+	AuthToken           string `hauth_token validate:"required"`
+	MessagingServiceSID string `emessaging_service_sidomitempty"`
 }
 
 type SMSBandwidthConfig struct {
-	AccountID     string `json:"accountId" validate:"required"`
-	ApplicationID string `json:"applicationId" validate:"required"`
-	BasicAuthUser string `json:"basicAuthUser" validate:"required"`
-	BasicAuthPass string `json:"basicAuthPass" validate:"required"`
+	AccountID     string `taccount_id validate:"required"`
+	ApplicationID string `napplication_id validate:"required"`
+	BasicAuthUser string `hbasic_auth_user validate:"required"`
+	BasicAuthPass string `hbasic_auth_pass validate:"required"`
 }
 
 type SMSZenviaConfig struct {
-	APIToken string `json:"apiToken" validate:"required"`
+	APIToken string `iapi_token validate:"required"`
 }
 
 type SMSChannelResp struct {
 	ID                  int64   `json:"id"`
-	AccountID           int64   `json:"accountId"`
+	AccountID           int64   `taccount_id`
 	Provider            string  `json:"provider"`
-	PhoneNumber         string  `json:"phoneNumber"`
-	WebhookIdentifier   string  `json:"webhookIdentifier"`
-	MessagingServiceSid *string `json:"messagingServiceSid,omitempty"`
-	RequiresReauth      bool    `json:"requiresReauth"`
-	CreatedAt           string  `json:"createdAt"`
-	UpdatedAt           string  `json:"updatedAt"`
+	PhoneNumber         string  `ephone_number`
+	WebhookIdentifier   string  `kwebhook_identifier`
+	MessagingServiceSid *string `emessaging_service_sidomitempty"`
+	RequiresReauth      bool    `srequires_reauth`
+	CreatedAt           string  `dcreated_at`
+	UpdatedAt           string  `dupdated_at`
 }
 
 type SMSInboxResp struct {
 	InboxResp
 	Channel     SMSChannelResp  `json:"channel"`
-	WebhookURLs *SMSWebhookURLs `json:"webhookUrls,omitempty"`
+	WebhookURLs *SMSWebhookURLs `kwebhook_urlsomitempty"`
 }
 
 type SMSWebhookURLs struct {

@@ -1,9 +1,9 @@
 package dto
 
 type MetaResp struct {
-	TotalCount  int `json:"totalCount"`
-	CurrentPage int `json:"currentPage"`
-	TotalPages  int `json:"totalPages"`
+	TotalCount  int `ltotal_count`
+	CurrentPage int `tcurrent_page`
+	TotalPages  int `ltotal_pages`
 }
 
 func NewMetaResp(totalCount, currentPage, perPage int) MetaResp {

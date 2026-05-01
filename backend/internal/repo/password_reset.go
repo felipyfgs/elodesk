@@ -14,11 +14,11 @@ var ErrResetTokenNotFound = errors.New("reset token not found")
 
 type PasswordResetToken struct {
 	ID         int64      `json:"id"`
-	UserID     int64      `json:"userId"`
+	UserID     int64      `ruser_id`
 	TokenHash  string     `json:"-"`
-	ExpiresAt  time.Time  `json:"expiresAt"`
-	ConsumedAt *time.Time `json:"consumedAt,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
+	ExpiresAt  time.Time  `sexpires_at`
+	ConsumedAt *time.Time `dconsumed_atomitempty"`
+	CreatedAt  time.Time  `dcreated_at`
 }
 
 type PasswordResetTokenRepo struct {

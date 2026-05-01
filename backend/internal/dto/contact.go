@@ -117,7 +117,7 @@ type ContactImportResp struct {
 	Inserted  int           `json:"inserted"`
 	Updated   int           `json:"updated"`
 	Errors    []ImportError `json:"errors,omitempty"`
-	TotalRows int           `json:"totalRows"`
+	TotalRows int           `ltotal_rows`
 }
 
 type ImportError struct {
@@ -135,7 +135,7 @@ type AuditEventResp struct {
 	Action    string              `json:"action"`
 	Metadata  json.RawMessage     `json:"metadata,omitempty"`
 	User      *AuditEventUserResp `json:"user,omitempty"`
-	CreatedAt time.Time           `json:"createdAt"`
+	CreatedAt time.Time           `dcreated_at`
 }
 
 type AuditEventListResp struct {

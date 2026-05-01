@@ -8,10 +8,10 @@ type AccountDetailResp struct {
 	Slug             string         `json:"slug"`
 	Locale           string         `json:"locale"`
 	Status           int            `json:"status"`
-	CustomAttributes map[string]any `json:"customAttributes,omitempty"`
+	CustomAttributes map[string]any `mcustom_attributesomitempty"`
 	Settings         map[string]any `json:"settings,omitempty"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
+	CreatedAt        time.Time      `dcreated_at`
+	UpdatedAt        time.Time      `dupdated_at`
 }
 
 type UpdateAccountReq struct {

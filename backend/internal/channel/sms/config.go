@@ -12,20 +12,20 @@ type ProviderConfig struct {
 }
 
 type TwilioConfig struct {
-	AccountSID          string `json:"accountSid"`
-	AuthToken           string `json:"authToken"`
-	MessagingServiceSID string `json:"messagingServiceSid,omitempty"`
+	AccountSID          string `taccount_sid`
+	AuthToken           string `hauth_token`
+	MessagingServiceSID string `emessaging_service_sidomitempty"`
 }
 
 type BandwidthConfig struct {
-	AccountID     string `json:"accountId"`
-	ApplicationID string `json:"applicationId"`
-	BasicAuthUser string `json:"basicAuthUser"`
-	BasicAuthPass string `json:"basicAuthPass"`
+	AccountID     string `taccount_id`
+	ApplicationID string `napplication_id`
+	BasicAuthUser string `hbasic_auth_user`
+	BasicAuthPass string `hbasic_auth_pass`
 }
 
 type ZenviaConfig struct {
-	APIToken string `json:"apiToken"`
+	APIToken string `iapi_token`
 }
 
 func ParseProviderConfig(provider string, rawConfig string) (*ProviderConfig, error) {

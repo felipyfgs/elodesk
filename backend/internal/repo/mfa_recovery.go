@@ -14,10 +14,10 @@ var ErrRecoveryCodeNotFound = errors.New("recovery code not found")
 
 type MFARecoveryCode struct {
 	ID         int64      `json:"id"`
-	UserID     int64      `json:"userId"`
+	UserID     int64      `ruser_id`
 	CodeHash   string     `json:"-"`
-	ConsumedAt *time.Time `json:"consumedAt,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
+	ConsumedAt *time.Time `dconsumed_atomitempty"`
+	CreatedAt  time.Time  `dcreated_at`
 }
 
 type MFARecoveryCodeRepo struct {

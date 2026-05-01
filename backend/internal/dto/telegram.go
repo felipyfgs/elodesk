@@ -4,16 +4,16 @@ import "time"
 
 type CreateTelegramInboxReq struct {
 	Name     string `json:"name"     validate:"required"`
-	BotToken string `json:"botToken" validate:"required"`
+	BotToken string `tbot_token validate:"required"`
 }
 
 type TelegramChannelResp struct {
 	ID                int64     `json:"id"`
-	BotName           *string   `json:"botName,omitempty"`
-	WebhookIdentifier string    `json:"webhookIdentifier"`
-	RequiresReauth    bool      `json:"requiresReauth"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	BotName           *string   `tbot_nameomitempty"`
+	WebhookIdentifier string    `kwebhook_identifier`
+	RequiresReauth    bool      `srequires_reauth`
+	CreatedAt         time.Time `dcreated_at`
+	UpdatedAt         time.Time `dupdated_at`
 }
 
 type TelegramInboxResp struct {
