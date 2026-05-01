@@ -248,17 +248,6 @@ func mustMarshalString(s string) json.RawMessage {
 	return b
 }
 
-func (r *MessageRepo) UpdateConversationID(ctx context.Context, id, accountID, conversationID int64) error {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE messages SET conversation_id = $1, updated_at = NOW() WHERE id = $2 AND account_id = $3`,
-		conversationID, id, accountID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update message conversation_id: %w", err)
-	}
-	return nil
-}
-
 // MarkDeliveredBefore updates outgoing messages in a conversation to the given
 // status when their created_at is at or before the watermark timestamp.
 // Returns the number of rows updated.

@@ -235,7 +235,16 @@ func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 		c.Set("Content-Type", stat.ContentType)
 	}
 	c.Set("Content-Length", strconv.FormatInt(stat.Size, 10))
-	c.Set("Cache-Control", "public, max-age=3600")
+	// 1 ano + immutable: espelha o Chatwoot/ActiveStorage. Combinado com a URL
+	// permanente (token sem expiração), o navegador acerta o cache em todas as
+	// re-aberturas da conversa — não há novo GET, nem 304: o browser serve
+	// direto do disk cache. ETag fortalece a revalidação se algum proxy
+	// intermediário precisar (origem é imutável: attachment ID é 1:1 com blob).
+	c.Set("Cache-Control", "public, max-age=31536000, immutable")
+	if stat.ETag != "" {
+		c.Set("ETag", stat.ETag)
+	}
+	c.Set("Last-Modified", stat.LastModified.UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT"))
 	return c.SendStream(obj, int(stat.Size))
 }
 
@@ -313,10 +322,29 @@ func scopedObjectPath(c *fiber.Ctx, accountID int64) (string, error) {
 	return objectPath, nil
 }
 
-// SignedDownloadURL verifies the attachment belongs to the authenticated
-// account before producing a presigned GET URL. Without this, any agent could
-// download any tenant's attachment by guessing the id.
-func (h *UploadHandler) SignedDownloadURL(c *fiber.Ctx) error {
+// AttachmentMediaURL é o endpoint Chatwoot/ActiveStorage-style de token de
+// mídia. Mantido para compatibilidade com integradores externos — o caminho
+// in-app já recebe a URL pronta em MessageResp.attachments[].data_url, sem
+// round-trip extra.
+//
+// O token devolvido é PERMANENTE (espelha exatamente o ActiveStorage signed_id
+// do Chatwoot, que também é estável). Isso preserva o cache HTTP do navegador
+// (Cache-Control: max-age=1y, immutable em PublicAttachmentDownload) entre
+// navegações — sem o token mudar, a URL fica byte-a-byte idêntica e o browser
+// dispensa o GET por completo.
+//
+// Response: { token: "...", expires_at: 0 }
+//
+// expires_at=0 sinaliza "sem expiração" pra clientes legados que ainda esperam
+// esse campo; clientes novos podem ignorar. Os bytes vêm de
+// PublicAttachmentDownload, que valida o HMAC.
+func (h *UploadHandler) AttachmentMediaURL(c *fiber.Ctx) error {
+	if len(h.tokenSecret) == 0 {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(
+			dto.ErrorResp("Service Unavailable", "media URL signing not configured"),
+		)
+	}
+
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -327,30 +355,16 @@ func (h *UploadHandler) SignedDownloadURL(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid attachment id"))
 	}
 
-	attachment, err := h.attachmentRepo.FindByID(c.Context(), attachmentID, accountID)
+	// Ownership check — attachment must belong to this account.
+	_, err = h.attachmentRepo.FindByID(c.Context(), attachmentID, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
 
-	var objectPath string
-	if attachment.FileKey != nil && *attachment.FileKey != "" {
-		objectPath = *attachment.FileKey
-	} else if h.mediaResolver != nil {
-		resolved, err := h.mediaResolver(c.Context(), attachmentID, accountID)
-		if err == nil && resolved != "" {
-			objectPath = resolved
-		} else {
-			objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
-		}
-	} else {
-		objectPath = fmt.Sprintf("%d/%d", attachment.AccountID, attachment.ID)
-	}
+	token := SignAttachmentToken(h.tokenSecret, accountID, attachmentID)
 
-	presignedURL, err := h.minio.PresignClient().PresignedGetObject(c.Context(), h.minio.Bucket(), objectPath, presignedTTL, url.Values{})
-	if err != nil {
-		logger.Error().Str("component", "uploads").Err(err).Msg("failed to generate download URL")
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to generate download URL"))
-	}
-
-	return c.JSON(dto.SuccessResp(fiber.Map{"download_url": presignedURL.String()}))
+	return c.JSON(dto.SuccessResp(fiber.Map{
+		"token":      token,
+		"expires_at": 0,
+	}))
 }

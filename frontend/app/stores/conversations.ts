@@ -33,7 +33,9 @@ export interface ConversationLastMessage {
   status?: number
   private?: boolean
   createdAt: string | number
-  attachments?: { fileUrl?: string, fileType: string | number }[]
+  // Backend devolve attachments com `data_url` (estável, espelha Chatwoot) e
+  // `external_url` (CDN externa); apiAdapter normaliza pra camelCase.
+  attachments?: { id?: number, dataUrl?: string, externalUrl?: string, fileUrl?: string, fileType: string | number }[]
   sender?: ConversationMessageSender
 }
 

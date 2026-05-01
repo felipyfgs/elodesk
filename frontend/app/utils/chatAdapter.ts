@@ -81,6 +81,13 @@ export function messageIsForwardable(m: Message): boolean {
 
 export interface MessageAttachment {
   id?: number
+  // dataUrl é a URL ESTÁVEL servida pelo elodesk (espelha Chatwoot
+  // `attachment.data_url`). Tem precedência sobre fileUrl porque é a única que
+  // sabemos estar imutável byte-a-byte — fileUrl externo (CDN do Meta) pode
+  // expirar, ser assinada por janela curta etc. Quando definida, o template
+  // monta `<img :src="att.dataUrl">` e o cache HTTP do navegador acerta entre
+  // re-aberturas da conversa.
+  dataUrl?: string
   fileUrl?: string
   path?: string
   fileType: string
@@ -120,6 +127,9 @@ export function getAttachments(m: Message): MessageAttachment[] {
   if (m.attachments && m.attachments.length > 0) {
     return m.attachments.map(a => ({
       id: a.id,
+      // dataUrl: estável (token HMAC permanente, Cache-Control 1y immutable).
+      // fileUrl: externalUrl é CDN externa (Meta/Telegram) — fallback.
+      dataUrl: a.dataUrl,
       path: a.fileKey,
       fileUrl: a.externalUrl,
       fileType: normalizeFileType(a.contentType, a.fileType),
@@ -223,11 +233,6 @@ export function isInboxCompatibleWithAttachments(
     }
   }
   return true
-}
-
-export function incompatibilityReason(channelType: string, fileType: string): string {
-  const name = channelType.replace('Channel::', '')
-  return `${name} does not support ${fileType} attachments`
 }
 
 // --- Time formatting ---

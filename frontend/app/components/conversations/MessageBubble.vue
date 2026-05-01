@@ -103,7 +103,19 @@ const bubbleClass = computed(() => {
   } else {
     padding = 'px-3.5 py-2'
   }
-  const sizing = isAttachmentOnly.value ? 'w-fit' : ''
+  // Sizing: attachment-only uses `w-fit` (bubble hugs the attachment);
+  // text + attachment uses `max-w-[19rem]` so the text wraps at roughly
+  // the attachment width (PDF=260px, file=280px) instead of pushing the
+  // bubble wider than the media — matching WhatsApp's behaviour.
+  const hasMedia = hasAttachments(props.message)
+  let sizing: string
+  if (isAttachmentOnly.value) {
+    sizing = 'w-fit'
+  } else if (hasMedia) {
+    sizing = 'max-w-[19rem]'
+  } else {
+    sizing = ''
+  }
   if (kind === 'private') {
     return `${padding} ${sizing} text-sm shadow-sm whitespace-pre-wrap break-words rounded-lg rounded-br-sm bg-warning/10 text-highlighted ring-1 ring-warning/25`
   }

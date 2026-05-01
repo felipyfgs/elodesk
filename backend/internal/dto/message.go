@@ -110,11 +110,32 @@ type AttachmentResp struct {
 	Extension   *string                  `json:"extension,omitempty"`
 	ContentType *string                  `json:"content_type,omitempty"`
 	Size        int64                    `json:"size"`
-	CreatedAt   int64                    `json:"created_at"`
+	// DataURL é a URL estável e pública pra streaming dos bytes (espelha o
+	// `data_url` do Chatwoot push_event_data). Vem populado quando o
+	// AttachmentURLBuilder está injetado e o anexo tem file_key — ou seja,
+	// quando os bytes já estão no MinIO. Fica vazia se o anexo só tem
+	// external_url (mídia ainda não baixada do canal).
+	DataURL   *string `json:"data_url,omitempty"`
+	CreatedAt int64   `json:"created_at"`
+}
+
+// attachmentURLBuilder é o gerador de URL injetado pelo wiring do servidor
+// (router.go). Mantemos package-level pra evitar passar por todas as funções
+// MessageToResp/AttachmentsToResp — o caminho é hot e o builder é estável após
+// boot. Sem builder configurado, AttachmentResp.data_url fica nil e o frontend
+// cai no fallback (file_url externo / round-trip /media-url).
+var attachmentURLBuilder func(accountID, attachmentID int64) string
+
+// SetAttachmentURLBuilder registra o gerador de URL chamado em AttachmentToResp.
+// O wiring do servidor injeta uma closure que assina HMAC permanente — assim
+// `MessageResp.attachments[].data_url` é byte-a-byte idêntica em re-fetchs
+// subsequentes, e o cache HTTP do navegador acerta sem re-download.
+func SetAttachmentURLBuilder(fn func(accountID, attachmentID int64) string) {
+	attachmentURLBuilder = fn
 }
 
 func AttachmentToResp(a *model.Attachment) AttachmentResp {
-	return AttachmentResp{
+	resp := AttachmentResp{
 		ID:          a.ID,
 		MessageID:   a.MessageID,
 		FileType:    a.FileType,
@@ -124,6 +145,14 @@ func AttachmentToResp(a *model.Attachment) AttachmentResp {
 		Extension:   a.Extension,
 		CreatedAt:   a.CreatedAt.Unix(),
 	}
+	// Só anexa data_url quando há blob no MinIO (file_key) e o builder foi
+	// configurado. Anexos com só external_url ficam sem data_url — o frontend
+	// usa external_url direto (CDN do Meta/Telegram) sem proxy.
+	if attachmentURLBuilder != nil && a.FileKey != nil && *a.FileKey != "" {
+		url := attachmentURLBuilder(a.AccountID, a.ID)
+		resp.DataURL = &url
+	}
+	return resp
 }
 
 func AttachmentsToResp(atts []model.Attachment) []AttachmentResp {

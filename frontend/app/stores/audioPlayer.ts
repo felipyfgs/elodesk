@@ -1,14 +1,12 @@
 import { defineStore } from 'pinia'
 import { markRaw, shallowRef } from 'vue'
-import { useAuthStore } from '~/stores/auth'
 
 export interface AudioTrack {
   id: string
-  // Either a pre-resolved `src` (public URL / blob) OR `path` with `accountId`
-  // for an authenticated download from MinIO. When both are given, `src`
-  // wins (useful for the composer preview where the blob is already held).
+  // src é a URL pública e estável do áudio. Para anexos servidos pelo elodesk,
+  // é a `attachment.dataUrl` (token HMAC permanente, Cache-Control 1y/immutable).
+  // Para previews do composer, é uma blob URL local.
   src?: string
-  path?: string
   title?: string
   subtitle?: string
   accountId?: string | number
@@ -17,8 +15,12 @@ export interface AudioTrack {
 
 // Global singleton audio — lives outside any conversation's DOM so playback
 // survives navigation. Only one track plays at a time; starting a new one
-// pauses and resets the previous. Owns its own authenticated blob URL so
-// it keeps working even after the originating AudioPlayer unmounts.
+// pauses and resets the previous.
+//
+// O store NÃO faz mais fetch autenticado/blob: a URL é estável e pública (com
+// token HMAC permanente), o cache HTTP do navegador acerta entre navegações.
+// Isso evita o "load visível" toda vez que o agente reabre uma conversa com
+// áudio — o `<audio>` reutiliza o disk cache.
 export const useAudioPlayerStore = defineStore('audioPlayer', () => {
   const element = shallowRef<HTMLAudioElement | null>(null)
   const track = shallowRef<AudioTrack | null>(null)
@@ -27,14 +29,6 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
   const duration = ref(0)
   const playbackRate = ref(1)
   const muted = ref(false)
-  let ownedBlobUrl: string | null = null
-
-  function revokeBlob() {
-    if (ownedBlobUrl) {
-      URL.revokeObjectURL(ownedBlobUrl)
-      ownedBlobUrl = null
-    }
-  }
 
   function ensureElement() {
     if (element.value) return element.value
@@ -47,10 +41,7 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
       isPlaying.value = false
     })
     audio.addEventListener('ended', () => {
-      // WhatsApp-style auto-close: clear the track so the mini player
-      // unmounts. Release the owned blob since the element won't be
-      // replaying it.
-      revokeBlob()
+      // WhatsApp-style auto-close: clear the track so the mini player unmounts.
       isPlaying.value = false
       currentTime.value = 0
       duration.value = 0
@@ -71,28 +62,6 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
     return audio
   }
 
-  async function resolveSrc(next: AudioTrack): Promise<string | null> {
-    if (next.src) return next.src
-    if (!next.path || !next.accountId) return null
-    const auth = useAuthStore()
-    try {
-      const runtime = useRuntimeConfig()
-      const apiBase = runtime.public.apiUrl as string
-      const url = `${apiBase}/accounts/${next.accountId}/uploads/download?path=${encodeURIComponent(next.path)}`
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${auth.accessToken}` }
-      })
-      if (!res.ok) throw new Error(`download failed: ${res.status}`)
-      const blob = await res.blob()
-      revokeBlob()
-      ownedBlobUrl = URL.createObjectURL(blob)
-      return ownedBlobUrl
-    } catch (err) {
-      console.error('[audioPlayer] resolveSrc failed', err)
-      return null
-    }
-  }
-
   async function play(next: AudioTrack) {
     const audio = ensureElement()
     const sameTrack = track.value?.id === next.id
@@ -102,12 +71,11 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
       currentTime.value = 0
       duration.value = 0
       track.value = next
-      const src = await resolveSrc(next)
-      if (!src) {
+      if (!next.src) {
         isPlaying.value = false
         return
       }
-      audio.src = src
+      audio.src = next.src
       audio.currentTime = 0
       audio.playbackRate = playbackRate.value
       audio.muted = muted.value
@@ -162,7 +130,6 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
       audio.removeAttribute('src')
       audio.load()
     }
-    revokeBlob()
     track.value = null
     isPlaying.value = false
     currentTime.value = 0

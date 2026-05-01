@@ -175,27 +175,3 @@ func (r *UserAccessTokenRepo) EnsureForUser(ctx context.Context, userID int64) (
 	return r.Create(ctx, "User", userID)
 }
 
-// ListUsersWithoutToken returns all user IDs that don't have an access token
-func (r *UserAccessTokenRepo) ListUsersWithoutToken(ctx context.Context) ([]int64, error) {
-	query := `
-		SELECT u.id FROM users u
-		LEFT JOIN user_access_tokens uat ON uat.owner_type = 'User' AND uat.owner_id = u.id
-		WHERE uat.id IS NULL`
-
-	rows, err := r.pool.Query(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list users without token: %w", err)
-	}
-	defer rows.Close()
-
-	var userIDs []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("failed to scan user id: %w", err)
-		}
-		userIDs = append(userIDs, id)
-	}
-
-	return userIDs, rows.Err()
-}

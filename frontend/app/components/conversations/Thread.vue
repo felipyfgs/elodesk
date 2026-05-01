@@ -74,9 +74,21 @@ watch(() => props.conversation.id, async (id) => {
 // trusting UChatMessages :auto-scroll. Reactive list updates from the
 // realtime store don't reliably trigger Nuxt UI's internal observer when
 // the scroll element is the parent overflow div.
+//
+// IMPORTANT: The parent (Index.vue) renders Thread with `:key="selected.id"`,
+// which means Vue destroys and recreates this entire component on each
+// conversation change. Watchers on `conversation.id` therefore NEVER fire
+// (the id never changes within the component's lifecycle), so initial
+// scroll-to-bottom is handled via watch(list.length, immediate) below.
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
+const scrollContentRef = ref<HTMLDivElement | null>(null)
 const STICK_THRESHOLD_PX = 80
 const stickToBottom = ref(true)
+
+// Guard flag: when true, the passive `onScroll` handler is ignored so that
+// programmatic scrollToBottom calls don't accidentally flip stickToBottom
+// to false while the scroll animation is in progress.
+const programmaticScroll = ref(false)
 
 function isNearBottom(el: HTMLElement) {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_THRESHOLD_PX
@@ -85,10 +97,20 @@ function isNearBottom(el: HTMLElement) {
 function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   const el = scrollContainerRef.value
   if (!el) return
+  programmaticScroll.value = true
   el.scrollTo({ top: el.scrollHeight, behavior })
+  // Release the guard after the scroll settles. For 'auto' (instant) a
+  // single rAF suffices; for 'smooth' we give the animation time to finish.
+  const releaseMs = behavior === 'auto' ? 0 : 400
+  if (releaseMs === 0) {
+    requestAnimationFrame(() => { programmaticScroll.value = false })
+  } else {
+    setTimeout(() => { programmaticScroll.value = false }, releaseMs)
+  }
 }
 
 function onScroll() {
+  if (programmaticScroll.value) return
   const el = scrollContainerRef.value
   if (!el) return
   // If the agent reads history (scrolls up), don't yank them back when a
@@ -96,21 +118,50 @@ function onScroll() {
   stickToBottom.value = isNearBottom(el)
 }
 
-// Reset to bottom whenever the active conversation changes.
-watch(() => props.conversation.id, () => {
-  stickToBottom.value = true
-  nextTick(() => scrollToBottom('auto'))
-})
+// Initial scroll: the component is freshly mounted (`:key` forces recreate).
+// One watcher with `immediate: true` cobre tanto o caminho warm (hover-
+// prefetch, cache de bucket) quanto o async fetch — em ambos os casos a
+// `list` transita de N=0 ou já entra populada. Depois do scroll inicial,
+// o ResizeObserver abaixo cuida de re-scrollar em cada incremento.
+const didInitialScroll = ref(false)
 
-// React to new/updated messages. Watching length covers append; watching
-// the last id covers the "pending → real" reconciliation in upsert.
+function doInitialScroll() {
+  if (didInitialScroll.value) return
+  didInitialScroll.value = true
+  stickToBottom.value = true
+  // nextTick + double-rAF: aguarda Vue flush + layout do browser.
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom('auto')
+      })
+    })
+  })
+}
+
 watch(
-  () => [list.value.length, list.value[list.value.length - 1]?.id] as const,
-  () => {
-    if (!stickToBottom.value) return
-    nextTick(() => scrollToBottom('smooth'))
-  }
+  () => list.value.length,
+  (len) => {
+    if (len > 0) doInitialScroll()
+  },
+  { immediate: true },
 )
+
+onMounted(() => {
+  // ResizeObserver no content div: pega media loads async (pdfjs thumbs,
+  // imagens via useAttachmentSrc, waveform de áudio) que expandem
+  // scrollHeight depois do scroll inicial. Também serve de re-scroll quando
+  // novas mensagens chegam — o append da lista aumenta a altura do content.
+  // Usa 'auto' pra evitar jank em loads rápidos sequenciais.
+  const content = scrollContentRef.value
+  if (!content) return
+  const ro = new ResizeObserver(() => {
+    if (!stickToBottom.value) return
+    scrollToBottom('auto')
+  })
+  ro.observe(content)
+  onUnmounted(() => ro.disconnect())
+})
 
 // Cancel selection mode and clear
 function cancelSelection() {
@@ -185,7 +236,7 @@ onUnmounted(() => {
               fluxo normal de bloco renderiza as bolhas a partir do topo,
               deixando um vazio enorme entre a primeira mensagem e o input.
             -->
-            <div class="flex min-h-full flex-col justify-end">
+            <div ref="scrollContentRef" class="flex min-h-full flex-col justify-end">
               <ConversationsMessageList :messages="list" :conversation="conversation" />
             </div>
           </div>

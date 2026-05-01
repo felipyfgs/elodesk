@@ -13,9 +13,6 @@ import (
 
 	"backend/internal/audit"
 	appchannel "backend/internal/channel"
-	apichan "backend/internal/channel/api"
-	fbchan "backend/internal/channel/facebook"
-	igchan "backend/internal/channel/instagram"
 	linechan "backend/internal/channel/line"
 	"backend/internal/channel/reauth"
 	smschan "backend/internal/channel/sms"
@@ -31,6 +28,7 @@ import (
 	"backend/internal/config"
 	appcrypto "backend/internal/crypto"
 	"backend/internal/database"
+	"backend/internal/dto"
 	"backend/internal/handler"
 	"backend/internal/logger"
 	"backend/internal/media"
@@ -201,13 +199,23 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	// Padrão Chatwoot/ActiveStorage: o elodesk hospeda a URL pública da mídia
 	// e proxia bytes do MinIO. Integradores externos só veem a URL do elodesk.
 	// Token HMAC-SHA256 com a KEK (já validada como ≥32 bytes base64) — não há
-	// criptografia, só integridade + expiração.
+	// criptografia, só integridade.
+	//
+	// Token permanente: a URL final é determinística pra um (accountID,
+	// attachmentID), o que faz o navegador acertar o HTTP cache (max-age=1y +
+	// immutable em PublicAttachmentDownload) entre re-aberturas da conversa.
+	// Sem isso, cada visita gerava token novo → URL nova → re-download.
 	tokenSecret, _ := base64.StdEncoding.DecodeString(cfg.BackendKEK)
 	uploadHandler.SetAttachmentTokenSecret(tokenSecret)
-	outboundWebhookSvc.WithAttachmentURLBuilder(func(accountID, attachmentID int64) string {
-		token := handler.SignAttachmentToken(tokenSecret, accountID, attachmentID, 15*time.Minute)
+	attachmentURLBuilder := func(accountID, attachmentID int64) string {
+		token := handler.SignAttachmentToken(tokenSecret, accountID, attachmentID)
 		return fmt.Sprintf("%s/api/v1/attachments/%d/file?token=%s", cfg.APIURL, attachmentID, token)
-	})
+	}
+	outboundWebhookSvc.WithAttachmentURLBuilder(attachmentURLBuilder)
+	// Injeta o builder no DTO pra que MessageResp.attachments[].data_url venha
+	// pronto na resposta (espelha Chatwoot push_event_data: cliente lê URL
+	// estável da mensagem direto, sem round-trip extra ao /media-url).
+	dto.SetAttachmentURLBuilder(attachmentURLBuilder)
 
 	healthHandler := handler.NewHealthHandler(db, redisClient)
 
@@ -286,7 +294,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Post("/uploads", uploadHandler.ProxyUpload)
 	accounts.Get("/uploads/download", uploadHandler.ProxyDownload)
 	accounts.Get("/uploads/signed-url", uploadHandler.SignedObjectDownloadURL)
-	accounts.Get("/attachments/:id/signed-url", uploadHandler.SignedDownloadURL)
+	accounts.Get("/attachments/:id/media-url", uploadHandler.AttachmentMediaURL)
 
 	accounts.Patch("/contacts/:id", contactHandler.UpdateContactByID)
 	accounts.Get("/contacts/:id/conversations", contactHandler.ListContactConversations)
@@ -411,8 +419,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	channelTwilioRepo := repo.NewChannelTwilioRepo(db.Pool)
 	channelSMSRepo := repo.NewChannelSMSRepo(db.Pool)
 
-	channelRegistry := appchannel.NewRegistry()
-	channelRegistry.Register(appchannel.KindApi, apichan.NewChannel())
 	dedupLock := appchannel.NewDedupLock(redisClient)
 	defaultHTTPClient := &http.Client{}
 
@@ -422,9 +428,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		contactSvc, messageSvc, realtimeSvc, cipher, dedupLock, waReauthTracker,
 		asynqClient, defaultHTTPClient,
 	)
-	waChannel := whatsappchan.NewWhatsApp(channelWhatsAppRepo, inboxRepo, cipher, defaultHTTPClient)
-	channelRegistry.Register(appchannel.KindWhatsapp, waChannel)
-
 	whatsAppInboxHandler := handler.NewWhatsAppInboxHandler(inboxRepo, channelWhatsAppRepo, cipher, waSvc)
 	whatsAppWebhookHandler := handler.NewWhatsAppWebhookHandler(waSvc, inboxRepo, channelWhatsAppRepo)
 	accounts.Post("/inboxes/whatsapp", ownerAdmin, whatsAppInboxHandler.Create)
@@ -433,37 +436,17 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	s.App.Get("/webhooks/whatsapp/:identifier", whatsAppWebhookHandler.HandleHandshake)
 	s.App.Post("/webhooks/whatsapp/:identifier", whatsAppWebhookHandler.HandleDelivery)
 
-	igChannel := igchan.NewChannel(
-		channelInstagramRepo, inboxRepo, contactRepo, contactInboxRepo,
-		conversationRepo, messageRepo, cipher, redisClient, asynqClient,
-		cfg.MetaAppSecret, cfg.InstagramVerifyToken,
-	)
-	channelRegistry.Register(appchannel.KindInstagram, igChannel)
-
 	igWebhookHandler := handler.NewInstagramWebhookHandler(
 		channelInstagramRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock, asynqClient,
 		cfg.MetaAppSecret, cfg.InstagramVerifyToken,
 	)
 
-	fbChannel := fbchan.NewChannel(
-		channelFacebookRepo, inboxRepo, contactRepo, contactInboxRepo,
-		conversationRepo, messageRepo, cipher, redisClient, asynqClient,
-		cfg.MetaAppSecret, cfg.FacebookVerifyToken,
-	)
-	channelRegistry.Register(appchannel.KindFacebookPage, fbChannel)
-
 	fbWebhookHandler := handler.NewFacebookWebhookHandler(
 		channelFacebookRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock, asynqClient,
 		cfg.MetaAppSecret, cfg.FacebookVerifyToken,
 	)
-
-	tgChannel := tgchan.NewChannel(
-		channelTelegramRepo, inboxRepo, contactRepo, contactInboxRepo,
-		conversationRepo, messageRepo, cipher, redisClient, asynqClient,
-	)
-	channelRegistry.Register(appchannel.KindTelegram, tgChannel)
 
 	tgAPI := tgchan.NewAPIClient()
 	tgWebhookHandler := handler.NewTelegramWebhookHandler(
@@ -477,30 +460,14 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	)
 	uploadHandler.SetMediaResolver(tgMediaResolver.ResolveMedia)
 
-	lineChannel := linechan.NewChannel(
-		channelLineRepo, inboxRepo, contactRepo, contactInboxRepo,
-		conversationRepo, messageRepo, cipher, redisClient, asynqClient,
-	)
-	channelRegistry.Register(appchannel.KindLine, lineChannel)
-
 	lineAPI := linechan.NewAPIClient()
 	lineWebhookHandler := handler.NewLineWebhookHandler(
 		channelLineRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock, asynqClient, lineAPI,
 	)
 
-	tiktokReauthTracker := reauth.NewTracker(redisClient)
 	tiktokRedirectURL := cfg.APIURL + "/api/v1/accounts/tiktok/oauth/callback"
 	tiktokOAuth := tiktokchan.NewOAuthClient(cfg.TiktokClientKey, cfg.TiktokClientSecret, tiktokRedirectURL)
-	tiktokTokens := tiktokchan.NewTokenService(tiktokOAuth, channelTiktokRepo, cipher, tiktokReauthTracker)
-	if cfg.FeatureChannelTiktok {
-		tiktokChannel := tiktokchan.NewChannel(
-			channelTiktokRepo, inboxRepo, contactRepo, contactInboxRepo,
-			conversationRepo, messageRepo, cipher, redisClient, asynqClient,
-			tiktokTokens, cfg.TiktokClientSecret,
-		)
-		channelRegistry.Register(appchannel.KindTiktok, tiktokChannel)
-	}
 	tiktokHandler := handler.NewTiktokHandler(
 		channelTiktokRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock, asynqClient,
@@ -509,14 +476,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	twitterCallbackURL := cfg.APIURL + "/api/v1/accounts/twitter/oauth/callback"
 	twitterOAuth := twitterchan.NewOAuthClient(cfg.TwitterConsumerKey, cfg.TwitterConsumerSecret, twitterCallbackURL)
-	if cfg.FeatureChannelTwitter {
-		twitterChannel := twitterchan.NewChannel(
-			channelTwitterRepo, inboxRepo, contactRepo, contactInboxRepo,
-			conversationRepo, messageRepo, cipher, redisClient,
-			cfg.TwitterConsumerKey, cfg.TwitterConsumerSecret,
-		)
-		channelRegistry.Register(appchannel.KindTwitter, twitterChannel)
-	}
 	twitterHandler := handler.NewTwitterHandler(
 		channelTwitterRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock,
@@ -529,7 +488,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		channelTwilioRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, redisClient, twilioClient,
 	)
-	channelRegistry.Register(appchannel.KindTwilio, twilioChannel)
 	twilioWebhookHandler := handler.NewTwilioWebhookHandler(
 		channelTwilioRepo, inboxRepo, contactRepo, contactInboxRepo,
 		conversationRepo, messageRepo, cipher, dedupLock, twilioClient, twilioChannel, cfg,
@@ -546,14 +504,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		channelSMSRepo, inboxRepo, contactSvc, contactRepo,
 		conversationRepo, messageRepo, messageSvc, dedupLock, smsMediaHandler,
 	)
-	smsDedupLock := appchannel.NewDedupLock(redisClient)
-
-	smsChannel := smschan.NewChannel(
-		channelSMSRepo, inboxRepo, messageRepo, smsRegistry,
-		cipher, smsDedupLock, reauth.NewTracker(redisClient), asynqClient,
-		smsMediaHandler, realtimeSvc, defaultHTTPClient,
-	)
-	channelRegistry.Register(appchannel.KindSms, smsChannel)
 
 	smsWebhookHandler := handler.NewSMSWebhookHandler(
 		channelSMSRepo, messageRepo, smsRegistry, smsIngestSvc, messageSvc,
@@ -590,9 +540,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	identifySvc := webwidget.NewIdentifyService(channelWebWidgetRepo, contactRepo, contactInboxRepo, conversationRepo, cipher, jwtSvc)
 	sseHandler := webwidget.NewSSEHandler(redisClient, conversationRepo, channelWebWidgetRepo)
 	widgetPublicHandler := handler.NewWidgetPublicHandler(sessionSvc, identifySvc, channelWebWidgetRepo, conversationRepo, messageRepo, jwtSvc, sseHandler, cfg)
-
-	webWidgetChannel := webwidget.NewChannel(channelWebWidgetRepo, conversationRepo, messageRepo, redisClient)
-	channelRegistry.Register(appchannel.KindWebWidget, webWidgetChannel)
 
 	widgetRateLimiter := middleware.NewWidgetRateLimiter(redisClient)
 	widgetCORS := middleware.WidgetCORS()
@@ -633,15 +580,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Delete("/inboxes/:id/twitter", ownerAdmin, twitterHandler.Delete)
 
 	s.App.Use(NotFoundHandler)
-
-	_ = channelRegistry
-
-	// Backfill user access tokens for existing users (one-time migration)
-	go func() {
-		if err := authSvc.BackfillUserAccessTokens(context.Background()); err != nil {
-			logger.Error().Str("component", "server").Err(err).Msg("failed to backfill user access tokens")
-		}
-	}()
 
 	logger.Info().Str("component", "server").Msg("Routes registered")
 	return asynqClient, nil

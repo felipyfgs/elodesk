@@ -122,11 +122,11 @@ const fileSizeLabel = computed(() => {
     class="block max-h-[320px] max-w-[320px] rounded-md bg-black"
   />
 
-  <!-- Áudio: cai pro AudioPlayer já existente -->
+  <!-- Áudio: cai pro AudioPlayer já existente. `src` vem resolvido sincrono
+       de useAttachmentSrc (preferência: dataUrl estável → fileUrl externo). -->
   <ConversationsAudioPlayer
     v-else-if="kind === 'audio'"
-    :path="attachment.path"
-    :src="attachment.fileUrl"
+    :src="src ?? undefined"
     :account-id="accountId"
     :conversation-id="conversationId"
     :track-id="attachment.id ? `att:${attachment.id}` : undefined"

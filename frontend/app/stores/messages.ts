@@ -20,9 +20,15 @@ export interface MessageAttachmentResp {
   // Nome original do arquivo (com acentos/espaços/parênteses) preservado
   // pelo backend separado da chave do MinIO (que é sanitizada).
   fileName?: string
+  // dataUrl é a URL ESTÁVEL servida pelo elodesk (espelha o
+  // `attachment.data_url` do Chatwoot push_event_data). Token HMAC permanente
+  // + Cache-Control: max-age=1y, immutable em PublicAttachmentDownload.
+  // Re-aberturas da conversa devolvem a mesma URL byte-a-byte → o navegador
+  // serve direto do disk cache, sem novo GET. Vem populada quando o anexo já
+  // tem fileKey (blob no MinIO).
+  dataUrl?: string
   // URL externa (CDN do Meta/Telegram) usada quando o backend ainda não
-  // baixou o blob pro MinIO. Frontend prefere fileKey (signed URL); cai pra
-  // externalUrl quando fileKey não existe.
+  // baixou o blob pro MinIO. Fallback de dataUrl.
   externalUrl?: string
   extension?: string
   contentType?: string
@@ -188,10 +194,11 @@ export const useMessagesStore = defineStore('messages', {
             }
           : null,
         attachments: msg.attachments?.map((a, i) => ({
-          id: i,
+          id: a.id ?? i,
           messageId: Number(msg.id),
           fileType: a.fileType,
-          externalUrl: a.fileUrl,
+          dataUrl: a.dataUrl,
+          externalUrl: a.externalUrl ?? a.fileUrl,
           createdAt: msg.createdAt
         })),
         sourceId: null,
@@ -249,11 +256,13 @@ export const useMessagesStore = defineStore('messages', {
 
       const idx = bucket.findIndex(m => String(m.id) === String(msg.id))
       if (idx >= 0) {
-        // Update in-place. Se o timestamp mudou e a mensagem ficou fora de
-        // ordem (raro, ex.: server backfill com timestamp corrigido) deixa o
-        // sort do bloco else cuidar — aqui mantemos posição porque mensagens
-        // editadas/atualizadas conservam o created_at original.
-        bucket[idx] = msg
+        // Update in-place via Object.assign — preserva a IDENTIDADE do objeto
+        // existente (mesma referência). Antes, `bucket[idx] = msg` substituía
+        // a referência, e o ResizeObserver/computed dos templates de mídia
+        // re-disparava o pipeline de carga (loading visível, refetch da imagem
+        // mesmo com dataUrl idêntica). Mensagens editadas/atualizadas
+        // conservam created_at, então a posição no array fica preservada.
+        Object.assign(bucket[idx]!, msg)
         return
       }
 

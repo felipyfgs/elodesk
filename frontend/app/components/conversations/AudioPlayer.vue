@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useAVWaveform } from 'vue-audio-visual'
-import { useAuthStore } from '~/stores/auth'
 import { useAudioPlayerStore } from '~/stores/audioPlayer'
 
 const props = defineProps<{
-  path?: string
+  // src é a URL ESTÁVEL pro áudio. Vem populada pelo MediaAttachment a partir
+  // de `attachment.dataUrl` (espelha Chatwoot data_url): URL com token HMAC
+  // permanente + Cache-Control 1y/immutable. Re-aberturas da conversa
+  // dispensam refetch porque a URL é byte-a-byte idêntica.
+  // Para previews do composer (recorder), usar uma blob URL local.
   src?: string
   variant?: 'incoming' | 'outgoing'
   trackId?: string
@@ -14,13 +17,10 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const auth = useAuthStore()
 const audioStore = useAudioPlayerStore()
-const runtime = useRuntimeConfig()
 
 const audioRef = ref<HTMLAudioElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const resolvedUrl = ref<string | null>(null)
 const localDuration = ref(0)
 const errored = ref(false)
 
@@ -28,14 +28,13 @@ const isOutgoing = computed(() => props.variant === 'outgoing')
 
 // Per-player identity used to distinguish which AudioPlayer currently
 // holds the active track inside the global singleton store.
-const uid = computed(() => props.trackId ?? `audio:${props.path ?? props.src ?? ''}`)
+const uid = computed(() => props.trackId ?? `audio:${props.src ?? ''}`)
 const isActive = computed(() => audioStore.track?.id === uid.value)
 const playing = computed(() => isActive.value && audioStore.isPlaying)
 const displayTime = computed(() => isActive.value ? audioStore.currentTime : 0)
 const displayDuration = computed(() => isActive.value && audioStore.duration > 0 ? audioStore.duration : localDuration.value)
 const displayRate = computed(() => isActive.value ? audioStore.playbackRate : 1)
 
-let blobUrl: string | null = null
 let initialized = false
 
 function format(seconds: number): string {
@@ -52,11 +51,11 @@ function cssVar(name: string, fallback: string): string {
 }
 
 function initWaveform() {
-  if (!resolvedUrl.value || !audioRef.value || !canvasRef.value || initialized) return
+  if (!props.src || !audioRef.value || !canvasRef.value || initialized) return
   initialized = true
   const primary = cssVar('--ui-primary', '#22c55e')
   useAVWaveform(audioRef, canvasRef, {
-    src: resolvedUrl.value,
+    src: props.src,
     canvWidth: 384,
     canvHeight: 64,
     playedLineWidth: 2,
@@ -71,42 +70,17 @@ function initWaveform() {
   })
 }
 
-async function loadUrl() {
-  if (props.src) {
-    resolvedUrl.value = props.src
-    return
-  }
-  if (!props.path || !auth.account?.id) return
-  try {
-    const apiBase = runtime.public.apiUrl as string
-    const url = `${apiBase}/accounts/${auth.account.id}/uploads/download?path=${encodeURIComponent(props.path)}`
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${auth.accessToken}` }
-    })
-    if (!res.ok) throw new Error(`download failed: ${res.status}`)
-    const blob = await res.blob()
-    blobUrl = URL.createObjectURL(blob)
-    resolvedUrl.value = blobUrl
-  } catch (err) {
-    console.error('[AudioPlayer] failed to fetch audio', err)
-    errored.value = true
-  }
-}
-
 function togglePlay() {
   if (errored.value) return
   if (isActive.value) {
     audioStore.toggle()
     return
   }
-  // Prefer `path` so the store fetches its own authenticated blob — that
-  // keeps playback working after this inline player unmounts (e.g. when
-  // the user switches conversations). Fall back to `src` for composer
-  // previews where no MinIO download is needed.
+  // src é estável — passa direto ao audioStore. O store NÃO faz fetch
+  // autenticado/blob: usa a URL pública (cache HTTP do navegador acerta).
   audioStore.play({
     id: uid.value,
-    path: props.path,
-    src: props.path ? undefined : (props.src ?? resolvedUrl.value ?? undefined),
+    src: props.src,
     title: props.title,
     accountId: props.accountId,
     conversationId: props.conversationId
@@ -129,36 +103,30 @@ function seekFromCanvas(event: MouseEvent) {
 }
 
 function download() {
-  if (!resolvedUrl.value) return
+  if (!props.src) return
   const a = document.createElement('a')
-  a.href = resolvedUrl.value
-  a.download = props.path?.split('/').pop() ?? 'audio'
+  a.href = props.src
+  a.download = props.title ?? 'audio'
   document.body.appendChild(a)
   a.click()
   a.remove()
 }
 
 function cleanup() {
-  if (blobUrl) {
-    URL.revokeObjectURL(blobUrl)
-    blobUrl = null
-  }
   initialized = false
   localDuration.value = 0
   errored.value = false
 }
 
 onMounted(async () => {
-  await loadUrl()
   await nextTick()
   initWaveform()
 })
 
 onBeforeUnmount(cleanup)
 
-watch(() => [props.src, props.path], async () => {
+watch(() => props.src, async () => {
   cleanup()
-  await loadUrl()
   await nextTick()
   initWaveform()
 })
@@ -194,16 +162,16 @@ watch([displayTime, isActive], ([time, active]) => {
         :variant="isOutgoing ? 'subtle' : 'soft'"
         size="sm"
         class="shrink-0"
-        :disabled="!resolvedUrl || errored"
+        :disabled="!src || errored"
         :aria-label="playing ? t('conversations.audio.pause') : t('conversations.audio.play')"
         @click="togglePlay"
       />
 
       <audio
-        v-if="resolvedUrl"
+        v-if="src"
         ref="audioRef"
         class="hidden"
-        :src="resolvedUrl"
+        :src="src"
         preload="metadata"
         muted
         @loadedmetadata="localDuration = audioRef?.duration ?? 0"
@@ -232,7 +200,7 @@ watch([displayTime, isActive], ([time, active]) => {
         type="button"
         class="shrink-0 grid size-6 place-content-center rounded transition-colors disabled:opacity-50"
         :class="isOutgoing ? 'text-white/80 hover:bg-white/15' : 'text-muted hover:bg-elevated'"
-        :disabled="!resolvedUrl || errored"
+        :disabled="!src || errored"
         :aria-label="t('conversations.audio.download')"
         @click="download"
       >

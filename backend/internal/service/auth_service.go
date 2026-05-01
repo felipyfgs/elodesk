@@ -371,31 +371,3 @@ func generateSlug(email string) string {
 	return email + "-" + base64.RawURLEncoding.EncodeToString(b)
 }
 
-// BackfillUserAccessTokens creates access tokens for all existing users who don't have one.
-// This should be called once on application startup after migrations.
-func (s *AuthService) BackfillUserAccessTokens(ctx context.Context) error {
-	userIDs, err := s.userAccessTokenRepo.ListUsersWithoutToken(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list users without token: %w", err)
-	}
-
-	if len(userIDs) == 0 {
-		return nil
-	}
-
-	logger.Info().Str("component", "auth").Int("count", len(userIDs)).Msg("backfilling user access tokens")
-
-	var failed int
-	for _, userID := range userIDs {
-		if _, err := s.userAccessTokenRepo.Create(ctx, "User", userID); err != nil {
-			logger.Error().Str("component", "auth").Err(err).Int64("userId", userID).Msg("failed to backfill user access token")
-			failed++
-		}
-	}
-
-	if failed > 0 {
-		logger.Warn().Str("component", "auth").Int("failed", failed).Msg("some user access tokens failed to backfill")
-	}
-
-	return nil
-}

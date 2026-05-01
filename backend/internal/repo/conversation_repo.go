@@ -382,8 +382,8 @@ func (r *ConversationRepo) CountByStatusAndAssignee(ctx context.Context, account
 // ConversationHydrated bundles a Conversation row with the immediate
 // relations the Chatwoot-shape DTO needs: contact, inbox, optional assignee
 // and team, the last non-activity message, the unread count, and the labels.
-// Returned by FindByIDFull and ListByAccountFull so the service layer can
-// build dto.ConversationFullRow without further repo calls.
+// Returned by FindByIDFull (and the filtered list helpers) so the service
+// layer can build dto.ConversationFullRow without further repo calls.
 type ConversationHydrated struct {
 	Conversation           model.Conversation
 	Contact                model.Contact
@@ -539,42 +539,6 @@ func (r *ConversationRepo) FindByIDFull(ctx context.Context, accountID, id int64
 		return nil, fmt.Errorf("failed to find conversation full: %w", err)
 	}
 	return &h, nil
-}
-
-// ListByAccountFull returns the hydrated rows for the default conversation
-// list (account-scoped, ordered by last_activity_at DESC). Caller controls
-// pagination. status==nil means no filter; otherwise rows match exactly.
-// Additional filters are supported via ConversationFilter; pass the zero
-// value for fields you don't need.
-func (r *ConversationRepo) ListByAccountFull(ctx context.Context, accountID int64, status *model.ConversationStatus, limit, offset int) ([]ConversationHydrated, error) {
-	if limit <= 0 || limit > 50 {
-		limit = 25
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	args := []any{accountID}
-	where := ` WHERE cv.account_id = $1`
-	if status != nil {
-		where += ` AND cv.status = $2`
-		args = append(args, *status)
-	}
-	query := `SELECT ` + conversationHydratedColumns + conversationHydratedFrom + where +
-		fmt.Sprintf(` ORDER BY cv.last_activity_at DESC LIMIT %d OFFSET %d`, limit, offset)
-	rows, err := r.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list conversations full: %w", err)
-	}
-	defer rows.Close()
-	var out []ConversationHydrated
-	for rows.Next() {
-		var h ConversationHydrated
-		if err := scanConversationHydrated(rows, &h); err != nil {
-			return nil, fmt.Errorf("failed to scan conversation full: %w", err)
-		}
-		out = append(out, h)
-	}
-	return out, rows.Err()
 }
 
 func derefStr(p *string) string  { if p != nil { return *p }; return "" }
