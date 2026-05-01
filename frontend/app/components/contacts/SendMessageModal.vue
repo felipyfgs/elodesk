@@ -102,7 +102,7 @@ watch(contactSearchTerm, (val) => {
   startDebounce(val, isOpen.value)
 })
 
-interface ConversationResp { id: string | number, displayId: number }
+interface ConversationResponse { id: string | number, displayId: number }
 
 async function onSubmit() {
   if (!auth.account?.id || !selectedContact.value || !selectedInbox.value) return
@@ -111,7 +111,7 @@ async function onSubmit() {
 
   submitting.value = true
   try {
-    const res = await api<ConversationResp>(
+    const res = await api<ConversationResponse>(
       `/accounts/${auth.account.id}/conversations`,
       {
         method: 'POST',

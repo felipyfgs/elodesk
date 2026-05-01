@@ -11,7 +11,7 @@ export type MessageStatus = 0 | 1 | 2 | 3 | 'sending'
 
 export type FetchState = 'empty' | 'warmed' | 'fetching' | 'fetched'
 
-export interface MessageAttachmentResp {
+export interface MessageAttachmentResponse {
   id: number
   messageId: number
   // Backend sends AttachmentFileType as numeric enum; chatAdapter normalizes.
@@ -68,7 +68,7 @@ export interface Message {
   status: MessageStatus
   contentAttributes: Record<string, unknown> | string | null
   forwardedFromMessageId?: number | null
-  attachments?: MessageAttachmentResp[]
+  attachments?: MessageAttachmentResponse[]
   // ISO string (optimistic/realtime) or epoch ms (apiAdapter-normalized REST).
   createdAt: string | number
   updatedAt: string | number
@@ -88,7 +88,7 @@ export interface ForwardResult {
   error?: string
 }
 
-export interface ForwardMessagesResp {
+export interface ForwardMessagesResponse {
   results: ForwardResult[]
 }
 
@@ -292,8 +292,8 @@ export const useMessagesStore = defineStore('messages', {
         return { contact_id: Number(t.contactId), inbox_id: Number(t.inboxId) }
       })
       // useApi unwraps the { success, data } envelope, so we get
-      // ForwardMessagesResp directly.
-      return await api<ForwardMessagesResp>(`/accounts/${auth.account.id}/messages/forward`, {
+      // ForwardMessagesResponse directly.
+      return await api<ForwardMessagesResponse>(`/accounts/${auth.account.id}/messages/forward`, {
         method: 'POST',
         body: {
           source_message_ids: sourceMessageIds.map(Number),

@@ -3,7 +3,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useMessagesStore } from '~/stores/messages'
 
 // Conversation shape mirrors Chatwoot's `_conversation.json.jbuilder` (see
-// backend/internal/dto/conversation.go::ConversationResp). Field names below
+// backend/internal/dto/conversation.go::ConversationResponse). Field names below
 // are camelCase because `utils/apiAdapter.ts` rewrites every snake_case key on
 // response. Anything that was nested under `contactInbox.contact` now lives at
 // `meta.sender`; the legacy field has been removed.
