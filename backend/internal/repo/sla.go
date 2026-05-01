@@ -26,7 +26,7 @@ func scanSLA(scanner slaScanner, m *model.SLAPolicy) error {
 }
 
 func scanSLABinding(scanner slaScanner, b *model.SLABinding) error {
-	return scanner.Scan(&b.ID, &b.SlaID, &b.InboxID, &b.LabelID)
+	return scanner.Scan(&b.ID, &b.SLAID, &b.InboxID, &b.LabelID)
 }
 
 type SLARepo struct {

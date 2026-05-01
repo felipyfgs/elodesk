@@ -24,7 +24,7 @@ type channelWhatsappScanner interface {
 func scanChannelWhatsApp(scanner channelWhatsappScanner, m *model.ChannelWhatsApp) error {
 	return scanner.Scan(
 		&m.ID, &m.AccountID, &m.Provider, &m.PhoneNumber, &m.PhoneNumberID, &m.BusinessAccountID,
-		&m.ApiKeyCiphertext, &m.WebhookVerifyTokenCiphertext,
+		&m.APIKeyCiphertext, &m.WebhookVerifyTokenCiphertext,
 		&m.MessageTemplates, &m.MessageTemplatesSyncedAt,
 		&m.CreatedAt, &m.UpdatedAt,
 	)
@@ -46,7 +46,7 @@ func (r *ChannelWhatsAppRepo) Create(ctx context.Context, m *model.ChannelWhatsA
 		RETURNING id, created_at, updated_at`
 	err := r.pool.QueryRow(ctx, query,
 		m.AccountID, m.Provider, m.PhoneNumber, m.PhoneNumberID, m.BusinessAccountID,
-		m.ApiKeyCiphertext, m.WebhookVerifyTokenCiphertext, m.MessageTemplates,
+		m.APIKeyCiphertext, m.WebhookVerifyTokenCiphertext, m.MessageTemplates,
 	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		if isUniqueViolation(err) {

@@ -62,7 +62,7 @@ func (s *SLAService) List(ctx context.Context, accountID int64) ([]model.SLAPoli
 	}
 	out := make(map[int64][]model.SLABinding)
 	for _, b := range bindings {
-		out[b.SlaID] = append(out[b.SlaID], b)
+		out[b.SLAID] = append(out[b.SLAID], b)
 	}
 	return policies, out, nil
 }
@@ -140,11 +140,11 @@ func buildBindings(slaID int64, inboxIDs, labelIDs []int64) []model.SLABinding {
 	out := make([]model.SLABinding, 0, len(inboxIDs)+len(labelIDs))
 	for _, id := range inboxIDs {
 		id := id
-		out = append(out, model.SLABinding{SlaID: slaID, InboxID: &id})
+		out = append(out, model.SLABinding{SLAID: slaID, InboxID: &id})
 	}
 	for _, id := range labelIDs {
 		id := id
-		out = append(out, model.SLABinding{SlaID: slaID, LabelID: &id})
+		out = append(out, model.SLABinding{SLAID: slaID, LabelID: &id})
 	}
 	return out
 }

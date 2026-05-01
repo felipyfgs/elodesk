@@ -28,7 +28,7 @@ type AuthService struct {
 	accountRepo         *repo.AccountRepo
 	refreshTokenRepo    *repo.RefreshTokenRepo
 	userAccessTokenRepo *repo.UserAccessTokenRepo
-	mfaService          *MfaService
+	mfaService          *MFAService
 	jwtSecret           string
 	accessTTL           time.Duration
 	refreshTTL          time.Duration
@@ -39,7 +39,7 @@ func NewAuthService(
 	accountRepo *repo.AccountRepo,
 	refreshTokenRepo *repo.RefreshTokenRepo,
 	userAccessTokenRepo *repo.UserAccessTokenRepo,
-	mfaService *MfaService,
+	mfaService *MFAService,
 	jwtSecret string,
 	accessTTL, refreshTTL time.Duration,
 ) *AuthService {
@@ -141,7 +141,7 @@ type LoginResult struct {
 	Account      *model.Account
 	AccessToken  string
 	RefreshToken string
-	MfaToken     string // non-empty when MFA is required
+	MFAToken     string // non-empty when MFA is required
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*LoginResult, error) {
@@ -163,12 +163,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*Login
 	}
 
 	// If MFA is enabled, return an MFA token instead of JWT pair.
-	if user.MfaEnabled {
-		mfaToken, err := s.mfaService.GenerateMfaToken(user.ID)
+	if user.MFAEnabled {
+		mfaToken, err := s.mfaService.GenerateMFAToken(user.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate mfa token: %w", err)
 		}
-		return &LoginResult{User: user, MfaToken: mfaToken}, nil
+		return &LoginResult{User: user, MFAToken: mfaToken}, nil
 	}
 
 	account, err := s.accountRepo.FindPrimaryByUserID(ctx, user.ID)

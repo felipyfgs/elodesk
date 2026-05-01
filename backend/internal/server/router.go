@@ -50,7 +50,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	refreshTokenRepo := repo.NewRefreshTokenRepo(db.Pool)
 	userAccessTokenRepo := repo.NewUserAccessTokenRepo(db.Pool)
 	inboxRepo := repo.NewInboxRepo(db.Pool)
-	channelApiRepo := repo.NewChannelAPIRepo(db.Pool)
+	channelAPIRepo := repo.NewChannelAPIRepo(db.Pool)
 	channelWhatsAppRepo := repo.NewChannelWhatsAppRepo(db.Pool)
 	inboxAgentRepo := repo.NewInboxAgentRepo(db.Pool)
 	inboxBusinessHoursRepo := repo.NewInboxBusinessHoursRepo(db.Pool)
@@ -68,14 +68,14 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	customAttrDefRepo := repo.NewCustomAttributeDefinitionRepo(db.Pool)
 	customFilterRepo := repo.NewCustomFilterRepo(db.Pool)
 	passwordResetTokenRepo := repo.NewPasswordResetTokenRepo(db.Pool)
-	mfaRecoveryCodeRepo := repo.NewMfaRecoveryCodeRepo(db.Pool)
+	mfaRecoveryCodeRepo := repo.NewMFARecoveryCodeRepo(db.Pool)
 	agentRepo := repo.NewAgentRepo(db.Pool)
 	agentInvitationRepo := repo.NewAgentInvitationRepo(db.Pool)
 	auditLogRepo := repo.NewAuditLogRepo(db.Pool)
 	notificationRepo := repo.NewNotificationRepo(db.Pool)
 
-	mfaTokenStore := service.NewInMemoryMfaTokenStore()
-	mfaSvc := service.NewMfaService(userRepo, mfaRecoveryCodeRepo, refreshTokenRepo, cipher, mfaTokenStore)
+	mfaTokenStore := service.NewInMemoryMFATokenStore()
+	mfaSvc := service.NewMFAService(userRepo, mfaRecoveryCodeRepo, refreshTokenRepo, cipher, mfaTokenStore)
 
 	authSvc := service.NewAuthService(userRepo, accountRepo, refreshTokenRepo, userAccessTokenRepo, mfaSvc, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -84,7 +84,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	passwordRecoverySvc := service.NewPasswordRecoveryService(userRepo, passwordResetTokenRepo, refreshTokenRepo)
 	passwordRecoveryHandler := handler.NewPasswordRecoveryHandler(passwordRecoverySvc)
 
-	mfaHandler := handler.NewMfaHandler(mfaSvc, authSvc)
+	mfaHandler := handler.NewMFAHandler(mfaSvc, authSvc)
 
 	auditLogger := audit.NewLogger(auditLogRepo)
 
@@ -112,7 +112,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	reportsRepo := repo.NewReportsRepo(db.Pool)
 	reportsHandler := handler.NewReportHandler(reportsRepo, slaRepo)
 
-	inboxSvc := service.NewInboxService(db.Pool, inboxRepo, channelApiRepo, inboxAgentRepo, inboxBusinessHoursRepo, cipher)
+	inboxSvc := service.NewInboxService(db.Pool, inboxRepo, channelAPIRepo, inboxAgentRepo, inboxBusinessHoursRepo, cipher)
 	inboxHandler := handler.NewInboxHandler(inboxSvc, auditLogger)
 
 	contactSvc := service.NewContactService(contactRepo, contactInboxRepo, conversationRepo).
@@ -144,7 +144,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	outboundWebhookSvc := service.NewOutboundWebhookService(asynqClient, cipher).
 		WithContactInboxRepo(contactInboxRepo)
 
-	outboundNotifier := service.NewOutboundWebhookNotifier(outboundWebhookSvc, channelApiRepo, inboxRepo, conversationRepo)
+	outboundNotifier := service.NewOutboundWebhookNotifier(outboundWebhookSvc, channelAPIRepo, inboxRepo, conversationRepo)
 	messageSvc.SetOnOutboundHandler(outboundNotifier)
 	conversationSvc.SetNotifier(outboundNotifier)
 
@@ -228,7 +228,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	// Endpoint público de download de attachment (padrão Chatwoot/ActiveStorage).
 	// Sem Bearer — autenticação é o token HMAC na query. Registrado fora do
-	// grupo `/auth` e do grupo `/accounts/:aid` (que tem JwtAuth) pra ser
+	// grupo `/auth` e do grupo `/accounts/:aid` (que tem JWTAuth) pra ser
 	// alcançável por integradores externos (wzap, n8n) com URL estável.
 	api.Get("/attachments/:id/file", uploadHandler.PublicAttachmentDownload)
 
@@ -237,17 +237,17 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	auth.Post("/register", authHandler.Register)
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/refresh", authHandler.Refresh)
-	auth.Post("/logout", middleware.JwtAuth(authSvc), authHandler.Logout)
+	auth.Post("/logout", middleware.JWTAuth(authSvc), authHandler.Logout)
 	auth.Post("/forgot", passwordRecoveryHandler.Forgot)
 	auth.Get("/reset/:token/validate", passwordRecoveryHandler.ValidateResetToken)
 	auth.Post("/reset", passwordRecoveryHandler.Reset)
-	auth.Post("/mfa/setup", middleware.JwtAuth(authSvc), mfaHandler.Setup)
-	auth.Post("/mfa/enable", middleware.JwtAuth(authSvc), mfaHandler.Enable)
+	auth.Post("/mfa/setup", middleware.JWTAuth(authSvc), mfaHandler.Setup)
+	auth.Post("/mfa/enable", middleware.JWTAuth(authSvc), mfaHandler.Enable)
 	auth.Post("/mfa/verify", mfaHandler.Verify)
-	auth.Post("/mfa/disable", middleware.JwtAuth(authSvc), mfaHandler.Disable)
+	auth.Post("/mfa/disable", middleware.JWTAuth(authSvc), mfaHandler.Disable)
 	auth.Post("/invitations/:token/accept", agentsHandler.AcceptInvitation)
 
-	jwtAuth := middleware.JwtAuth(authSvc)
+	jwtAuth := middleware.JWTAuth(authSvc)
 	userAccessTokenAuth := middleware.UserAccessTokenAuth(userAccessTokenRepo, userRepo)
 	orgScope := middleware.OrgScope(accountRepo)
 	ownerAdmin := middleware.RolesRequired(model.RoleOwner, model.RoleAdmin)
@@ -395,7 +395,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	api.Put("/users/:id/notification_preferences", jwtAuth, notificationsHandler.SetPreferences)
 
 	public := s.App.Group("/public/api/v1")
-	publicInbox := public.Group("/inboxes/:identifier", middleware.ApiToken(channelApiRepo), middleware.HmacOptional(cipher))
+	publicInbox := public.Group("/inboxes/:identifier", middleware.APIToken(channelAPIRepo), middleware.HMACOptional(cipher))
 
 	publicInbox.Post("/contacts", contactHandler.CreateContact)
 	publicInbox.Get("/contacts/:sourceId", contactHandler.GetContact)
@@ -557,7 +557,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	widgetInboxHandler := handler.NewWebWidgetInboxHandler(channelWebWidgetRepo, inboxRepo, cipher, cfg)
 	accounts.Post("/inboxes/web_widget", ownerAdmin, widgetInboxHandler.Create)
 	accounts.Get("/inboxes/web_widget/:id", agentPlus, widgetInboxHandler.GetByInboxID)
-	accounts.Post("/inboxes/:id/rotate_hmac", ownerAdmin, widgetInboxHandler.RotateHmac)
+	accounts.Post("/inboxes/:id/rotate_hmac", ownerAdmin, widgetInboxHandler.RotateHMAC)
 	accounts.Post("/inboxes/telegram", ownerAdmin, tgWebhookHandler.Provision)
 	accounts.Delete("/inboxes/:id/telegram", ownerAdmin, tgWebhookHandler.Delete)
 	accounts.Post("/inboxes/line", ownerAdmin, lineWebhookHandler.Provision)

@@ -61,7 +61,7 @@ func (h *MessageHandler) SetMinio(m *media.MinioClient) {
 }
 
 func (h *MessageHandler) Create(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -76,7 +76,7 @@ func (h *MessageHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

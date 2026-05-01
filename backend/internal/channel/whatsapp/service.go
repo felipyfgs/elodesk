@@ -36,7 +36,7 @@ type WaSendPayload struct {
 	TemplateName       string `json:"templateName,omitempty"`
 	TemplateLang       string `json:"templateLang,omitempty"`
 	TemplateComponents string `json:"templateComponents,omitempty"`
-	ApiKeyCiphertext   string `json:"apiKeyCiphertext"`
+	APIKeyCiphertext   string `json:"apiKeyCiphertext"`
 	PhoneNumberID      string `json:"phoneNumberId,omitempty"`
 	BusinessAccountID  string `json:"businessAccountId,omitempty"`
 	Provider           string `json:"provider"`
@@ -283,7 +283,7 @@ func (s *Service) ensureConversation(ctx context.Context, accountID, inboxID, co
 }
 
 func (s *Service) SendOutbound(ctx context.Context, ch *model.ChannelWhatsApp, to string, content string) (string, error) {
-	apiKey, err := s.cipher.Decrypt(ch.ApiKeyCiphertext)
+	apiKey, err := s.cipher.Decrypt(ch.APIKeyCiphertext)
 	if err != nil {
 		return "", fmt.Errorf("decrypt api key: %w", err)
 	}
@@ -358,7 +358,7 @@ func (s *Service) VerifyHandshake(ctx context.Context, ch *model.ChannelWhatsApp
 }
 
 func (s *Service) SyncTemplatesForChannel(ctx context.Context, ch *model.ChannelWhatsApp) ([]appchannel.Template, error) {
-	apiKey, err := s.cipher.Decrypt(ch.ApiKeyCiphertext)
+	apiKey, err := s.cipher.Decrypt(ch.APIKeyCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt api key: %w", err)
 	}

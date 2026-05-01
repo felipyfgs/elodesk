@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	ErrMfaInvalidCode     = errors.New("invalid mfa code")
-	ErrMfaNotSetup        = errors.New("mfa not set up")
-	ErrMfaAlreadyEnabled  = errors.New("mfa already enabled")
-	ErrMfaInvalidPassword = errors.New("invalid current password")
+	ErrMFAInvalidCode     = errors.New("invalid mfa code")
+	ErrMFANotSetup        = errors.New("mfa not set up")
+	ErrMFAAlreadyEnabled  = errors.New("mfa already enabled")
+	ErrMFAInvalidPassword = errors.New("invalid current password")
 )
 
 const (
@@ -31,22 +31,22 @@ const (
 	recoveryCodeCount = 8
 )
 
-type MfaService struct {
+type MFAService struct {
 	userRepo      *repo.UserRepo
-	recoveryRepo  *repo.MfaRecoveryCodeRepo
+	recoveryRepo  *repo.MFARecoveryCodeRepo
 	refreshRepo   *repo.RefreshTokenRepo
 	cipher        *crypto.Cipher
-	mfaTokenStore MfaTokenStore
+	mfaTokenStore MFATokenStore
 }
 
-// MfaTokenStore is an interface for storing ephemeral MFA tokens.
+// MFATokenStore is an interface for storing ephemeral MFA tokens.
 // In production this uses Redis; for now we use an in-memory store.
-type MfaTokenStore interface {
+type MFATokenStore interface {
 	Set(key string, userID int64, ttl time.Duration) error
 	GetAndDelete(key string) (int64, bool)
 }
 
-type InMemoryMfaTokenStore struct {
+type InMemoryMFATokenStore struct {
 	mu    sync.Mutex
 	store map[string]mfaTokenEntry
 }
@@ -56,15 +56,15 @@ type mfaTokenEntry struct {
 	ExpiresAt time.Time
 }
 
-func NewInMemoryMfaTokenStore() *InMemoryMfaTokenStore {
-	s := &InMemoryMfaTokenStore{
+func NewInMemoryMFATokenStore() *InMemoryMFATokenStore {
+	s := &InMemoryMFATokenStore{
 		store: make(map[string]mfaTokenEntry),
 	}
 	go s.cleanupLoop()
 	return s
 }
 
-func (s *InMemoryMfaTokenStore) Set(key string, userID int64, ttl time.Duration) error {
+func (s *InMemoryMFATokenStore) Set(key string, userID int64, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.store[key] = mfaTokenEntry{
@@ -74,7 +74,7 @@ func (s *InMemoryMfaTokenStore) Set(key string, userID int64, ttl time.Duration)
 	return nil
 }
 
-func (s *InMemoryMfaTokenStore) GetAndDelete(key string) (int64, bool) {
+func (s *InMemoryMFATokenStore) GetAndDelete(key string) (int64, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry, ok := s.store[key]
@@ -88,7 +88,7 @@ func (s *InMemoryMfaTokenStore) GetAndDelete(key string) (int64, bool) {
 	return entry.UserID, true
 }
 
-func (s *InMemoryMfaTokenStore) cleanupLoop() {
+func (s *InMemoryMFATokenStore) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -103,14 +103,14 @@ func (s *InMemoryMfaTokenStore) cleanupLoop() {
 	}
 }
 
-func NewMfaService(
+func NewMFAService(
 	userRepo *repo.UserRepo,
-	recoveryRepo *repo.MfaRecoveryCodeRepo,
+	recoveryRepo *repo.MFARecoveryCodeRepo,
 	refreshRepo *repo.RefreshTokenRepo,
 	cipher *crypto.Cipher,
-	tokenStore MfaTokenStore,
-) *MfaService {
-	return &MfaService{
+	tokenStore MFATokenStore,
+) *MFAService {
+	return &MFAService{
 		userRepo:      userRepo,
 		recoveryRepo:  recoveryRepo,
 		refreshRepo:   refreshRepo,
@@ -119,14 +119,14 @@ func NewMfaService(
 	}
 }
 
-type MfaSetupResult struct {
+type MFASetupResult struct {
 	OTPAuthURI string
 	Secret     string
 }
 
 // Setup generates a new TOTP secret, encrypts and stores it (mfa_enabled=false),
 // and returns the URI and plaintext secret for QR display.
-func (s *MfaService) Setup(ctx context.Context, userID int64) (*MfaSetupResult, error) {
+func (s *MFAService) Setup(ctx context.Context, userID int64) (*MFASetupResult, error) {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
@@ -148,43 +148,43 @@ func (s *MfaService) Setup(ctx context.Context, userID int64) (*MfaSetupResult, 
 		return nil, fmt.Errorf("failed to encrypt mfa secret: %w", err)
 	}
 
-	if err := s.userRepo.UpdateMfaSecret(ctx, userID, secretCiphertext, false); err != nil {
+	if err := s.userRepo.UpdateMFASecret(ctx, userID, secretCiphertext, false); err != nil {
 		return nil, fmt.Errorf("failed to store mfa secret: %w", err)
 	}
 
-	return &MfaSetupResult{
+	return &MFASetupResult{
 		OTPAuthURI: key.URL(),
 		Secret:     key.Secret(),
 	}, nil
 }
 
-type MfaEnableResult struct {
+type MFAEnableResult struct {
 	RecoveryCodes []string
 }
 
 // Enable validates the TOTP code, enables MFA, generates recovery codes,
 // and returns them ONCE in plaintext.
-func (s *MfaService) Enable(ctx context.Context, userID int64, code string) (*MfaEnableResult, error) {
+func (s *MFAService) Enable(ctx context.Context, userID int64, code string) (*MFAEnableResult, error) {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if user.MfaSecretCiphertext == nil {
-		return nil, ErrMfaNotSetup
+	if user.MFASecretCiphertext == nil {
+		return nil, ErrMFANotSetup
 	}
 
-	secret, err := s.cipher.Decrypt(*user.MfaSecretCiphertext)
+	secret, err := s.cipher.Decrypt(*user.MFASecretCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt mfa secret: %w", err)
 	}
 
 	valid := totp.Validate(code, secret)
 	if !valid {
-		return nil, ErrMfaInvalidCode
+		return nil, ErrMFAInvalidCode
 	}
 
-	if err := s.userRepo.EnableMfa(ctx, userID); err != nil {
+	if err := s.userRepo.EnableMFA(ctx, userID); err != nil {
 		return nil, fmt.Errorf("failed to enable mfa: %w", err)
 	}
 
@@ -204,22 +204,22 @@ func (s *MfaService) Enable(ctx context.Context, userID int64, code string) (*Mf
 		Int64("userId", userID).
 		Msg("mfa enabled")
 
-	return &MfaEnableResult{
+	return &MFAEnableResult{
 		RecoveryCodes: codes,
 	}, nil
 }
 
-type MfaVerifyResult struct {
+type MFAVerifyResult struct {
 	UserID       int64
 	UsedRecovery bool
 }
 
 // Verify validates a TOTP code or recovery code against the stored MFA secret.
 // If the mfaToken is valid, it returns the user ID for JWT generation.
-func (s *MfaService) Verify(ctx context.Context, mfaToken, code string) (*MfaVerifyResult, error) {
+func (s *MFAService) Verify(ctx context.Context, mfaToken, code string) (*MFAVerifyResult, error) {
 	userID, ok := s.mfaTokenStore.GetAndDelete(mfaToken)
 	if !ok {
-		return nil, ErrMfaInvalidCode
+		return nil, ErrMFAInvalidCode
 	}
 
 	user, err := s.userRepo.FindByID(ctx, userID)
@@ -227,11 +227,11 @@ func (s *MfaService) Verify(ctx context.Context, mfaToken, code string) (*MfaVer
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if !user.MfaEnabled || user.MfaSecretCiphertext == nil {
-		return nil, ErrMfaNotSetup
+	if !user.MFAEnabled || user.MFASecretCiphertext == nil {
+		return nil, ErrMFANotSetup
 	}
 
-	secret, err := s.cipher.Decrypt(*user.MfaSecretCiphertext)
+	secret, err := s.cipher.Decrypt(*user.MFASecretCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt mfa secret: %w", err)
 	}
@@ -245,10 +245,10 @@ func (s *MfaService) Verify(ctx context.Context, mfaToken, code string) (*MfaVer
 		codeHash := hashRecoveryCode(code)
 		recoveryCode, err := s.recoveryRepo.FindByHash(ctx, codeHash)
 		if err != nil {
-			return nil, ErrMfaInvalidCode
+			return nil, ErrMFAInvalidCode
 		}
 		if recoveryCode.UserID != userID {
-			return nil, ErrMfaInvalidCode
+			return nil, ErrMFAInvalidCode
 		}
 		if err := s.recoveryRepo.Consume(ctx, recoveryCode.ID); err != nil {
 			return nil, fmt.Errorf("failed to consume recovery code: %w", err)
@@ -256,14 +256,14 @@ func (s *MfaService) Verify(ctx context.Context, mfaToken, code string) (*MfaVer
 		usedRecovery = true
 	}
 
-	return &MfaVerifyResult{
+	return &MFAVerifyResult{
 		UserID:       userID,
 		UsedRecovery: usedRecovery,
 	}, nil
 }
 
 // Disable deactivates MFA, clears secrets and recovery codes.
-func (s *MfaService) Disable(ctx context.Context, userID int64, currentPassword string) error {
+func (s *MFAService) Disable(ctx context.Context, userID int64, currentPassword string) error {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to find user: %w", err)
@@ -272,13 +272,13 @@ func (s *MfaService) Disable(ctx context.Context, userID int64, currentPassword 
 	match, err := argon2id.ComparePasswordAndHash(currentPassword, user.PasswordHash)
 	if err != nil {
 		logger.Error().Str("component", "auth").Err(err).Msg("failed to compare password for mfa disable")
-		return ErrMfaInvalidPassword
+		return ErrMFAInvalidPassword
 	}
 	if !match {
-		return ErrMfaInvalidPassword
+		return ErrMFAInvalidPassword
 	}
 
-	if err := s.userRepo.DisableMfa(ctx, userID); err != nil {
+	if err := s.userRepo.DisableMFA(ctx, userID); err != nil {
 		return fmt.Errorf("failed to disable mfa: %w", err)
 	}
 
@@ -295,8 +295,8 @@ func (s *MfaService) Disable(ctx context.Context, userID int64, currentPassword 
 	return nil
 }
 
-// GenerateMfaToken creates an ephemeral token for the MFA verification step.
-func (s *MfaService) GenerateMfaToken(userID int64) (string, error) {
+// GenerateMFAToken creates an ephemeral token for the MFA verification step.
+func (s *MFAService) GenerateMFAToken(userID int64) (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
 		return "", fmt.Errorf("failed to generate mfa token: %w", err)

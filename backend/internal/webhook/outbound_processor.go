@@ -43,7 +43,7 @@ func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 
 // OutboundPayload is the task payload enqueued by OutboundWebhookService.
 // Secret holds the channel secret encrypted with BACKEND_KEK (AES-256-GCM).
-// HmacCiphertext carries the per-channel HMAC key encrypted with BACKEND_KEK;
+// HMACCiphertext carries the per-channel HMAC key encrypted with BACKEND_KEK;
 // the processor decrypts both right before signing so plaintext never lives in
 // Redis. DeliveryID is generated at enqueue time and stays stable across all
 // retries of the same delivery.
@@ -53,7 +53,7 @@ type OutboundPayload struct {
 	InboxID                int64           `json:"inboxId"`
 	WebhookURL             string          `json:"webhookUrl"`
 	Secret                 string          `json:"secret"`
-	HmacCiphertext         string          `json:"hmacCiphertext"`
+	HMACCiphertext         string          `json:"hmacCiphertext"`
 	DeliveryID             string          `json:"deliveryId"`
 	Conversation           json.RawMessage `json:"conversation,omitempty"`
 	Message                json.RawMessage `json:"message,omitempty"`
@@ -145,7 +145,7 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 		}
 		ts := strconv.FormatInt(time.Now().Unix(), 10)
 		signedBody := ts + "." + string(body)
-		sig := computeHmacSha256([]byte(signedBody), secret)
+		sig := computeHMACSha256([]byte(signedBody), secret)
 		upstreamSig := "sha256=" + sig
 
 		req.Header.Set("X-Chatwoot-Delivery", payload.DeliveryID)
@@ -160,14 +160,14 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 		return fmt.Errorf("outbound webhook: channel.secret is empty: %w", asynq.SkipRetry)
 	}
 
-	if payload.HmacCiphertext != "" {
-		key, err := p.cipher.Decrypt(payload.HmacCiphertext)
+	if payload.HMACCiphertext != "" {
+		key, err := p.cipher.Decrypt(payload.HMACCiphertext)
 		if err != nil {
 			logger.Error().Str("component", "outbound-webhook").Err(err).Msg("decrypt hmac key")
 			return fmt.Errorf("decrypt hmac key: %w", err)
 		}
 		req.Header.Set("X-Delivery-Id", payload.DeliveryID)
-		req.Header.Set("X-Chatwoot-Hmac-Sha256", computeHmacSha256(body, key))
+		req.Header.Set("X-Chatwoot-HMAC-Sha256", computeHMACSha256(body, key))
 	}
 
 	resp, err := p.httpClient.Do(req)
@@ -211,7 +211,7 @@ func (p *OutboundProcessor) HandleOutboundWebhook(ctx context.Context, t *asynq.
 	}
 }
 
-func computeHmacSha256(body []byte, key string) string {
+func computeHMACSha256(body []byte, key string) string {
 	mac := hmac.New(sha256.New, []byte(key))
 	mac.Write(body)
 	return hex.EncodeToString(mac.Sum(nil))

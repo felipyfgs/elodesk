@@ -26,8 +26,8 @@ type WebWidgetChannelResp struct {
 	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
-type RotateHmacResp struct {
-	HmacToken string `json:"hmacToken"`
+type RotateHMACResp struct {
+	HMACToken string `json:"hmacToken"`
 }
 
 type WebWidgetInboxResp struct {

@@ -20,7 +20,7 @@ type channelWebWidgetScanner interface {
 }
 
 func scanChannelWebWidget(scanner channelWebWidgetScanner, m *model.ChannelWebWidget) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.InboxID, &m.WebsiteToken, &m.HmacTokenCiphertext, &m.WebsiteURL, &m.WidgetColor, &m.WelcomeTitle, &m.WelcomeTagline, &m.ReplyTime, &m.FeatureFlags, &m.RequiresReauth, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.AccountID, &m.InboxID, &m.WebsiteToken, &m.HMACTokenCiphertext, &m.WebsiteURL, &m.WidgetColor, &m.WelcomeTitle, &m.WelcomeTagline, &m.ReplyTime, &m.FeatureFlags, &m.RequiresReauth, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type ChannelWebWidgetRepo struct {
@@ -36,7 +36,7 @@ func (r *ChannelWebWidgetRepo) Create(ctx context.Context, m *model.ChannelWebWi
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at, updated_at`
 	err := r.pool.QueryRow(ctx, query,
-		m.AccountID, m.InboxID, m.WebsiteToken, m.HmacTokenCiphertext,
+		m.AccountID, m.InboxID, m.WebsiteToken, m.HMACTokenCiphertext,
 		m.WebsiteURL, m.WidgetColor, m.WelcomeTitle, m.WelcomeTagline,
 		m.ReplyTime, m.FeatureFlags,
 	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
@@ -85,7 +85,7 @@ func (r *ChannelWebWidgetRepo) FindByInboxID(ctx context.Context, inboxID int64)
 	return &m, nil
 }
 
-func (r *ChannelWebWidgetRepo) UpdateHmacToken(ctx context.Context, id int64, ciphertext string) error {
+func (r *ChannelWebWidgetRepo) UpdateHMACToken(ctx context.Context, id int64, ciphertext string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE channels_web_widget SET hmac_token_ciphertext = $1, updated_at = NOW() WHERE id = $2`,
 		ciphertext, id,

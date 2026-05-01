@@ -64,7 +64,7 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 	creds, err := h.svc.ProvisionAPI(c.Context(), accountID, service.ProvisionAPIInput{
 		Name:                 req.Name,
 		WebhookURL:           req.WebhookURL,
-		HmacMandatory:        req.HmacMandatory,
+		HMACMandatory:        req.HMACMandatory,
 		AdditionalAttributes: req.AdditionalAttributes,
 	})
 	if err != nil {
@@ -92,8 +92,8 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 			CreatedAt:   creds.Inbox.CreatedAt,
 		},
 		Identifier: creds.ChannelAPI.Identifier,
-		ApiToken:   creds.ApiToken,
-		HmacToken:  creds.HmacToken,
+		APIToken:   creds.APIToken,
+		HMACToken:  creds.HMACToken,
 		Secret:     creds.Secret,
 	}
 
@@ -128,7 +128,7 @@ func (h *InboxHandler) UpdateChannelAPI(c *fiber.Ctx) error {
 
 	ch, err := h.svc.UpdateChannelAPIEditable(c.Context(), int64(id), accountID, service.UpdateAPIInput{
 		WebhookURL:           req.WebhookURL,
-		HmacMandatory:        req.HmacMandatory,
+		HMACMandatory:        req.HMACMandatory,
 		AdditionalAttributes: req.AdditionalAttributes,
 	})
 	if err != nil {
@@ -199,7 +199,7 @@ func (h *InboxHandler) RotateAPIToken(c *fiber.Ctx) error {
 
 	return c.JSON(dto.SuccessResp(dto.RotateAPITokenResp{
 		Identifier: ch.Identifier,
-		ApiToken:   apiToken,
+		APIToken:   apiToken,
 		Secret:     secret,
 	}))
 }
@@ -209,7 +209,7 @@ func channelAPIModelToResp(ch *model.ChannelAPI) dto.ChannelAPIResp {
 		ID:                   ch.ID,
 		Identifier:           ch.Identifier,
 		WebhookURL:           ch.WebhookURL,
-		HmacMandatory:        ch.HmacMandatory,
+		HMACMandatory:        ch.HMACMandatory,
 		AdditionalAttributes: ch.AdditionalAttributes,
 		CreatedAt:            ch.CreatedAt,
 		UpdatedAt:            ch.UpdatedAt,

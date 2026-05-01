@@ -11,7 +11,7 @@ import (
 	"backend/internal/service"
 )
 
-func JwtAuth(svc *service.AuthService) fiber.Handler {
+func JWTAuth(svc *service.AuthService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader != "" {
@@ -40,7 +40,7 @@ func JwtAuth(svc *service.AuthService) fiber.Handler {
 }
 
 // UserAccessTokenAuth validates the user_access_token header and sets user locals.
-// This should be applied after JwtAuth as a fallback authentication method.
+// This should be applied after JWTAuth as a fallback authentication method.
 func UserAccessTokenAuth(userAccessTokenRepo *repo.UserAccessTokenRepo, userRepo *repo.UserRepo) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Skip if user is already authenticated (JWT succeeded)

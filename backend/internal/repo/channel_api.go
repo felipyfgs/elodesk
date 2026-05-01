@@ -13,14 +13,14 @@ import (
 
 var ErrChannelAPINotFound = errors.New("channel api not found")
 
-const channelApiSelectColumns = "id, account_id, webhook_url, identifier, hmac_token, hmac_mandatory, secret, api_token_hash, additional_attributes, created_at, updated_at"
+const channelAPISelectColumns = "id, account_id, webhook_url, identifier, hmac_token, hmac_mandatory, secret, api_token_hash, additional_attributes, created_at, updated_at"
 
-type channelApiScanner interface {
+type channelAPIScanner interface {
 	Scan(dest ...any) error
 }
 
-func scanChannelAPI(scanner channelApiScanner, m *model.ChannelAPI) error {
-	return scanner.Scan(&m.ID, &m.AccountID, &m.WebhookURL, &m.Identifier, &m.HmacToken, &m.HmacMandatory, &m.Secret, &m.ApiTokenHash, &m.AdditionalAttributes, &m.CreatedAt, &m.UpdatedAt)
+func scanChannelAPI(scanner channelAPIScanner, m *model.ChannelAPI) error {
+	return scanner.Scan(&m.ID, &m.AccountID, &m.WebhookURL, &m.Identifier, &m.HMACToken, &m.HMACMandatory, &m.Secret, &m.APITokenHash, &m.AdditionalAttributes, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type ChannelAPIRepo struct {
@@ -35,7 +35,7 @@ func (r *ChannelAPIRepo) Create(ctx context.Context, m *model.ChannelAPI) error 
 	query := `INSERT INTO channels_api (account_id, webhook_url, identifier, hmac_token, hmac_mandatory, secret, api_token_hash, additional_attributes)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, '{}'::jsonb))
 		RETURNING id, created_at, updated_at`
-	err := r.pool.QueryRow(ctx, query, m.AccountID, m.WebhookURL, m.Identifier, m.HmacToken, m.HmacMandatory, m.Secret, m.ApiTokenHash, m.AdditionalAttributes).
+	err := r.pool.QueryRow(ctx, query, m.AccountID, m.WebhookURL, m.Identifier, m.HMACToken, m.HMACMandatory, m.Secret, m.APITokenHash, m.AdditionalAttributes).
 		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create channel api: %w", err)
@@ -51,7 +51,7 @@ func (r *ChannelAPIRepo) UpdateEditable(ctx context.Context, m *model.ChannelAPI
 		SET webhook_url = $1, hmac_mandatory = $2, additional_attributes = COALESCE($3, '{}'::jsonb), updated_at = NOW()
 		WHERE id = $4
 		RETURNING updated_at`
-	err := r.pool.QueryRow(ctx, query, m.WebhookURL, m.HmacMandatory, m.AdditionalAttributes, m.ID).
+	err := r.pool.QueryRow(ctx, query, m.WebhookURL, m.HMACMandatory, m.AdditionalAttributes, m.ID).
 		Scan(&m.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -70,7 +70,7 @@ func (r *ChannelAPIRepo) RotateToken(ctx context.Context, m *model.ChannelAPI) e
 		SET identifier = $1, api_token_hash = $2, updated_at = NOW()
 		WHERE id = $3
 		RETURNING updated_at`
-	err := r.pool.QueryRow(ctx, query, m.Identifier, m.ApiTokenHash, m.ID).
+	err := r.pool.QueryRow(ctx, query, m.Identifier, m.APITokenHash, m.ID).
 		Scan(&m.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -82,7 +82,7 @@ func (r *ChannelAPIRepo) RotateToken(ctx context.Context, m *model.ChannelAPI) e
 }
 
 func (r *ChannelAPIRepo) FindByID(ctx context.Context, id int64) (*model.ChannelAPI, error) {
-	query := `SELECT ` + channelApiSelectColumns + ` FROM channels_api WHERE id = $1`
+	query := `SELECT ` + channelAPISelectColumns + ` FROM channels_api WHERE id = $1`
 	row := r.pool.QueryRow(ctx, query, id)
 	var m model.ChannelAPI
 	if err := scanChannelAPI(row, &m); err != nil {
@@ -108,10 +108,10 @@ func (r *ChannelAPIRepo) FindByInboxID(ctx context.Context, inboxID int64) (*mod
 	return &m, nil
 }
 
-// FindByApiTokenHash looks up by deterministic SHA-256 hash of the provided
+// FindByAPITokenHash looks up by deterministic SHA-256 hash of the provided
 // plaintext api_access_token. The plaintext itself is never stored.
-func (r *ChannelAPIRepo) FindByApiTokenHash(ctx context.Context, tokenHash string) (*model.ChannelAPI, error) {
-	query := `SELECT ` + channelApiSelectColumns + ` FROM channels_api WHERE api_token_hash = $1`
+func (r *ChannelAPIRepo) FindByAPITokenHash(ctx context.Context, tokenHash string) (*model.ChannelAPI, error) {
+	query := `SELECT ` + channelAPISelectColumns + ` FROM channels_api WHERE api_token_hash = $1`
 	row := r.pool.QueryRow(ctx, query, tokenHash)
 	var m model.ChannelAPI
 	if err := scanChannelAPI(row, &m); err != nil {
@@ -124,7 +124,7 @@ func (r *ChannelAPIRepo) FindByApiTokenHash(ctx context.Context, tokenHash strin
 }
 
 func (r *ChannelAPIRepo) FindByIdentifier(ctx context.Context, identifier string) (*model.ChannelAPI, error) {
-	query := `SELECT ` + channelApiSelectColumns + ` FROM channels_api WHERE identifier = $1`
+	query := `SELECT ` + channelAPISelectColumns + ` FROM channels_api WHERE identifier = $1`
 	row := r.pool.QueryRow(ctx, query, identifier)
 	var m model.ChannelAPI
 	if err := scanChannelAPI(row, &m); err != nil {
@@ -160,7 +160,7 @@ func (r *ChannelAPIRepo) FindByInboxIDWithAccount(ctx context.Context, inboxID i
 	row := r.pool.QueryRow(ctx, query, inboxID)
 	var ch model.ChannelAPI
 	var ac model.Account
-	if err := row.Scan(&ch.ID, &ch.AccountID, &ch.WebhookURL, &ch.Identifier, &ch.HmacToken, &ch.HmacMandatory, &ch.Secret, &ch.ApiTokenHash, &ch.AdditionalAttributes, &ch.CreatedAt, &ch.UpdatedAt,
+	if err := row.Scan(&ch.ID, &ch.AccountID, &ch.WebhookURL, &ch.Identifier, &ch.HMACToken, &ch.HMACMandatory, &ch.Secret, &ch.APITokenHash, &ch.AdditionalAttributes, &ch.CreatedAt, &ch.UpdatedAt,
 		&ac.ID, &ac.Name, &ac.Slug, &ac.CreatedAt, &ac.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil, fmt.Errorf("%w: %w", ErrChannelAPINotFound, err)

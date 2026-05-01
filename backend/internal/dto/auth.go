@@ -87,32 +87,32 @@ type ResetReq struct {
 
 // --- MFA ---
 
-type MfaSetupResp struct {
+type MFASetupResp struct {
 	OTPAuthURI string `json:"otpauthUri"`
 	Secret     string `json:"secret"`
 }
 
-type MfaEnableReq struct {
+type MFAEnableReq struct {
 	Code string `json:"code" validate:"required,len=6"`
 }
 
-type MfaEnableResp struct {
+type MFAEnableResp struct {
 	RecoveryCodes []string `json:"recoveryCodes"`
 }
 
-type MfaVerifyReq struct {
-	MfaToken string `json:"mfaToken" validate:"required"`
+type MFAVerifyReq struct {
+	MFAToken string `json:"mfaToken" validate:"required"`
 	Code     string `json:"code" validate:"required,min=1"`
 }
 
-type MfaDisableReq struct {
+type MFADisableReq struct {
 	CurrentPassword string `json:"currentPassword" validate:"required"`
 }
 
 // --- MFA Login Step ---
 
-// LoginRespMfa is returned when MFA is required instead of normal LoginResp.
-type LoginRespMfa struct {
-	MfaRequired bool   `json:"mfaRequired"`
-	MfaToken    string `json:"mfaToken"`
+// LoginRespMFA is returned when MFA is required instead of normal LoginResp.
+type LoginRespMFA struct {
+	MFARequired bool   `json:"mfaRequired"`
+	MFAToken    string `json:"mfaToken"`
 }

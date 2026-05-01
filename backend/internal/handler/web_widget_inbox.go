@@ -100,7 +100,7 @@ func (h *WebWidgetInboxHandler) Create(c *fiber.Ctx) error {
 	widget := &model.ChannelWebWidget{
 		AccountID:           accountID,
 		WebsiteToken:        websiteToken,
-		HmacTokenCiphertext: hmacCiphertext,
+		HMACTokenCiphertext: hmacCiphertext,
 		WebsiteURL:          req.WebsiteURL,
 		WidgetColor:         widgetColor,
 		WelcomeTitle:        welcomeTitle,
@@ -182,7 +182,7 @@ func (h *WebWidgetInboxHandler) GetByInboxID(c *fiber.Ctx) error {
 	}))
 }
 
-// RotateHmac generates a new HMAC token for the widget channel.
+// RotateHMAC generates a new HMAC token for the widget channel.
 // @Summary Rotate HMAC token
 // @Description Generates a new HMAC token and returns it once
 // @Tags Admin/Inboxes
@@ -191,7 +191,7 @@ func (h *WebWidgetInboxHandler) GetByInboxID(c *fiber.Ctx) error {
 // @Failure 400 {object} dto.APIError
 // @Failure 404 {object} dto.APIError
 // @Router /api/v1/accounts/{aid}/inboxes/{id}/rotate_hmac [post]
-func (h *WebWidgetInboxHandler) RotateHmac(c *fiber.Ctx) error {
+func (h *WebWidgetInboxHandler) RotateHMAC(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "account id not found"))
@@ -207,20 +207,20 @@ func (h *WebWidgetInboxHandler) RotateHmac(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	newHmacToken := generateToken(32)
-	newCiphertext, err := h.cipher.Encrypt(newHmacToken)
+	newHMACToken := generateToken(32)
+	newCiphertext, err := h.cipher.Encrypt(newHMACToken)
 	if err != nil {
 		logger.Error().Str("component", "webwidget").Err(err).Msg("failed to encrypt new hmac token")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to encrypt new hmac token"))
 	}
 
-	if err := h.widgetRepo.UpdateHmacToken(c.Context(), widget.ID, newCiphertext); err != nil {
+	if err := h.widgetRepo.UpdateHMACToken(c.Context(), widget.ID, newCiphertext); err != nil {
 		logger.Error().Str("component", "webwidget").Err(err).Msg("failed to rotate hmac token")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to rotate hmac token"))
 	}
 
-	return c.Status(fiber.StatusOK).JSON(dto.SuccessResp(dto.RotateHmacResp{
-		HmacToken: newHmacToken,
+	return c.Status(fiber.StatusOK).JSON(dto.SuccessResp(dto.RotateHMACResp{
+		HMACToken: newHMACToken,
 	}))
 }
 

@@ -8,7 +8,7 @@
 // @in header
 // @name Authorization
 // @description Bearer JWT token
-// @securityDefinitions.apikey ApiAccessToken
+// @securityDefinitions.apikey APIAccessToken
 // @in header
 // @name api_access_token
 // @description Channel API access token

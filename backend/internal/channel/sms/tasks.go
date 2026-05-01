@@ -183,7 +183,7 @@ func (p *SMSSendProcessor) HandleSMSSend(ctx context.Context, t *asynq.Task) err
 	return nil
 }
 
-func SmsRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
+func SMSRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	delays := []time.Duration{
 		1 * time.Second,
 		5 * time.Second,

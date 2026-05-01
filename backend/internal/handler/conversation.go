@@ -148,7 +148,7 @@ func (h *ConversationHandler) CreateAuthenticated(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) Create(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -160,7 +160,7 @@ func (h *ConversationHandler) Create(c *fiber.Ctx) error {
 
 	sourceID := c.Params("sourceId")
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -490,7 +490,7 @@ func (h *ConversationHandler) Delete(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -502,7 +502,7 @@ func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
 
 	sourceID := c.Params("sourceId")
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -518,7 +518,7 @@ func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
 	var convos []model.Conversation
 	var total int
 
-	if ci.HmacVerified {
+	if ci.HMACVerified {
 		convos, total, err = h.conversationRepo.ListByContactID(c.Context(), ci.ContactID, accountID, page, perPage)
 	} else {
 		convos, total, err = h.conversationRepo.ListByContactInboxID(c.Context(), ci.ID, accountID, page, perPage)
@@ -534,7 +534,7 @@ func (h *ConversationHandler) ListByContact(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) ShowPublic(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -549,7 +549,7 @@ func (h *ConversationHandler) ShowPublic(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -567,7 +567,7 @@ func (h *ConversationHandler) ShowPublic(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) TogglePublicStatus(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -603,7 +603,7 @@ func (h *ConversationHandler) TogglePublicStatus(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid status value"))
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -630,7 +630,7 @@ func (h *ConversationHandler) TogglePublicStatus(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) ToggleTyping(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -656,7 +656,7 @@ func (h *ConversationHandler) ToggleTyping(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "typing_status must be 'on' or 'off'"))
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -681,7 +681,7 @@ func (h *ConversationHandler) ToggleTyping(c *fiber.Ctx) error {
 }
 
 func (h *ConversationHandler) UpdateLastSeenPublic(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -698,7 +698,7 @@ func (h *ConversationHandler) UpdateLastSeenPublic(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid conversation id"))
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}

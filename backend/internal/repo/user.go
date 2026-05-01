@@ -21,7 +21,7 @@ type userScanner interface {
 }
 
 func scanUser(scanner userScanner, m *model.User) error {
-	return scanner.Scan(&m.ID, &m.Email, &m.Name, &m.PasswordHash, &m.AvatarURL, &m.MfaEnabled, &m.MfaSecretCiphertext, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.Email, &m.Name, &m.PasswordHash, &m.AvatarURL, &m.MFAEnabled, &m.MFASecretCiphertext, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type AuthUser struct {
@@ -92,7 +92,7 @@ func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*model.User, 
 	return &m, nil
 }
 
-func (r *UserRepo) UpdateMfaSecret(ctx context.Context, userID int64, secretCiphertext string, enabled bool) error {
+func (r *UserRepo) UpdateMFASecret(ctx context.Context, userID int64, secretCiphertext string, enabled bool) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE users SET mfa_secret_ciphertext = $1, mfa_enabled = $2, updated_at = NOW() WHERE id = $3`,
 		secretCiphertext, enabled, userID)
@@ -102,7 +102,7 @@ func (r *UserRepo) UpdateMfaSecret(ctx context.Context, userID int64, secretCiph
 	return nil
 }
 
-func (r *UserRepo) EnableMfa(ctx context.Context, userID int64) error {
+func (r *UserRepo) EnableMFA(ctx context.Context, userID int64) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE users SET mfa_enabled = TRUE, updated_at = NOW() WHERE id = $1`, userID)
 	if err != nil {
@@ -111,7 +111,7 @@ func (r *UserRepo) EnableMfa(ctx context.Context, userID int64) error {
 	return nil
 }
 
-func (r *UserRepo) DisableMfa(ctx context.Context, userID int64) error {
+func (r *UserRepo) DisableMFA(ctx context.Context, userID int64) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE users SET mfa_enabled = FALSE, mfa_secret_ciphertext = NULL, updated_at = NOW() WHERE id = $1`,
 		userID)

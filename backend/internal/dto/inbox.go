@@ -5,7 +5,7 @@ import "time"
 type CreateInboxReq struct {
 	Name                 string         `json:"name" validate:"required"`
 	WebhookURL           string         `json:"webhookUrl,omitempty"`
-	HmacMandatory        bool           `json:"hmacMandatory,omitempty"`
+	HMACMandatory        bool           `json:"hmacMandatory,omitempty"`
 	AdditionalAttributes map[string]any `json:"additionalAttributes,omitempty"`
 }
 
@@ -21,8 +21,8 @@ type InboxResp struct {
 type CreateInboxResp struct {
 	InboxResp
 	Identifier string `json:"identifier"`
-	ApiToken   string `json:"apiToken"`
-	HmacToken  string `json:"hmacToken"`
+	APIToken   string `json:"apiToken"`
+	HMACToken  string `json:"hmacToken"`
 	Secret     string `json:"secret"`
 }
 
@@ -33,7 +33,7 @@ type ChannelAPIResp struct {
 	ID                   int64          `json:"id"`
 	Identifier           string         `json:"identifier"`
 	WebhookURL           string         `json:"webhookUrl,omitempty"`
-	HmacMandatory        bool           `json:"hmacMandatory"`
+	HMACMandatory        bool           `json:"hmacMandatory"`
 	AdditionalAttributes map[string]any `json:"additionalAttributes,omitempty"`
 	CreatedAt            time.Time      `json:"createdAt"`
 	UpdatedAt            time.Time      `json:"updatedAt"`
@@ -44,15 +44,15 @@ type ChannelAPIResp struct {
 type UpdateChannelAPIReq struct {
 	Name                 string         `json:"name,omitempty"`
 	WebhookURL           string         `json:"webhookUrl,omitempty"`
-	HmacMandatory        bool           `json:"hmacMandatory,omitempty"`
+	HMACMandatory        bool           `json:"hmacMandatory,omitempty"`
 	AdditionalAttributes map[string]any `json:"additionalAttributes,omitempty"`
 }
 
 // RotateAPITokenResp is the response of POST /inboxes/:id/rotate_token.
-// ApiToken is the plaintext — returned ONCE, never again.
+// APIToken is the plaintext — returned ONCE, never again.
 type RotateAPITokenResp struct {
 	Identifier string `json:"identifier"`
-	ApiToken   string `json:"apiToken"`
+	APIToken   string `json:"apiToken"`
 	Secret     string `json:"secret"`
 }
 

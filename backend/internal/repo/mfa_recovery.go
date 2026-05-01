@@ -12,7 +12,7 @@ import (
 
 var ErrRecoveryCodeNotFound = errors.New("recovery code not found")
 
-type MfaRecoveryCode struct {
+type MFARecoveryCode struct {
 	ID         int64      `json:"id"`
 	UserID     int64      `json:"userId"`
 	CodeHash   string     `json:"-"`
@@ -20,15 +20,15 @@ type MfaRecoveryCode struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 }
 
-type MfaRecoveryCodeRepo struct {
+type MFARecoveryCodeRepo struct {
 	pool *pgxpool.Pool
 }
 
-func NewMfaRecoveryCodeRepo(pool *pgxpool.Pool) *MfaRecoveryCodeRepo {
-	return &MfaRecoveryCodeRepo{pool: pool}
+func NewMFARecoveryCodeRepo(pool *pgxpool.Pool) *MFARecoveryCodeRepo {
+	return &MFARecoveryCodeRepo{pool: pool}
 }
 
-func (r *MfaRecoveryCodeRepo) Create(ctx context.Context, userID int64, codeHashes []string) error {
+func (r *MFARecoveryCodeRepo) Create(ctx context.Context, userID int64, codeHashes []string) error {
 	if len(codeHashes) == 0 {
 		return nil
 	}
@@ -53,11 +53,11 @@ func (r *MfaRecoveryCodeRepo) Create(ctx context.Context, userID int64, codeHash
 	return nil
 }
 
-func (r *MfaRecoveryCodeRepo) FindByHash(ctx context.Context, codeHash string) (*MfaRecoveryCode, error) {
+func (r *MFARecoveryCodeRepo) FindByHash(ctx context.Context, codeHash string) (*MFARecoveryCode, error) {
 	query := `SELECT id, user_id, code_hash, consumed_at, created_at
 		FROM mfa_recovery_codes WHERE code_hash = $1 AND consumed_at IS NULL`
 	row := r.pool.QueryRow(ctx, query, codeHash)
-	var c MfaRecoveryCode
+	var c MFARecoveryCode
 	if err := row.Scan(&c.ID, &c.UserID, &c.CodeHash, &c.ConsumedAt, &c.CreatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%w: %w", ErrRecoveryCodeNotFound, err)
@@ -67,7 +67,7 @@ func (r *MfaRecoveryCodeRepo) FindByHash(ctx context.Context, codeHash string) (
 	return &c, nil
 }
 
-func (r *MfaRecoveryCodeRepo) Consume(ctx context.Context, id int64) error {
+func (r *MFARecoveryCodeRepo) Consume(ctx context.Context, id int64) error {
 	now := time.Now().UTC()
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE mfa_recovery_codes SET consumed_at = $1 WHERE id = $2 AND consumed_at IS NULL`,
@@ -81,7 +81,7 @@ func (r *MfaRecoveryCodeRepo) Consume(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *MfaRecoveryCodeRepo) DeleteAllByUserID(ctx context.Context, userID int64) error {
+func (r *MFARecoveryCodeRepo) DeleteAllByUserID(ctx context.Context, userID int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM mfa_recovery_codes WHERE user_id = $1`, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete mfa recovery codes: %w", err)

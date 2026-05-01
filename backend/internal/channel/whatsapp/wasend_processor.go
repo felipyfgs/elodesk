@@ -48,7 +48,7 @@ func (p *WaSendProcessor) HandleWaSend(ctx context.Context, t *asynq.Task) error
 		return fmt.Errorf("unmarshal payload: %w", err)
 	}
 
-	apiKey, err := p.cipher.Decrypt(payload.ApiKeyCiphertext)
+	apiKey, err := p.cipher.Decrypt(payload.APIKeyCiphertext)
 	if err != nil {
 		logger.Error().Str("component", "wa-send").Err(err).Msg("decrypt api key")
 		return fmt.Errorf("decrypt api key: %w", err)

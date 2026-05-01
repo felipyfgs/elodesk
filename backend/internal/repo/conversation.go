@@ -388,7 +388,7 @@ type ConversationHydrated struct {
 	Conversation           model.Conversation
 	Contact                model.Contact
 	Inbox                  model.Inbox
-	HmacVerified           bool
+	HMACVerified           bool
 	Assignee               *model.User
 	Team                   *model.Team
 	UnreadCount            int
@@ -435,7 +435,7 @@ func scanConversationHydrated(scanner conversationScanner, h *ConversationHydrat
 		uID                                                  *int64
 		uEmail, uName                                        *string
 		uAvatarURL                                           *string
-		uMfaEnabled                                          *bool
+		uMFAEnabled                                          *bool
 		uCreatedAt, uUpdatedAt                               *time.Time
 		tID, tAccountID                                      *int64
 		tName                                                *string
@@ -464,8 +464,8 @@ func scanConversationHydrated(scanner conversationScanner, h *ConversationHydrat
 		&c.Identifier, &c.AdditionalAttrs, &c.AvatarURL, &c.Blocked,
 		&c.LastActivityAt, &c.CreatedAt, &c.UpdatedAt,
 		&i.ID, &i.AccountID, &i.ChannelID, &i.Name, &i.ChannelType, &i.CreatedAt, &i.UpdatedAt,
-		&h.HmacVerified,
-		&uID, &uEmail, &uName, &uAvatarURL, &uMfaEnabled, &uCreatedAt, &uUpdatedAt,
+		&h.HMACVerified,
+		&uID, &uEmail, &uName, &uAvatarURL, &uMFAEnabled, &uCreatedAt, &uUpdatedAt,
 		&tID, &tAccountID, &tName, &tDescription, &tAllowAutoAssign, &tCreatedAt, &tUpdatedAt,
 		&h.UnreadCount,
 		&lmID, &lmAccountID, &lmInboxID, &lmConversationID, &lmMessageType, &lmContentType,
@@ -481,7 +481,7 @@ func scanConversationHydrated(scanner conversationScanner, h *ConversationHydrat
 			Email:      derefStr(uEmail),
 			Name:       derefStr(uName),
 			AvatarURL:  uAvatarURL,
-			MfaEnabled: derefBool(uMfaEnabled),
+			MFAEnabled: derefBool(uMFAEnabled),
 			CreatedAt:  derefTime(uCreatedAt),
 			UpdatedAt:  derefTime(uUpdatedAt),
 		}
@@ -560,7 +560,7 @@ func ConversationHydratedToFullRow(h *ConversationHydrated) dto.ConversationFull
 		Conversation:           h.Conversation,
 		Contact:                h.Contact,
 		Inbox:                  h.Inbox,
-		HmacVerified:           h.HmacVerified,
+		HMACVerified:           h.HMACVerified,
 		Assignee:               h.Assignee,
 		Team:                   h.Team,
 		UnreadCount:            h.UnreadCount,

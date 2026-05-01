@@ -12,20 +12,20 @@ import (
 
 type OutboundWebhookNotifier struct {
 	outboundWebhookSvc *OutboundWebhookService
-	channelApiRepo     *repo.ChannelAPIRepo
+	channelAPIRepo     *repo.ChannelAPIRepo
 	inboxRepo          *repo.InboxRepo
 	conversationRepo   *repo.ConversationRepo
 }
 
 func NewOutboundWebhookNotifier(
 	outboundWebhookSvc *OutboundWebhookService,
-	channelApiRepo *repo.ChannelAPIRepo,
+	channelAPIRepo *repo.ChannelAPIRepo,
 	inboxRepo *repo.InboxRepo,
 	conversationRepo *repo.ConversationRepo,
 ) *OutboundWebhookNotifier {
 	return &OutboundWebhookNotifier{
 		outboundWebhookSvc: outboundWebhookSvc,
-		channelApiRepo:     channelApiRepo,
+		channelAPIRepo:     channelAPIRepo,
 		inboxRepo:          inboxRepo,
 		conversationRepo:   conversationRepo,
 	}
@@ -39,7 +39,7 @@ func (n *OutboundWebhookNotifier) resolveChannelAPI(ctx context.Context, inboxID
 	if inbox.ChannelType != string(appchannel.KindApi) {
 		return nil, inbox, nil
 	}
-	ch, err := n.channelApiRepo.FindByID(ctx, inbox.ChannelID)
+	ch, err := n.channelAPIRepo.FindByID(ctx, inbox.ChannelID)
 	if err != nil {
 		return nil, inbox, err
 	}

@@ -53,7 +53,7 @@ type Config struct {
 	FeatureChannelTiktok         bool
 	FeatureChannelTwitter        bool
 	FeatureChannelTwilioWhatsapp bool
-	FeatureTwilioSmsMedium       bool
+	FeatureTwilioSMSMedium       bool
 
 	TiktokClientKey       string
 	TiktokClientSecret    string
@@ -106,7 +106,7 @@ func Load() *Config {
 		FeatureChannelTiktok:         getEnvAsBool("FEATURE_CHANNEL_TIKTOK", false),
 		FeatureChannelTwitter:        getEnvAsBool("FEATURE_CHANNEL_TWITTER", false),
 		FeatureChannelTwilioWhatsapp: getEnvAsBool("FEATURE_CHANNEL_TWILIO_WHATSAPP", true),
-		FeatureTwilioSmsMedium:       getEnvAsBool("FEATURE_TWILIO_SMS_MEDIUM", false),
+		FeatureTwilioSMSMedium:       getEnvAsBool("FEATURE_TWILIO_SMS_MEDIUM", false),
 
 		TiktokClientKey:       getEnv("TIKTOK_CLIENT_KEY", ""),
 		TiktokClientSecret:    getEnv("TIKTOK_CLIENT_SECRET", ""),

@@ -181,7 +181,7 @@ func (h *ContactHandler) Events(c *fiber.Ctx) error {
 }
 
 func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -196,7 +196,7 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 		return nil
 	}
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -208,13 +208,13 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 			if req.Identifier != nil {
 				identifier = *req.Identifier
 			}
-			if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, *req.IdentifierHash) {
+			if middleware.ValidIdentifierHash(channelAPI, h.cipher, identifier, *req.IdentifierHash) {
 				hmacVerified = true
-			} else if channelApi.HmacMandatory {
+			} else if channelAPI.HMACMandatory {
 				return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
 			}
 		}
-	} else if channelApi.HmacMandatory {
+	} else if channelAPI.HMACMandatory {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
 	}
 
@@ -247,7 +247,7 @@ func (h *ContactHandler) CreateContact(c *fiber.Ctx) error {
 }
 
 func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -259,7 +259,7 @@ func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
 
 	sourceID := c.Params("sourceId")
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -275,10 +275,10 @@ func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
 		if contact.Identifier != nil {
 			identifier = *contact.Identifier
 		}
-		if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, identifierHash) {
+		if middleware.ValidIdentifierHash(channelAPI, h.cipher, identifier, identifierHash) {
 			ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
 			if err == nil {
-				_ = h.contactInboxRepo.UpdateHmacVerified(c.Context(), ci.ID, true)
+				_ = h.contactInboxRepo.UpdateHMACVerified(c.Context(), ci.ID, true)
 			}
 		}
 	}
@@ -287,7 +287,7 @@ func (h *ContactHandler) GetContact(c *fiber.Ctx) error {
 }
 
 func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
-	channelApi, ok := c.Locals("channelApi").(*model.ChannelAPI)
+	channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "channel api not found"))
 	}
@@ -304,7 +304,7 @@ func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
 
 	sourceID := c.Params("sourceId")
 
-	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelApi.ID)
+	inbox, err := h.inboxRepo.FindByChannelID(c.Context(), channelAPI.ID)
 	if err != nil {
 		return handleNotFound(c, err)
 	}
@@ -329,12 +329,12 @@ func (h *ContactHandler) UpdateContact(c *fiber.Ctx) error {
 		if contact.Identifier != nil {
 			identifier = *contact.Identifier
 		}
-		if middleware.ValidIdentifierHash(channelApi, h.cipher, identifier, identifierHash) {
+		if middleware.ValidIdentifierHash(channelAPI, h.cipher, identifier, identifierHash) {
 			ci, err := h.contactInboxRepo.FindBySourceID(c.Context(), sourceID, inbox.ID)
 			if err == nil {
-				_ = h.contactInboxRepo.UpdateHmacVerified(c.Context(), ci.ID, true)
+				_ = h.contactInboxRepo.UpdateHMACVerified(c.Context(), ci.ID, true)
 			}
-		} else if channelApi.HmacMandatory {
+		} else if channelAPI.HMACMandatory {
 			return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "HMAC failed: Invalid Identifier Hash Provided"))
 		}
 	}

@@ -556,7 +556,7 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 		ContactID:    contact.ID,
 		InboxID:      inbox.ID,
 		SourceID:     sourceID,
-		HmacVerified: hmacVerified,
+		HMACVerified: hmacVerified,
 	}
 	if err := s.contactInboxRepo.Create(ctx, ci); err != nil {
 		return nil, fmt.Errorf("create contact inbox: %w", err)

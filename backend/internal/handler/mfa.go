@@ -11,23 +11,23 @@ import (
 	"backend/internal/service"
 )
 
-type MfaHandler struct {
-	mfaSvc  *service.MfaService
+type MFAHandler struct {
+	mfaSvc  *service.MFAService
 	authSvc *service.AuthService
 }
 
-func NewMfaHandler(mfaSvc *service.MfaService, authSvc *service.AuthService) *MfaHandler {
-	return &MfaHandler{mfaSvc: mfaSvc, authSvc: authSvc}
+func NewMFAHandler(mfaSvc *service.MFAService, authSvc *service.AuthService) *MFAHandler {
+	return &MFAHandler{mfaSvc: mfaSvc, authSvc: authSvc}
 }
 
 // @Summary Setup MFA
 // @Description Generates a TOTP secret for MFA setup
 // @Tags auth
 // @Produce json
-// @Success 200 {object} dto.MfaSetupResp
+// @Success 200 {object} dto.MFASetupResp
 // @Failure 401 {object} dto.APIError
 // @Router /api/v1/auth/mfa/setup [post]
-func (h *MfaHandler) Setup(c *fiber.Ctx) error {
+func (h *MFAHandler) Setup(c *fiber.Ctx) error {
 	authUser, ok := c.Locals("user").(*repo.AuthUser)
 	if !ok || authUser == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "not authenticated"))
@@ -39,7 +39,7 @@ func (h *MfaHandler) Setup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 	}
 
-	return c.JSON(dto.SuccessResp(dto.MfaSetupResp{
+	return c.JSON(dto.SuccessResp(dto.MFASetupResp{
 		OTPAuthURI: result.OTPAuthURI,
 		Secret:     result.Secret,
 	}))
@@ -50,35 +50,35 @@ func (h *MfaHandler) Setup(c *fiber.Ctx) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param body body dto.MfaEnableReq true "TOTP code"
-// @Success 200 {object} dto.MfaEnableResp
+// @Param body body dto.MFAEnableReq true "TOTP code"
+// @Success 200 {object} dto.MFAEnableResp
 // @Failure 401 {object} dto.APIError
 // @Failure 400 {object} dto.APIError
 // @Router /api/v1/auth/mfa/enable [post]
-func (h *MfaHandler) Enable(c *fiber.Ctx) error {
+func (h *MFAHandler) Enable(c *fiber.Ctx) error {
 	authUser, ok := c.Locals("user").(*repo.AuthUser)
 	if !ok || authUser == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "not authenticated"))
 	}
 
-	var req dto.MfaEnableReq
+	var req dto.MFAEnableReq
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
 	}
 
 	result, err := h.mfaSvc.Enable(c.Context(), authUser.ID, req.Code)
 	if err != nil {
-		if errors.Is(err, service.ErrMfaInvalidCode) {
+		if errors.Is(err, service.ErrMFAInvalidCode) {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid mfa code"))
 		}
-		if errors.Is(err, service.ErrMfaNotSetup) {
+		if errors.Is(err, service.ErrMFANotSetup) {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "mfa not set up"))
 		}
 		logger.Error().Str("component", "auth").Err(err).Msg("mfa enable failed")
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 	}
 
-	return c.JSON(dto.SuccessResp(dto.MfaEnableResp{
+	return c.JSON(dto.SuccessResp(dto.MFAEnableResp{
 		RecoveryCodes: result.RecoveryCodes,
 	}))
 }
@@ -88,19 +88,19 @@ func (h *MfaHandler) Enable(c *fiber.Ctx) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param body body dto.MfaVerifyReq true "MFA token and code"
+// @Param body body dto.MFAVerifyReq true "MFA token and code"
 // @Success 200 {object} dto.LoginResp
 // @Failure 401 {object} dto.APIError
 // @Router /api/v1/auth/mfa/verify [post]
-func (h *MfaHandler) Verify(c *fiber.Ctx) error {
-	var req dto.MfaVerifyReq
+func (h *MFAHandler) Verify(c *fiber.Ctx) error {
+	var req dto.MFAVerifyReq
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
 	}
 
-	result, err := h.mfaSvc.Verify(c.Context(), req.MfaToken, req.Code)
+	result, err := h.mfaSvc.Verify(c.Context(), req.MFAToken, req.Code)
 	if err != nil {
-		if errors.Is(err, service.ErrMfaInvalidCode) {
+		if errors.Is(err, service.ErrMFAInvalidCode) {
 			return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "invalid mfa code"))
 		}
 		logger.Error().Str("component", "auth").Err(err).Msg("mfa verify failed")
@@ -127,24 +127,24 @@ func (h *MfaHandler) Verify(c *fiber.Ctx) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param body body dto.MfaDisableReq true "Current password"
+// @Param body body dto.MFADisableReq true "Current password"
 // @Success 200
 // @Failure 401 {object} dto.APIError
 // @Failure 400 {object} dto.APIError
 // @Router /api/v1/auth/mfa/disable [post]
-func (h *MfaHandler) Disable(c *fiber.Ctx) error {
+func (h *MFAHandler) Disable(c *fiber.Ctx) error {
 	authUser, ok := c.Locals("user").(*repo.AuthUser)
 	if !ok || authUser == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "not authenticated"))
 	}
 
-	var req dto.MfaDisableReq
+	var req dto.MFADisableReq
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
 	}
 
 	if err := h.mfaSvc.Disable(c.Context(), authUser.ID, req.CurrentPassword); err != nil {
-		if errors.Is(err, service.ErrMfaInvalidPassword) {
+		if errors.Is(err, service.ErrMFAInvalidPassword) {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid current password"))
 		}
 		logger.Error().Str("component", "auth").Err(err).Msg("mfa disable failed")

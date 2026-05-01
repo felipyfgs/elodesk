@@ -7,7 +7,7 @@ type CreateWhatsAppInboxReq struct {
 	PhoneNumber       string `json:"phoneNumber,omitempty"`
 	PhoneNumberID     string `json:"phoneNumberId,omitempty"`
 	BusinessAccountID string `json:"businessAccountId,omitempty"`
-	ApiKey            string `json:"apiKey,omitempty"`
+	APIKey            string `json:"apiKey,omitempty"`
 	Name              string `json:"name" validate:"required"`
 }
 
@@ -21,7 +21,7 @@ type CreateWhatsAppInboxResp struct {
 	PhoneNumber        string    `json:"phoneNumber"`
 	PhoneNumberID      string    `json:"phoneNumberId,omitempty"`
 	BusinessAccountID  string    `json:"businessAccountId,omitempty"`
-	ApiKey             string    `json:"apiKey,omitempty"`
+	APIKey             string    `json:"apiKey,omitempty"`
 	WebhookVerifyToken string    `json:"webhookVerifyToken,omitempty"`
 	CreatedAt          time.Time `json:"createdAt"`
 }

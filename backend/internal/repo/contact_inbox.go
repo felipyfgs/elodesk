@@ -20,7 +20,7 @@ type contactInboxScanner interface {
 }
 
 func scanContactInbox(scanner contactInboxScanner, m *model.ContactInbox) error {
-	return scanner.Scan(&m.ID, &m.ContactID, &m.InboxID, &m.SourceID, &m.HmacVerified, &m.CreatedAt, &m.UpdatedAt)
+	return scanner.Scan(&m.ID, &m.ContactID, &m.InboxID, &m.SourceID, &m.HMACVerified, &m.CreatedAt, &m.UpdatedAt)
 }
 
 type ContactInboxRepo struct {
@@ -35,7 +35,7 @@ func (r *ContactInboxRepo) Create(ctx context.Context, m *model.ContactInbox) er
 	query := `INSERT INTO contact_inboxes (contact_id, inbox_id, source_id, hmac_verified)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, updated_at`
-	err := r.pool.QueryRow(ctx, query, m.ContactID, m.InboxID, m.SourceID, m.HmacVerified).
+	err := r.pool.QueryRow(ctx, query, m.ContactID, m.InboxID, m.SourceID, m.HMACVerified).
 		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create contact inbox: %w", err)
@@ -89,7 +89,7 @@ func (r *ContactInboxRepo) FindByContactAndInbox(ctx context.Context, contactID,
 	return &m, nil
 }
 
-func (r *ContactInboxRepo) UpdateHmacVerified(ctx context.Context, id int64, verified bool) error {
+func (r *ContactInboxRepo) UpdateHMACVerified(ctx context.Context, id int64, verified bool) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE contact_inboxes SET hmac_verified = $1, updated_at = NOW() WHERE id = $2`,
 		verified, id,

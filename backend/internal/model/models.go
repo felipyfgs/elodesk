@@ -10,8 +10,8 @@ type User struct {
 	Name                string    `json:"name"`
 	PasswordHash        string    `json:"-"`
 	AvatarURL           *string   `json:"avatarUrl,omitempty"`
-	MfaEnabled          bool      `json:"mfaEnabled"`
-	MfaSecretCiphertext *string   `json:"-"`
+	MFAEnabled          bool      `json:"mfaEnabled"`
+	MFASecretCiphertext *string   `json:"-"`
 	CreatedAt           time.Time `json:"createdAt"`
 	UpdatedAt           time.Time `json:"updatedAt"`
 }
@@ -100,17 +100,17 @@ type InboxBusinessHours struct {
 }
 
 // ChannelAPI is the persisted shape of a Channel::Api record. Secret fields
-// (HmacToken ciphertext, ApiTokenHash) are marked json:"-" so they never leak
+// (HMACToken ciphertext, APITokenHash) are marked json:"-" so they never leak
 // through accidental marshalling (broadcasts, responses, logs).
 type ChannelAPI struct {
 	ID                   int64          `json:"id"`
 	AccountID            int64          `json:"accountId"`
 	WebhookURL           string         `json:"webhookUrl,omitempty"`
 	Identifier           string         `json:"identifier"`
-	HmacToken            string         `json:"-"` // base64(nonce || AES-GCM ciphertext)
-	HmacMandatory        bool           `json:"hmacMandatory"`
+	HMACToken            string         `json:"-"` // base64(nonce || AES-GCM ciphertext)
+	HMACMandatory        bool           `json:"hmacMandatory"`
 	Secret               string         `json:"-"`
-	ApiTokenHash         string         `json:"-"` // SHA-256 hex of plaintext api_token
+	APITokenHash         string         `json:"-"` // SHA-256 hex of plaintext api_token
 	AdditionalAttributes map[string]any `json:"additionalAttributes,omitempty"`
 	CreatedAt            time.Time      `json:"createdAt"`
 	UpdatedAt            time.Time      `json:"updatedAt"`
@@ -138,7 +138,7 @@ type ContactInbox struct {
 	ContactID    int64     `json:"contactId"`
 	InboxID      int64     `json:"inboxId"`
 	SourceID     string    `json:"sourceId"`
-	HmacVerified bool      `json:"hmacVerified"`
+	HMACVerified bool      `json:"hmacVerified"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
@@ -245,7 +245,7 @@ type ChannelWhatsApp struct {
 	PhoneNumber                  string     `json:"phoneNumber"`
 	PhoneNumberID                *string    `json:"phoneNumberId,omitempty"`
 	BusinessAccountID            *string    `json:"businessAccountId,omitempty"`
-	ApiKeyCiphertext             string     `json:"-"`
+	APIKeyCiphertext             string     `json:"-"`
 	WebhookVerifyTokenCiphertext *string    `json:"-"`
 	MessageTemplates             *string    `json:"messageTemplates,omitempty"`
 	MessageTemplatesSyncedAt     *time.Time `json:"messageTemplatesSyncedAt,omitempty"`
@@ -397,7 +397,7 @@ type ChannelWebWidget struct {
 	AccountID           int64     `json:"accountId"`
 	InboxID             int64     `json:"inboxId"`
 	WebsiteToken        string    `json:"websiteToken"`
-	HmacTokenCiphertext string    `json:"-"`
+	HMACTokenCiphertext string    `json:"-"`
 	WebsiteURL          string    `json:"websiteUrl"`
 	WidgetColor         string    `json:"widgetColor"`
 	WelcomeTitle        string    `json:"welcomeTitle"`
@@ -551,7 +551,7 @@ type SLAPolicy struct {
 
 type SLABinding struct {
 	ID      int64  `json:"id"`
-	SlaID   int64  `json:"slaId"`
+	SLAID   int64  `json:"slaId"`
 	InboxID *int64 `json:"inboxId,omitempty"`
 	LabelID *int64 `json:"labelId,omitempty"`
 }

@@ -69,7 +69,7 @@ func (w *WhatsApp) SendOutbound(ctx context.Context, msg *channel.OutboundMessag
 		return "", fmt.Errorf("whatsapp: find channel for outbound: %w", err)
 	}
 
-	apiKey, err := w.cipher.Decrypt(ch.ApiKeyCiphertext)
+	apiKey, err := w.cipher.Decrypt(ch.APIKeyCiphertext)
 	if err != nil {
 		return "", fmt.Errorf("whatsapp: decrypt api key: %w", err)
 	}
@@ -95,7 +95,7 @@ func (w *WhatsApp) GetProvider(ch *model.ChannelWhatsApp) (Provider, error) {
 	return ProviderForType(ch.Provider, w.httpClient)
 }
 
-func (w *WhatsApp) DecryptApiKey(ciphertext string) (string, error) {
+func (w *WhatsApp) DecryptAPIKey(ciphertext string) (string, error) {
 	return w.cipher.Decrypt(ciphertext)
 }
 

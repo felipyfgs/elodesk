@@ -455,7 +455,7 @@ func (h *TwilioWebhookHandler) mediumEnabled(m model.TwilioMedium) bool {
 	case model.TwilioMediumWhatsApp:
 		return h.cfg.FeatureChannelTwilioWhatsapp
 	case model.TwilioMediumSMS:
-		return h.cfg.FeatureTwilioSmsMedium
+		return h.cfg.FeatureTwilioSMSMedium
 	}
 	return false
 }

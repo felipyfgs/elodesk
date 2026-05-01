@@ -26,25 +26,25 @@ var ErrInvalidBusinessHours = errors.New("invalid business hours")
 type InboxCredentials struct {
 	Inbox      *model.Inbox
 	ChannelAPI *model.ChannelAPI
-	ApiToken   string
-	HmacToken  string
+	APIToken   string
+	HMACToken  string
 	Secret     string
 }
 
 type InboxService struct {
 	pool                   *pgxpool.Pool
 	inboxRepo              *repo.InboxRepo
-	channelApiRepo         *repo.ChannelAPIRepo
+	channelAPIRepo         *repo.ChannelAPIRepo
 	inboxAgentRepo         *repo.InboxAgentRepo
 	inboxBusinessHoursRepo *repo.InboxBusinessHoursRepo
 	cipher                 *crypto.Cipher
 }
 
-func NewInboxService(pool *pgxpool.Pool, inboxRepo *repo.InboxRepo, channelApiRepo *repo.ChannelAPIRepo, inboxAgentRepo *repo.InboxAgentRepo, inboxBusinessHoursRepo *repo.InboxBusinessHoursRepo, cipher *crypto.Cipher) *InboxService {
+func NewInboxService(pool *pgxpool.Pool, inboxRepo *repo.InboxRepo, channelAPIRepo *repo.ChannelAPIRepo, inboxAgentRepo *repo.InboxAgentRepo, inboxBusinessHoursRepo *repo.InboxBusinessHoursRepo, cipher *crypto.Cipher) *InboxService {
 	return &InboxService{
 		pool:                   pool,
 		inboxRepo:              inboxRepo,
-		channelApiRepo:         channelApiRepo,
+		channelAPIRepo:         channelAPIRepo,
 		inboxAgentRepo:         inboxAgentRepo,
 		inboxBusinessHoursRepo: inboxBusinessHoursRepo,
 		cipher:                 cipher,
@@ -57,7 +57,7 @@ func NewInboxService(pool *pgxpool.Pool, inboxRepo *repo.InboxRepo, channelApiRe
 type ProvisionAPIInput struct {
 	Name                 string
 	WebhookURL           string
-	HmacMandatory        bool
+	HMACMandatory        bool
 	AdditionalAttributes map[string]any
 }
 
@@ -95,24 +95,24 @@ func (s *InboxService) ProvisionAPI(ctx context.Context, accountID int64, in Pro
 		return nil, fmt.Errorf("encrypt hmac token: %w", err)
 	}
 
-	channelApi := &model.ChannelAPI{
+	channelAPI := &model.ChannelAPI{
 		AccountID:            accountID,
 		WebhookURL:           in.WebhookURL,
 		Identifier:           identifier,
-		HmacToken:            hmacCiphertext,
-		ApiTokenHash:         crypto.HashLookup(apiTokenPlaintext),
-		HmacMandatory:        in.HmacMandatory,
+		HMACToken:            hmacCiphertext,
+		APITokenHash:         crypto.HashLookup(apiTokenPlaintext),
+		HMACMandatory:        in.HMACMandatory,
 		Secret:               secretPlaintext,
 		AdditionalAttributes: in.AdditionalAttributes,
 	}
 
-	if err := s.channelApiRepo.Create(ctx, channelApi); err != nil {
+	if err := s.channelAPIRepo.Create(ctx, channelAPI); err != nil {
 		return nil, err
 	}
 
 	inbox := &model.Inbox{
 		AccountID:   accountID,
-		ChannelID:   channelApi.ID,
+		ChannelID:   channelAPI.ID,
 		Name:        in.Name,
 		ChannelType: "Channel::Api",
 	}
@@ -122,9 +122,9 @@ func (s *InboxService) ProvisionAPI(ctx context.Context, accountID int64, in Pro
 
 	return &InboxCredentials{
 		Inbox:      inbox,
-		ChannelAPI: channelApi,
-		ApiToken:   apiTokenPlaintext,
-		HmacToken:  hmacTokenPlaintext,
+		ChannelAPI: channelAPI,
+		APIToken:   apiTokenPlaintext,
+		HMACToken:  hmacTokenPlaintext,
 		Secret:     secretPlaintext,
 	}, nil
 }
@@ -134,12 +134,12 @@ func (s *InboxService) ProvisionAPI(ctx context.Context, accountID int64, in Pro
 // drift).
 type UpdateAPIInput struct {
 	WebhookURL           string
-	HmacMandatory        bool
+	HMACMandatory        bool
 	AdditionalAttributes map[string]any
 }
 
 func (s *InboxService) GetChannelAPIEditable(ctx context.Context, inboxID, accountID int64) (*model.ChannelAPI, error) {
-	ch, err := s.channelApiRepo.FindByInboxID(ctx, inboxID)
+	ch, err := s.channelAPIRepo.FindByInboxID(ctx, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (s *InboxService) UpdateChannelAPIEditable(ctx context.Context, inboxID, ac
 		return nil, err
 	}
 
-	ch, err := s.channelApiRepo.FindByInboxID(ctx, inboxID)
+	ch, err := s.channelAPIRepo.FindByInboxID(ctx, inboxID)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +166,10 @@ func (s *InboxService) UpdateChannelAPIEditable(ctx context.Context, inboxID, ac
 	}
 
 	ch.WebhookURL = in.WebhookURL
-	ch.HmacMandatory = in.HmacMandatory
+	ch.HMACMandatory = in.HMACMandatory
 	ch.AdditionalAttributes = in.AdditionalAttributes
 
-	if err := s.channelApiRepo.UpdateEditable(ctx, ch); err != nil {
+	if err := s.channelAPIRepo.UpdateEditable(ctx, ch); err != nil {
 		return nil, err
 	}
 	return ch, nil
@@ -179,7 +179,7 @@ func (s *InboxService) UpdateChannelAPIEditable(ctx context.Context, inboxID, ac
 // Channel::Api inbox, invalidating the previous token. Returns the plaintext
 // api_token once — callers MUST surface it to the integrator and drop it.
 func (s *InboxService) RotateAPIToken(ctx context.Context, inboxID, accountID int64) (*model.ChannelAPI, string, string, error) {
-	ch, err := s.channelApiRepo.FindByInboxID(ctx, inboxID)
+	ch, err := s.channelAPIRepo.FindByInboxID(ctx, inboxID)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -191,7 +191,7 @@ func (s *InboxService) RotateAPIToken(ctx context.Context, inboxID, accountID in
 	if err != nil {
 		return nil, "", "", err
 	}
-	newApiToken, err := generateRandomToken(48)
+	newAPIToken, err := generateRandomToken(48)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -201,13 +201,13 @@ func (s *InboxService) RotateAPIToken(ctx context.Context, inboxID, accountID in
 	}
 
 	ch.Identifier = newIdentifier
-	ch.ApiTokenHash = crypto.HashLookup(newApiToken)
+	ch.APITokenHash = crypto.HashLookup(newAPIToken)
 	ch.Secret = newSecret
 
-	if err := s.channelApiRepo.RotateToken(ctx, ch); err != nil {
+	if err := s.channelAPIRepo.RotateToken(ctx, ch); err != nil {
 		return nil, "", "", err
 	}
-	return ch, newApiToken, newSecret, nil
+	return ch, newAPIToken, newSecret, nil
 }
 
 // validateAgentReplyTimeWindow enforces the Chatwoot contract: when the key
@@ -282,9 +282,9 @@ func (s *InboxService) GetByID(ctx context.Context, id, accountID int64) (*model
 	return s.inboxRepo.FindByID(ctx, id, accountID)
 }
 
-// DecryptHmacToken returns the plaintext HMAC key from the stored ciphertext.
+// DecryptHMACToken returns the plaintext HMAC key from the stored ciphertext.
 // Callers must not log or leak the result; it is a per-channel signing secret.
-func (s *InboxService) DecryptHmacToken(ciphertext string) (string, error) {
+func (s *InboxService) DecryptHMACToken(ciphertext string) (string, error) {
 	return s.cipher.Decrypt(ciphertext)
 }
 

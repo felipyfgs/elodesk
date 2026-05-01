@@ -43,7 +43,7 @@ func (s *IdentifyService) Identify(ctx context.Context, claims *VisitorClaims, r
 		return nil, fmt.Errorf("widget not found: %w", err)
 	}
 
-	hmacToken, err := s.cipher.Decrypt(widget.HmacTokenCiphertext)
+	hmacToken, err := s.cipher.Decrypt(widget.HMACTokenCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt hmac token: %w", err)
 	}
@@ -85,8 +85,8 @@ func (s *IdentifyService) Identify(ctx context.Context, claims *VisitorClaims, r
 		}
 
 		if verified {
-			if ci, err := s.contactInboxRepo.FindByContactAndInbox(ctx, contact.ID, widget.InboxID); err == nil && ci != nil && !ci.HmacVerified {
-				_ = s.contactInboxRepo.UpdateHmacVerified(ctx, ci.ID, true)
+			if ci, err := s.contactInboxRepo.FindByContactAndInbox(ctx, contact.ID, widget.InboxID); err == nil && ci != nil && !ci.HMACVerified {
+				_ = s.contactInboxRepo.UpdateHMACVerified(ctx, ci.ID, true)
 			}
 		}
 
@@ -129,7 +129,7 @@ func (s *IdentifyService) Identify(ctx context.Context, claims *VisitorClaims, r
 
 	if verified {
 		if ci, err := s.contactInboxRepo.FindByContactAndInbox(ctx, contact.ID, widget.InboxID); err == nil && ci != nil {
-			_ = s.contactInboxRepo.UpdateHmacVerified(ctx, ci.ID, true)
+			_ = s.contactInboxRepo.UpdateHMACVerified(ctx, ci.ID, true)
 		}
 	}
 

@@ -9,10 +9,10 @@ import (
 	"backend/internal/repo"
 )
 
-// ApiToken authenticates provider (Channel::Api) requests by looking up the
+// APIToken authenticates provider (Channel::Api) requests by looking up the
 // SHA-256 hash of the provided `api_access_token` header. The plaintext token
 // is never stored — only the hash in channels_api.api_token_hash.
-func ApiToken(channelApiRepo *repo.ChannelAPIRepo) fiber.Handler {
+func APIToken(channelAPIRepo *repo.ChannelAPIRepo) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := c.Get("api_access_token")
 		if token == "" {
@@ -20,19 +20,19 @@ func ApiToken(channelApiRepo *repo.ChannelAPIRepo) fiber.Handler {
 		}
 
 		tokenHash := crypto.HashLookup(token)
-		channelApi, err := channelApiRepo.FindByApiTokenHash(c.Context(), tokenHash)
+		channelAPI, err := channelAPIRepo.FindByAPITokenHash(c.Context(), tokenHash)
 		if err != nil {
 			logger.Warn().Str("component", "api-token").Err(err).Msg("invalid api_access_token")
 			return c.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResp("Unauthorized", "invalid api_access_token"))
 		}
 
-		account, err := channelApiRepo.FindAccountByChannelID(c.Context(), channelApi.ID)
+		account, err := channelAPIRepo.FindAccountByChannelID(c.Context(), channelAPI.ID)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to find account for channel"))
 		}
 
-		c.Locals("channelApi", channelApi)
-		c.Locals("inboxId", channelApi.ID)
+		c.Locals("channelAPI", channelAPI)
+		c.Locals("inboxId", channelAPI.ID)
 		c.Locals("account", account)
 		c.Locals("accountId", account.ID)
 

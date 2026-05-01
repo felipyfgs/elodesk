@@ -119,7 +119,7 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 		InboxID:                inboxID,
 		WebhookURL:             ch.WebhookURL,
 		Secret:                 secretCiphertext,
-		HmacCiphertext:         ch.HmacToken,
+		HMACCiphertext:         ch.HMACToken,
 		DeliveryID:             uuid.NewString(),
 		ConversationAttributes: convAttrs,
 	}

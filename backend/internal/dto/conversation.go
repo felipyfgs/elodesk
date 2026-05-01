@@ -60,7 +60,7 @@ type ConversationMetaResp struct {
 	Assignee     *UserSlimResp `json:"assignee,omitempty"`
 	AssigneeType string        `json:"assignee_type,omitempty"`
 	Team         *TeamSlimResp `json:"team,omitempty"`
-	HmacVerified bool          `json:"hmac_verified"`
+	HMACVerified bool          `json:"hmac_verified"`
 }
 
 // ConversationResp mirrors Chatwoot's _conversation.json.jbuilder. Timestamps
@@ -174,7 +174,7 @@ type ConversationFullRow struct {
 	Conversation           model.Conversation
 	Contact                model.Contact
 	Inbox                  model.Inbox
-	HmacVerified           bool
+	HMACVerified           bool
 	Assignee               *model.User
 	Team                   *model.Team
 	UnreadCount            int
@@ -194,7 +194,7 @@ func ConversationToRespFull(row *ConversationFullRow) ConversationResp {
 	meta := ConversationMetaResp{
 		Sender:       ContactToResp(&row.Contact),
 		Channel:      row.Inbox.ChannelType,
-		HmacVerified: row.HmacVerified,
+		HMACVerified: row.HMACVerified,
 	}
 	if row.Assignee != nil {
 		meta.Assignee = &UserSlimResp{

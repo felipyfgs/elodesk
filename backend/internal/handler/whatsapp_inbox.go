@@ -51,7 +51,7 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Validation Error", err.Error()))
 	}
 
-	secretToEncrypt := req.ApiKey
+	secretToEncrypt := req.APIKey
 
 	apiKeyCiphertext, err := h.cipher.Encrypt(secretToEncrypt)
 	if err != nil {
@@ -63,7 +63,7 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		AccountID:        accountID,
 		Provider:         req.Provider,
 		PhoneNumber:      req.PhoneNumber,
-		ApiKeyCiphertext: apiKeyCiphertext,
+		APIKeyCiphertext: apiKeyCiphertext,
 	}
 
 	switch req.Provider {
@@ -108,7 +108,7 @@ func (h *WhatsAppInboxHandler) Create(c *fiber.Ctx) error {
 		CreatedAt:         inbox.CreatedAt,
 	}
 
-	resp.ApiKey = req.ApiKey
+	resp.APIKey = req.APIKey
 
 	if ch.WebhookVerifyTokenCiphertext != nil {
 		vt, _ := h.cipher.Decrypt(*ch.WebhookVerifyTokenCiphertext)
@@ -212,7 +212,7 @@ func validateCreateWhatsAppInboxReq(req dto.CreateWhatsAppInboxReq) error {
 	if req.PhoneNumber == "" {
 		return errors.New("phoneNumber is required")
 	}
-	if req.ApiKey == "" {
+	if req.APIKey == "" {
 		return errors.New("apiKey is required")
 	}
 	return nil
