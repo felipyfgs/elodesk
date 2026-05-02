@@ -39,6 +39,10 @@ var validDisplayTypes = map[string]bool{
 	"link": true, "date": true, "list": true, "checkbox": true,
 }
 
+type entityAttrUpdater interface {
+	UpdateAdditionalAttrs(ctx context.Context, id, accountID int64, attrs string) (*string, error)
+}
+
 type CustomAttributeService struct {
 	defRepo     *repo.CustomAttributeDefinitionRepo
 	contactRepo *repo.ContactRepo
@@ -188,6 +192,58 @@ func (s *CustomAttributeService) RemoveConversationAttributes(ctx context.Contex
 	return s.removeAttributes(ctx, "conversation", conversationID, accountID, keys)
 }
 
+func (s *CustomAttributeService) targetForEntity(entityType string) (entityAttrUpdater, error) {
+	switch entityType {
+	case "contact":
+		return s.contactRepo, nil
+	case "conversation":
+		return s.convRepo, nil
+	default:
+		return nil, fmt.Errorf("unknown entity type: %s", entityType)
+	}
+}
+
+func (s *CustomAttributeService) getExistingAttrs(ctx context.Context, entityType string, targetID, accountID int64) (*string, error) {
+	switch entityType {
+	case "contact":
+		c, err := s.contactRepo.FindByID(ctx, targetID, accountID)
+		if err != nil {
+			return nil, err
+		}
+		return c.AdditionalAttrs, nil
+	case "conversation":
+		conv, err := s.convRepo.FindByID(ctx, targetID, accountID)
+		if err != nil {
+			return nil, err
+		}
+		return conv.AdditionalAttrs, nil
+	default:
+		return nil, fmt.Errorf("unknown entity type: %s", entityType)
+	}
+}
+
+func mergeAttrMaps(existing *string, updates map[string]any) (string, error) {
+	if existing == nil {
+		data, err := json.Marshal(updates)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal additional_attributes: %w", err)
+		}
+		return string(data), nil
+	}
+	merged := map[string]any{}
+	if err := json.Unmarshal([]byte(*existing), &merged); err != nil {
+		merged = make(map[string]any)
+	}
+	for k, v := range updates {
+		merged[k] = v
+	}
+	data, err := json.Marshal(merged)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal additional_attributes: %w", err)
+	}
+	return string(data), nil
+}
+
 func (s *CustomAttributeService) setAttributes(ctx context.Context, targetType string, targetID, accountID int64, values map[string]any) (*string, error) {
 	for key := range values {
 		def, err := s.defRepo.FindByKeyAndModel(ctx, accountID, key, targetType)
@@ -199,89 +255,40 @@ func (s *CustomAttributeService) setAttributes(ctx context.Context, targetType s
 		}
 	}
 
-	jsonbStr, err := json.Marshal(values)
+	existing, err := s.getExistingAttrs(ctx, targetType, targetID, accountID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal values: %w", err)
+		return nil, err
 	}
 
-	var tableName string
-	if targetType == "contact" {
-		tableName = "contacts"
-	} else {
-		tableName = "conversations"
-	}
-	_ = tableName
-
-	contactRepo := s.contactRepo
-	var result string
-	if targetType == "contact" {
-		c, err := contactRepo.FindByID(ctx, targetID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if c.AdditionalAttrs != nil {
-			merged := map[string]any{}
-			if err := json.Unmarshal([]byte(*c.AdditionalAttrs), &merged); err == nil {
-				for k, v := range values {
-					merged[k] = v
-				}
-				jsonbStr, _ = json.Marshal(merged)
-			}
-		}
-		updated, err := contactRepo.UpdateAdditionalAttrs(ctx, targetID, accountID, string(jsonbStr))
-		if err != nil {
-			return nil, err
-		}
-		result = *updated
-	} else {
-		convRepo := s.convRepo
-		conv, err := convRepo.FindByID(ctx, targetID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if conv.AdditionalAttrs != nil {
-			merged := map[string]any{}
-			if err := json.Unmarshal([]byte(*conv.AdditionalAttrs), &merged); err == nil {
-				for k, v := range values {
-					merged[k] = v
-				}
-				jsonbStr, _ = json.Marshal(merged)
-			}
-		}
-		updated, err := convRepo.UpdateAdditionalAttrs(ctx, targetID, accountID, string(jsonbStr))
-		if err != nil {
-			return nil, err
-		}
-		result = *updated
+	merged, err := mergeAttrMaps(existing, values)
+	if err != nil {
+		return nil, err
 	}
 
-	return &result, nil
+	updater, err := s.targetForEntity(targetType)
+	if err != nil {
+		return nil, err
+	}
+
+	updated, err := updater.UpdateAdditionalAttrs(ctx, targetID, accountID, merged)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (s *CustomAttributeService) removeAttributes(ctx context.Context, targetType string, targetID, accountID int64, keys []string) (*string, error) {
-	var existingAttrs string
-	if targetType == "contact" {
-		c, err := s.contactRepo.FindByID(ctx, targetID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if c.AdditionalAttrs == nil {
-			return c.AdditionalAttrs, nil
-		}
-		existingAttrs = *c.AdditionalAttrs
-	} else {
-		conv, err := s.convRepo.FindByID(ctx, targetID, accountID)
-		if err != nil {
-			return nil, err
-		}
-		if conv.AdditionalAttrs == nil {
-			return conv.AdditionalAttrs, nil
-		}
-		existingAttrs = *conv.AdditionalAttrs
+	existing, err := s.getExistingAttrs(ctx, targetType, targetID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return existing, nil
 	}
 
 	merged := map[string]any{}
-	if err := json.Unmarshal([]byte(existingAttrs), &merged); err != nil {
+	if err := json.Unmarshal([]byte(*existing), &merged); err != nil {
 		return nil, fmt.Errorf("failed to parse additional_attributes: %w", err)
 	}
 	for _, k := range keys {
@@ -294,11 +301,11 @@ func (s *CustomAttributeService) removeAttributes(ctx context.Context, targetTyp
 	}
 	str := string(jsonbStr)
 
-	if targetType == "contact" {
-		_, err = s.contactRepo.UpdateAdditionalAttrs(ctx, targetID, accountID, str)
-	} else {
-		_, err = s.convRepo.UpdateAdditionalAttrs(ctx, targetID, accountID, str)
+	updater, err := s.targetForEntity(targetType)
+	if err != nil {
+		return nil, err
 	}
+	_, err = updater.UpdateAdditionalAttrs(ctx, targetID, accountID, str)
 	if err != nil {
 		return nil, err
 	}
