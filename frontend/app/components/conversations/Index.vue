@@ -308,7 +308,7 @@ const filtersBundle = computed(() => ({
     v-model:active-tab="filters.activeTab.value"
     :filters="filtersBundle"
     :displayed-list="filters.displayedList.value"
-    :loading="convs.isLoading"
+    :is-loading="convs.isLoading"
     @open-advanced-filter="filters.openAdvancedFilter"
     @clear-advanced-filter="filters.clearAdvancedFilter"
     @edit-active-filter="filters.editActiveFilter"

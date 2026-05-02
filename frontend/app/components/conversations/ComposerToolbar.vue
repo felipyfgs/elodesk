@@ -24,7 +24,7 @@ type RichEditor = {
 
 // Espelha o type AttachKind do Composer.vue — fonte autoritativa lá. Mantemos
 // um literal aqui pra evitar import circular do componente filho-pai.
-type AttachKind = 'all' | 'document' | 'media' | 'camera'
+type AttachKind = 'all' | 'document' | 'media' | 'camera' | 'audio'
 
 const props = defineProps<{
   richEditor: RichEditor | null

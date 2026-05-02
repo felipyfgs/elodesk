@@ -359,17 +359,17 @@ async function send() {
 async function uploadFile(rawFile: File, opts?: { isRecordedAudio?: boolean }) {
   const file = normalizeFile(rawFile)
   const id = crypto.randomUUID()
-  attachments.value.push({ id, file, upisLoading: true, isRecordedAudio: opts?.isRecordedAudio })
+  attachments.value.push({ id, file, uploading: true, isRecordedAudio: opts?.isRecordedAudio })
   try {
     const form = new FormData()
     form.append('file', file, file.name)
     const res = await api<{ path: string }>(`/accounts/${auth.account!.id}/uploads`, { method: 'POST', body: form })
     const idx = attachments.value.findIndex(a => a.id === id)
-    if (idx >= 0) Object.assign(attachments.value[idx]!, { url: res.path, upisLoading: false })
+    if (idx >= 0) Object.assign(attachments.value[idx]!, { url: res.path, uploading: false })
   } catch (err) {
     console.error('[Composer] upload failed', err)
     const idx = attachments.value.findIndex(a => a.id === id)
-    if (idx >= 0) Object.assign(attachments.value[idx]!, { upisLoading: false, error: 'Upload failed' })
+    if (idx >= 0) Object.assign(attachments.value[idx]!, { uploading: false, error: 'Upload failed' })
   }
 }
 

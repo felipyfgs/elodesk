@@ -19,7 +19,7 @@ import { resolveAttachmentMediaUrl } from '~/utils/attachmentMediaUrl'
  */
 export function useAttachmentSrc(
   att: MessageAttachment,
-  _accountId?: string | number,
+  _accountId?: string | number
 ) {
   const src = computed<string | null>(() => resolveAttachmentMediaUrl(att))
   const isLoading = ref(false)

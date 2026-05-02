@@ -85,7 +85,7 @@ export function useConversationFilters(loadFn: () => Promise<void>) {
       clearAdvancedFilter()
       return
     }
-    advancedQuery.value = filter.query
+    advancedQuery.value = filter.query ? JSON.parse(filter.query) as FilterQueryPayload : null
     activeSavedFilter.value = filter
     editingFilterId.value = filter.id
     void loadFn()

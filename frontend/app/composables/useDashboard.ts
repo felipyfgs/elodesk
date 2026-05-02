@@ -30,7 +30,9 @@ const _useDashboard = () => {
     const path = accountPath(`/${section}`)
     return route.path === path || route.path.startsWith(`${path}/`)
   }
-  const closeSidebar = () => { isSidebarOpen.value = false }
+  const closeSidebar = () => {
+    isSidebarOpen.value = false
+  }
 
   // Pre-warm caches used across the dashboard (sidebar tree, filter pickers,
   // label managers, etc.). Each store is fed once when the account resolves.

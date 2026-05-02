@@ -102,10 +102,13 @@ function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   // Release the guard after the scroll settles. For 'auto' (instant) a
   // single rAF suffices; for 'smooth' we give the animation time to finish.
   const releaseMs = behavior === 'auto' ? 0 : 400
+  const release = () => {
+    programmaticScroll.value = false
+  }
   if (releaseMs === 0) {
-    requestAnimationFrame(() => { programmaticScroll.value = false })
+    requestAnimationFrame(release)
   } else {
-    setTimeout(() => { programmaticScroll.value = false }, releaseMs)
+    setTimeout(release, releaseMs)
   }
 }
 
@@ -144,7 +147,7 @@ watch(
   (len) => {
     if (len > 0) doInitialScroll()
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 onMounted(() => {
