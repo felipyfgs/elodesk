@@ -10,19 +10,19 @@ type TwitterAuthorizeResp struct {
 
 type UpdateTwitterInboxReq struct {
 	Name          string `json:"name,omitempty"`
-	TweetsEnabled *bool  `stweets_enabledomitempty"`
+	TweetsEnabled *bool  `json:"tweets_enabled,omitempty"`
 }
 
 // TwitterChannelResp is the safe view of a channels_twitter record. Tokens
 // are never exposed.
 type TwitterChannelResp struct {
 	ID             int64     `json:"id"`
-	ProfileID      string    `eprofile_id`
-	ScreenName     *string   `nscreen_nameomitempty"`
-	TweetsEnabled  bool      `stweets_enabled`
-	RequiresReauth bool      `srequires_reauth`
-	CreatedAt      time.Time `dcreated_at`
-	UpdatedAt      time.Time `dupdated_at`
+	ProfileID      string    `json:"profile_id"`
+	ScreenName     *string   `json:"screen_name,omitempty"`
+	TweetsEnabled  bool      `json:"tweets_enabled"`
+	RequiresReauth bool      `json:"requires_reauth"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type TwitterInboxResp struct {

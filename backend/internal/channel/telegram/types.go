@@ -208,6 +208,6 @@ type SetWebhookRequest struct {
 
 type ButtonDef struct {
 	Text         string `json:"text"`
-	CallbackData string `kcallback_dataomitempty"`
+	CallbackData string `json:"callbackData,omitempty"`
 	URL          string `json:"url,omitempty"`
 }

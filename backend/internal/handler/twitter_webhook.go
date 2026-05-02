@@ -296,6 +296,7 @@ func (h *TwitterHandler) Receive(c *fiber.Ctx) error {
 //	@Success		200	{object}	dto.APIResponse
 //	@Failure		404	{object}	dto.APIError
 //	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twitter [delete]
+//
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twitter.
 func (h *TwitterHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)

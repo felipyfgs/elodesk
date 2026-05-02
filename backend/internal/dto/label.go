@@ -24,13 +24,13 @@ type ApplyLabelReq struct {
 
 type LabelResp struct {
 	ID            int64   `json:"id"`
-	AccountID     int64   `taccount_id`
+	AccountID     int64   `json:"account_id"`
 	Title         string  `json:"title"`
 	Color         string  `json:"color"`
 	Description   *string `json:"description,omitempty"`
-	ShowOnSidebar bool    `nshow_on_sidebar`
-	CreatedAt     string  `dcreated_at`
-	UpdatedAt     string  `dupdated_at`
+	ShowOnSidebar bool    `json:"show_on_sidebar"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 func LabelToResp(l *model.Label) LabelResp {

@@ -174,4 +174,3 @@ func (r *UserAccessTokenRepo) EnsureForUser(ctx context.Context, userID int64) (
 	// Create new token
 	return r.Create(ctx, "User", userID)
 }
-

@@ -66,7 +66,7 @@ func (h *WebhookHandler) Create(c *fiber.Ctx) error {
 		URL:           req.URL,
 		Subscriptions: string(req.Subscriptions),
 		Secret:        encryptedSecret,
-		Active:      true,
+		Active:        true,
 	}
 	if err := h.repo.Create(c.Context(), m); err != nil {
 		logger.Error().Str("component", "webhooks").Err(err).Msg("failed to create webhook")

@@ -36,17 +36,17 @@ type RemoveCustomAttributesReq struct {
 
 type CustomAttributeDefinitionResp struct {
 	ID                   int64   `json:"id"`
-	AccountID            int64   `taccount_id`
-	AttributeKey         string  `eattribute_key`
-	AttributeDisplayName string  `yattribute_display_name`
-	AttributeDisplayType string  `yattribute_display_type`
-	AttributeModel       string  `eattribute_model`
-	AttributeValues      *string `eattribute_valuesomitempty"`
-	AttributeDescription *string `eattribute_descriptionomitempty"`
-	RegexPattern         *string `xregex_patternomitempty"`
-	DefaultValue         *string `tdefault_valueomitempty"`
-	CreatedAt            string  `dcreated_at`
-	UpdatedAt            string  `dupdated_at`
+	AccountID            int64   `json:"account_id"`
+	AttributeKey         string  `json:"attribute_key"`
+	AttributeDisplayName string  `json:"attribute_display_name"`
+	AttributeDisplayType string  `json:"attribute_display_type"`
+	AttributeModel       string  `json:"attribute_model"`
+	AttributeValues      *string `json:"attribute_values,omitempty"`
+	AttributeDescription *string `json:"attribute_description,omitempty"`
+	RegexPattern         *string `json:"regex_pattern,omitempty"`
+	DefaultValue         *string `json:"default_value,omitempty"`
+	CreatedAt            string  `json:"created_at"`
+	UpdatedAt            string  `json:"updated_at"`
 }
 
 func CustomAttrDefToResp(d *model.CustomAttributeDefinition) CustomAttributeDefinitionResp {

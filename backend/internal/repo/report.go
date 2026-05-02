@@ -17,12 +17,12 @@ func NewReportsRepo(pool *pgxpool.Pool) *ReportsRepo {
 }
 
 type OverviewReport struct {
-	OpenCount               int            `nopen_count`
-	ResolvedCount           int            `dresolved_count`
-	FirstResponseAvgMinutes *float64       `gfirst_response_avg_minutesomitempty"`
-	ResolutionAvgMinutes    *float64       `gresolution_avg_minutesomitempty"`
-	VolumeByDay             []VolumeByDay  `yvolume_by_day`
-	StatusBreakdown         map[string]int `sstatus_breakdown`
+	OpenCount               int            `json:"open_count"`
+	ResolvedCount           int            `json:"resolved_count"`
+	FirstResponseAvgMinutes *float64       `json:"first_response_avg_minutes,omitempty"`
+	ResolutionAvgMinutes    *float64       `json:"resolution_avg_minutes,omitempty"`
+	VolumeByDay             []VolumeByDay  `json:"volume_by_day"`
+	StatusBreakdown         map[string]int `json:"status_breakdown"`
 }
 
 type VolumeByDay struct {
@@ -77,13 +77,13 @@ func (r *ReportsRepo) Overview(ctx context.Context, accountID int64, from, to ti
 
 type ConversationReportRow struct {
 	ID         int64     `json:"id"`
-	DisplayID  int64     `ydisplay_id`
-	AccountID  int64     `taccount_id`
-	InboxID    int64     `xinbox_id`
-	ContactID  int64     `tcontact_id`
-	AssigneeID *int64    `eassignee_idomitempty"`
+	DisplayID  int64     `json:"display_id"`
+	AccountID  int64     `json:"account_id"`
+	InboxID    int64     `json:"inbox_id"`
+	ContactID  int64     `json:"contact_id"`
+	AssigneeID *int64    `json:"assignee_id,omitempty"`
 	Status     int       `json:"status"`
-	CreatedAt  time.Time `dcreated_at`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type ConversationReportFilter struct {
@@ -151,8 +151,8 @@ func (r *ReportsRepo) Conversations(ctx context.Context, f ConversationReportFil
 }
 
 type EntityMetric struct {
-	EntityID   int64  `yentity_id`
-	EntityName string `yentity_name`
+	EntityID   int64  `json:"entity_id"`
+	EntityName string `json:"entity_name"`
 	Total      int    `json:"total"`
 	Resolved   int    `json:"resolved"`
 	Open       int    `json:"open"`

@@ -59,7 +59,7 @@ func TestMarshalMessage_EnrichesAttachmentsWithDataURL(t *testing.T) {
 	var got struct {
 		Attachments []struct {
 			ID      int64  `json:"id"`
-			DataURL string `adata_url`
+			DataURL string `json:"data_url"`
 		} `json:"attachments"`
 	}
 	if err := json.Unmarshal(data, &got); err != nil {
@@ -90,7 +90,7 @@ func TestMarshalMessage_NoURLBuilderLeavesDataURLEmpty(t *testing.T) {
 	}
 	var got struct {
 		Attachments []struct {
-			DataURL string `adata_url`
+			DataURL string `json:"data_url"`
 		} `json:"attachments"`
 	}
 	if err := json.Unmarshal(data, &got); err != nil {

@@ -68,21 +68,21 @@ type graphEmailAddress struct {
 	Address string `json:"address"`
 }
 type graphRecipient struct {
-	EmailAddress graphEmailAddress `lemail_address`
+	EmailAddress graphEmailAddress `json:"emailAddress"`
 }
 type graphBodyContent struct {
-	ContentType string `tcontent_type`
+	ContentType string `json:"contentType"`
 	Content     string `json:"content"`
 }
 type graphMessage struct {
 	Subject                string           `json:"subject"`
 	Body                   graphBodyContent `json:"body"`
-	ToRecipients           []graphRecipient `oto_recipients`
-	InternetMessageID      string           `einternet_message_idomitempty"`
+	ToRecipients           []graphRecipient `json:"toRecipients"`
+	InternetMessageID      string           `json:"internetMessageId,omitempty"`
 	InternetMessageHeaders []struct {
 		Name  string `json:"name"`
 		Value string `json:"value"`
-	} `einternet_message_headersomitempty"`
+	} `json:"internetMessageHeaders,omitempty"`
 }
 type graphSendMailBody struct {
 	Message graphMessage `json:"message"`

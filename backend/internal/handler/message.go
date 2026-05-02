@@ -458,7 +458,7 @@ func (h *MessageHandler) UpdatePublic(c *fiber.Ctx) error {
 	var req struct {
 		SubmittedValues struct {
 			CSATSurveyResponse struct {
-				Rating         int     `json:"rating"`
+				Rating          int     `json:"rating"`
 				FeedbackMessage *string `json:"feedback_message"`
 			} `json:"csat_survey_response"`
 		} `json:"submitted_values"`
@@ -486,7 +486,7 @@ func (h *MessageHandler) UpdatePublic(c *fiber.Ctx) error {
 	attrs := map[string]any{
 		"submitted_values": map[string]any{
 			"csat_survey_response": map[string]any{
-				"rating":          req.SubmittedValues.CSATSurveyResponse.Rating,
+				"rating":           req.SubmittedValues.CSATSurveyResponse.Rating,
 				"feedback_message": req.SubmittedValues.CSATSurveyResponse.FeedbackMessage,
 			},
 		},

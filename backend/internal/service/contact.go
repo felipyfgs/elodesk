@@ -357,12 +357,12 @@ func (s *ContactService) emitAudit(ctx context.Context, accountID int64, userID 
 }
 
 type ContactIdentifyParams struct {
-	Identifier         *string
-	Email              *string
-	PhoneNumber        *string
-	CustomAttributes   map[string]any
+	Identifier           *string
+	Email                *string
+	PhoneNumber          *string
+	CustomAttributes     map[string]any
 	AdditionalAttributes map[string]any
-	AvatarURL          *string
+	AvatarURL            *string
 }
 
 func (s *ContactService) Identify(ctx context.Context, accountID int64, target *model.Contact, params ContactIdentifyParams) (*model.Contact, error) {
@@ -471,11 +471,11 @@ func (s *ContactService) Identify(ctx context.Context, accountID int64, target *
 }
 
 type ContactCreateAttrs struct {
-	Name                 string
-	Email                *string
-	PhoneNumber          *string
-	Identifier           *string
-	AvatarURL            *string
+	Name        string
+	Email       *string
+	PhoneNumber *string
+	Identifier  *string
+	AvatarURL   *string
 	// AdditionalAttrs is the raw JSON object as a string (matches the persisted
 	// shape on contacts.additional_attributes). When the caller passes a
 	// non-empty value, it is set on the contact at creation time and merged on

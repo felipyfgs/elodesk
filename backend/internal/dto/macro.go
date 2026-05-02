@@ -22,14 +22,14 @@ type UpdateMacroReq struct {
 
 type MacroResp struct {
 	ID         int64           `json:"id"`
-	AccountID  int64           `taccount_id`
+	AccountID  int64           `json:"account_id"`
 	Name       string          `json:"name"`
 	Visibility string          `json:"visibility"`
 	Conditions json.RawMessage `json:"conditions"`
 	Actions    json.RawMessage `json:"actions"`
-	CreatedBy  int64           `dcreated_by`
-	CreatedAt  string          `dcreated_at`
-	UpdatedAt  string          `dupdated_at`
+	CreatedBy  int64           `json:"created_by"`
+	CreatedAt  string          `json:"created_at"`
+	UpdatedAt  string          `json:"updated_at"`
 }
 
 func MacroToResp(m *model.Macro) MacroResp {

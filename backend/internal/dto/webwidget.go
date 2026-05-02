@@ -4,30 +4,30 @@ import "time"
 
 type CreateWebWidgetInboxReq struct {
 	Name           string  `json:"name" validate:"required"`
-	WebsiteURL     string  `ewebsite_url validate:"required"`
-	WidgetColor    *string `twidget_coloromitempty"`
-	WelcomeTitle   *string `ewelcome_titleomitempty"`
-	WelcomeTagline *string `ewelcome_taglineomitempty"`
-	ReplyTime      *string `yreply_timeomitempty"`
-	FeatureFlags   *string `efeature_flagsomitempty"`
+	WebsiteURL     string  `json:"website_url" validate:"required"`
+	WidgetColor    *string `json:"widget_color,omitempty"`
+	WelcomeTitle   *string `json:"welcome_title,omitempty"`
+	WelcomeTagline *string `json:"welcome_tagline,omitempty"`
+	ReplyTime      *string `json:"reply_time,omitempty"`
+	FeatureFlags   *string `json:"feature_flags,omitempty"`
 }
 
 type WebWidgetChannelResp struct {
 	ID             int64     `json:"id"`
-	WebsiteToken   string    `ewebsite_token`
-	WebsiteURL     string    `ewebsite_url`
-	WidgetColor    string    `twidget_color`
-	WelcomeTitle   string    `ewelcome_title`
-	WelcomeTagline string    `ewelcome_tagline`
-	ReplyTime      string    `yreply_time`
-	FeatureFlags   string    `efeature_flagsomitempty"`
-	EmbedScript    string    `dembed_script`
-	CreatedAt      time.Time `dcreated_at`
-	UpdatedAt      time.Time `dupdated_at`
+	WebsiteToken   string    `json:"website_token"`
+	WebsiteURL     string    `json:"website_url"`
+	WidgetColor    string    `json:"widget_color"`
+	WelcomeTitle   string    `json:"welcome_title"`
+	WelcomeTagline string    `json:"welcome_tagline"`
+	ReplyTime      string    `json:"reply_time"`
+	FeatureFlags   string    `json:"feature_flags,omitempty"`
+	EmbedScript    string    `json:"embed_script"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type RotateHMACResp struct {
-	HMACToken string `chmac_token`
+	HMACToken string `json:"hmac_token"`
 }
 
 type WebWidgetInboxResp struct {

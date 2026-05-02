@@ -13,9 +13,9 @@ import (
 )
 
 type MinioClient struct {
-	client       *minio.Client
+	client        *minio.Client
 	presignClient *minio.Client
-	bucket       string
+	bucket        string
 }
 
 func New(endpoint, port string, useSSL bool, accessKey, secretKey, bucket string) (*MinioClient, error) {

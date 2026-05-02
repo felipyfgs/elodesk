@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	ErrContactNotFound    = errors.New("contact not found")
-	ErrSameContactMerge   = errors.New("cannot merge contact with itself")
+	ErrContactNotFound  = errors.New("contact not found")
+	ErrSameContactMerge = errors.New("cannot merge contact with itself")
 )
 
 const contactSelectColumns = "id, account_id, name, email, phone_number, phone_e164, identifier, additional_attributes, avatar_url, avatar_hash, blocked, last_activity_at, created_at, updated_at"

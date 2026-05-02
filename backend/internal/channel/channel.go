@@ -32,22 +32,22 @@ type InboundRequest struct {
 }
 
 type InboundMessage struct {
-	SourceID     string          `esource_id`
+	SourceID     string          `json:"source_id"`
 	From         string          `json:"from"`
 	To           string          `json:"to"`
 	Content      string          `json:"content,omitempty"`
-	MediaURL     string          `amedia_urlomitempty"`
-	MediaType    string          `amedia_typeomitempty"`
+	MediaURL     string          `json:"media_url,omitempty"`
+	MediaType    string          `json:"media_type,omitempty"`
 	Timestamp    int64           `json:"timestamp"`
-	IsEcho       bool            `sis_echo`
-	ExternalEcho bool            `lexternal_echoomitempty"`
+	IsEcho       bool            `json:"is_echo"`
+	ExternalEcho bool            `json:"external_echo,omitempty"`
 	Raw          json.RawMessage `json:"raw,omitempty"`
 }
 
 type StatusUpdate struct {
-	SourceID      string `esource_id`
+	SourceID      string `json:"source_id"`
 	Status        string `json:"status"`
-	ExternalError string `lexternal_erroromitempty"`
+	ExternalError string `json:"external_error,omitempty"`
 }
 
 type InboundResult struct {
@@ -56,14 +56,14 @@ type InboundResult struct {
 }
 
 type OutboundMessage struct {
-	ChannelID          int64  `lchannel_id`
+	ChannelID          int64  `json:"channel_id"`
 	To                 string `json:"to"`
 	Content            string `json:"content,omitempty"`
-	MediaURL           string `amedia_urlomitempty"`
-	MediaType          string `amedia_typeomitempty"`
-	TemplateName       string `etemplate_nameomitempty"`
-	TemplateLang       string `etemplate_langomitempty"`
-	TemplateComponents string `etemplate_componentsomitempty"`
+	MediaURL           string `json:"media_url,omitempty"`
+	MediaType          string `json:"media_type,omitempty"`
+	TemplateName       string `json:"template_name,omitempty"`
+	TemplateLang       string `json:"template_lang,omitempty"`
+	TemplateComponents string `json:"template_components,omitempty"`
 }
 
 type Template struct {

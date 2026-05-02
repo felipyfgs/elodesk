@@ -18,11 +18,11 @@ const supportedEventKey = "direct_message_events"
 // Activity webhooks. The fields are intentionally a subset — we only model
 // what the DM ingest path consumes.
 type WebhookPayload struct {
-	ForUserID            string                 `json:"for_user_id,omitempty"`
-	DirectMessageEvents  []DirectMessageEvent   `json:"direct_message_events,omitempty"`
-	TweetCreateEvents    []map[string]any       `json:"tweet_create_events,omitempty"`
-	Users                map[string]TwitterUser `json:"users,omitempty"`
-	Apps                 map[string]any         `json:"apps,omitempty"`
+	ForUserID           string                 `json:"for_user_id,omitempty"`
+	DirectMessageEvents []DirectMessageEvent   `json:"direct_message_events,omitempty"`
+	TweetCreateEvents   []map[string]any       `json:"tweet_create_events,omitempty"`
+	Users               map[string]TwitterUser `json:"users,omitempty"`
+	Apps                map[string]any         `json:"apps,omitempty"`
 }
 
 // DirectMessageEvent is the per-message envelope inside a webhook payload.

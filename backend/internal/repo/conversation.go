@@ -432,29 +432,29 @@ func scanConversationHydrated(scanner conversationScanner, h *ConversationHydrat
 	c := &h.Contact
 	i := &h.Inbox
 	var (
-		uID                                                  *int64
-		uEmail, uName                                        *string
-		uAvatarURL                                           *string
-		uMFAEnabled                                          *bool
-		uCreatedAt, uUpdatedAt                               *time.Time
-		tID, tAccountID                                      *int64
-		tName                                                *string
-		tDescription                                         *string
-		tAllowAutoAssign                                     *bool
-		tCreatedAt, tUpdatedAt                               *time.Time
-		lmID                                                 *int64
-		lmAccountID, lmInboxID, lmConversationID             *int64
-		lmMessageType                                        *model.MessageType
-		lmContentType                                        *model.MessageContentType
-		lmContent, lmSourceID                                *string
-		lmPrivate                                            *bool
-		lmStatus                                             *model.MessageStatus
-		lmContentAttrs                                       *string
-		lmSenderType                                         *string
-		lmSenderID, lmSenderContactID                        *int64
-		lmExternalSourceIDs                                  *string
-		lmCreatedAt, lmUpdatedAt                             *time.Time
-		lmDeletedAt                                          *time.Time
+		uID                                      *int64
+		uEmail, uName                            *string
+		uAvatarURL                               *string
+		uMFAEnabled                              *bool
+		uCreatedAt, uUpdatedAt                   *time.Time
+		tID, tAccountID                          *int64
+		tName                                    *string
+		tDescription                             *string
+		tAllowAutoAssign                         *bool
+		tCreatedAt, tUpdatedAt                   *time.Time
+		lmID                                     *int64
+		lmAccountID, lmInboxID, lmConversationID *int64
+		lmMessageType                            *model.MessageType
+		lmContentType                            *model.MessageContentType
+		lmContent, lmSourceID                    *string
+		lmPrivate                                *bool
+		lmStatus                                 *model.MessageStatus
+		lmContentAttrs                           *string
+		lmSenderType                             *string
+		lmSenderID, lmSenderContactID            *int64
+		lmExternalSourceIDs                      *string
+		lmCreatedAt, lmUpdatedAt                 *time.Time
+		lmDeletedAt                              *time.Time
 	)
 	if err := scanner.Scan(
 		&cv.ID, &cv.AccountID, &cv.InboxID, &cv.Status, &cv.AssigneeID, &cv.TeamID,
@@ -541,9 +541,24 @@ func (r *ConversationRepo) FindByIDFull(ctx context.Context, accountID, id int64
 	return &h, nil
 }
 
-func derefStr(p *string) string  { if p != nil { return *p }; return "" }
-func derefBool(p *bool) bool     { if p != nil { return *p }; return false }
-func derefInt64(p *int64) int64  { if p != nil { return *p }; return 0 }
+func derefStr(p *string) string {
+	if p != nil {
+		return *p
+	}
+	return ""
+}
+func derefBool(p *bool) bool {
+	if p != nil {
+		return *p
+	}
+	return false
+}
+func derefInt64(p *int64) int64 {
+	if p != nil {
+		return *p
+	}
+	return 0
+}
 func derefTime(p *time.Time) time.Time {
 	if p != nil {
 		return *p

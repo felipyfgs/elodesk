@@ -16,10 +16,10 @@ import (
 )
 
 type SavedFilterHandler struct {
-	svc          *service.SavedFilterService
-	defRepo      *repo.CustomAttributeDefinitionRepo
+	svc           *service.SavedFilterService
+	defRepo       *repo.CustomAttributeDefinitionRepo
 	conversations *repo.ConversationRepo
-	pool         *pgxpool.Pool
+	pool          *pgxpool.Pool
 }
 
 func NewSavedFilterHandler(svc *service.SavedFilterService, defRepo *repo.CustomAttributeDefinitionRepo, conversations *repo.ConversationRepo, pool *pgxpool.Pool) *SavedFilterHandler {

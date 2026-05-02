@@ -241,15 +241,15 @@ type zenviaContent struct {
 }
 
 type zenviaPayload struct {
-	MediaURL  string `amedia_url`
-	MediaType string `amedia_typeomitempty"`
+	MediaURL  string `json:"mediaUrl"`
+	MediaType string `json:"mediaType,omitempty"`
 }
 
 type zenviaSendRequest struct {
 	From            string          `json:"from"`
 	To              string          `json:"to"`
 	Contents        []zenviaContent `json:"contents"`
-	NotificationURL string          `nnotification_urlomitempty"`
+	NotificationURL string          `json:"notificationUrl,omitempty"`
 }
 
 type zenviaSendResponse struct {
@@ -257,8 +257,8 @@ type zenviaSendResponse struct {
 }
 
 type zenviaStatus struct {
-	MessageID     string              `emessage_id`
-	MessageStatus zenviaMessageStatus `emessage_status`
+	MessageID     string              `json:"messageId"`
+	MessageStatus zenviaMessageStatus `json:"messageStatus"`
 }
 
 type zenviaMessageStatus struct {

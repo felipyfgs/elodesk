@@ -20,13 +20,13 @@ type UpdateAgentReq struct {
 
 type AgentResp struct {
 	ID         int64   `json:"id"`
-	UserID     int64   `ruser_id`
+	UserID     int64   `json:"user_id"`
 	Name       string  `json:"name"`
 	Email      string  `json:"email"`
 	Role       int     `json:"role"`
 	Status     string  `json:"status"`
-	LastActive *string `tlast_activeomitempty"`
-	CreatedAt  string  `dcreated_at`
+	LastActive *string `json:"last_active,omitempty"`
+	CreatedAt  string  `json:"created_at"`
 }
 
 type InvitationResp struct {

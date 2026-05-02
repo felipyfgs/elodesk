@@ -26,12 +26,12 @@ type RemoveTeamMembersReq struct {
 
 type TeamResp struct {
 	ID              int64   `json:"id"`
-	AccountID       int64   `taccount_id`
+	AccountID       int64   `json:"account_id"`
 	Name            string  `json:"name"`
 	Description     *string `json:"description,omitempty"`
-	AllowAutoAssign bool    `oallow_auto_assign`
-	CreatedAt       string  `dcreated_at`
-	UpdatedAt       string  `dupdated_at`
+	AllowAutoAssign bool    `json:"allow_auto_assign"`
+	CreatedAt       string  `json:"created_at"`
+	UpdatedAt       string  `json:"updated_at"`
 }
 
 func TeamToResp(t *model.Team) TeamResp {

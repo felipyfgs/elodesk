@@ -35,9 +35,9 @@ type pgxNullableTimeMarker = any
 // contact row hydrated, so handler can build ParticipantResp without a
 // follow-up query.
 type ParticipantWithContact struct {
-	ID        int64
-	Role      string
-	Contact   model.Contact
+	ID      int64
+	Role    string
+	Contact model.Contact
 }
 
 const participantSelectColumns = "id, account_id, conversation_id, contact_id, role, created_at, updated_at"

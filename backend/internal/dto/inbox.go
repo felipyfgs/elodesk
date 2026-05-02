@@ -4,25 +4,25 @@ import "time"
 
 type CreateInboxReq struct {
 	Name                 string         `json:"name" validate:"required"`
-	WebhookURL           string         `kwebhook_urlomitempty"`
-	HMACMandatory        bool           `chmac_mandatoryomitempty"`
-	AdditionalAttributes map[string]any `ladditional_attributesomitempty"`
+	WebhookURL           string         `json:"webhook_url,omitempty"`
+	HMACMandatory        bool           `json:"hmac_mandatory,omitempty"`
+	AdditionalAttributes map[string]any `json:"additional_attributes,omitempty"`
 }
 
 type InboxResp struct {
 	ID          int64     `json:"id"`
-	AccountID   int64     `taccount_id`
-	ChannelID   int64     `lchannel_id`
+	AccountID   int64     `json:"account_id"`
+	ChannelID   int64     `json:"channel_id"`
 	Name        string    `json:"name"`
-	ChannelType string    `lchannel_type`
-	CreatedAt   time.Time `dcreated_at`
+	ChannelType string    `json:"channel_type"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type CreateInboxResp struct {
 	InboxResp
 	Identifier string `json:"identifier"`
-	APIToken   string `iapi_token`
-	HMACToken  string `chmac_token`
+	APIToken   string `json:"api_token"`
+	HMACToken  string `json:"hmac_token"`
 	Secret     string `json:"secret"`
 }
 
@@ -32,39 +32,39 @@ type CreateInboxResp struct {
 type ChannelAPIResp struct {
 	ID                   int64          `json:"id"`
 	Identifier           string         `json:"identifier"`
-	WebhookURL           string         `kwebhook_urlomitempty"`
-	HMACMandatory        bool           `chmac_mandatory`
-	AdditionalAttributes map[string]any `ladditional_attributesomitempty"`
-	CreatedAt            time.Time      `dcreated_at`
-	UpdatedAt            time.Time      `dupdated_at`
+	WebhookURL           string         `json:"webhook_url,omitempty"`
+	HMACMandatory        bool           `json:"hmac_mandatory"`
+	AdditionalAttributes map[string]any `json:"additional_attributes,omitempty"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
 // UpdateChannelAPIReq is the whitelist accepted by PUT /inboxes/:id for
 // Channel::Api. The `name` here mirrors the shared UpdateInboxReq behavior.
 type UpdateChannelAPIReq struct {
 	Name                 string         `json:"name,omitempty"`
-	WebhookURL           string         `kwebhook_urlomitempty"`
-	HMACMandatory        bool           `chmac_mandatoryomitempty"`
-	AdditionalAttributes map[string]any `ladditional_attributesomitempty"`
+	WebhookURL           string         `json:"webhook_url,omitempty"`
+	HMACMandatory        bool           `json:"hmac_mandatory,omitempty"`
+	AdditionalAttributes map[string]any `json:"additional_attributes,omitempty"`
 }
 
 // RotateAPITokenResp is the response of POST /inboxes/:id/rotate_token.
 // APIToken is the plaintext — returned ONCE, never again.
 type RotateAPITokenResp struct {
 	Identifier string `json:"identifier"`
-	APIToken   string `iapi_token`
+	APIToken   string `json:"api_token"`
 	Secret     string `json:"secret"`
 }
 
 type InboxAgentResp struct {
 	ID        int64     `json:"id"`
-	InboxID   int64     `xinbox_id`
-	UserID    int64     `ruser_id`
-	CreatedAt time.Time `dcreated_at`
+	InboxID   int64     `json:"inbox_id"`
+	UserID    int64     `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type SetInboxAgentsReq struct {
-	UserIDs []int64 `ruser_ids`
+	UserIDs []int64 `json:"user_ids"`
 }
 
 type UpdateInboxReq struct {
@@ -73,18 +73,18 @@ type UpdateInboxReq struct {
 
 type BusinessHoursSlot struct {
 	Enabled     bool `json:"enabled"`
-	OpenHour    int  `nopen_hour`
-	OpenMinute  int  `nopen_minute`
-	CloseHour   int  `eclose_hour`
-	CloseMinute int  `eclose_minute`
+	OpenHour    int  `json:"open_hour"`
+	OpenMinute  int  `json:"open_minute"`
+	CloseHour   int  `json:"close_hour"`
+	CloseMinute int  `json:"close_minute"`
 }
 
 type InboxBusinessHoursResp struct {
-	InboxID   int64                        `xinbox_id`
+	InboxID   int64                        `json:"inbox_id"`
 	Timezone  string                       `json:"timezone"`
 	Schedule  map[string]BusinessHoursSlot `json:"schedule"`
-	CreatedAt *time.Time                   `dcreated_atomitempty"`
-	UpdatedAt *time.Time                   `dupdated_atomitempty"`
+	CreatedAt *time.Time                   `json:"created_at,omitempty"`
+	UpdatedAt *time.Time                   `json:"updated_at,omitempty"`
 }
 
 type UpdateInboxBusinessHoursReq struct {

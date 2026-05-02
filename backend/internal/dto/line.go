@@ -4,25 +4,25 @@ import "time"
 
 type CreateLineInboxReq struct {
 	Name              string `json:"name"              validate:"required"`
-	LineChannelID     string `lline_channel_id     validate:"required"`
-	LineChannelSecret string `lline_channel_secret validate:"required"`
-	LineChannelToken  string `lline_channel_token  validate:"required"`
+	LineChannelID     string `json:"line_channel_id"     validate:"required"`
+	LineChannelSecret string `json:"line_channel_secret" validate:"required"`
+	LineChannelToken  string `json:"line_channel_token"  validate:"required"`
 }
 
 type UpdateLineInboxReq struct {
 	Name              string `json:"name,omitempty"`
-	LineChannelSecret string `lline_channel_secretomitempty"`
-	LineChannelToken  string `lline_channel_tokenomitempty"`
+	LineChannelSecret string `json:"line_channel_secret,omitempty"`
+	LineChannelToken  string `json:"line_channel_token,omitempty"`
 }
 
 type LineChannelResp struct {
 	ID             int64     `json:"id"`
-	LineChannelID  string    `lline_channel_id`
-	BotBasicID     *string   `cbot_basic_idomitempty"`
-	BotDisplayName *string   `ybot_display_nameomitempty"`
-	RequiresReauth bool      `srequires_reauth`
-	CreatedAt      time.Time `dcreated_at`
-	UpdatedAt      time.Time `dupdated_at`
+	LineChannelID  string    `json:"line_channel_id"`
+	BotBasicID     *string   `json:"bot_basic_id,omitempty"`
+	BotDisplayName *string   `json:"bot_display_name,omitempty"`
+	RequiresReauth bool      `json:"requires_reauth"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type LineInboxResp struct {

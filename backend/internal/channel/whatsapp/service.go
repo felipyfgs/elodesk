@@ -24,23 +24,23 @@ const (
 )
 
 type WaSendPayload struct {
-	ChannelID          int64  `lchannel_id`
-	AccountID          int64  `taccount_id`
-	InboxID            int64  `xinbox_id`
-	ConversationID     int64  `nconversation_id`
-	MessageID          int64  `emessage_id`
+	ChannelID          int64  `json:"channel_id"`
+	AccountID          int64  `json:"account_id"`
+	InboxID            int64  `json:"inbox_id"`
+	ConversationID     int64  `json:"conversation_id"`
+	MessageID          int64  `json:"message_id"`
 	To                 string `json:"to"`
 	Content            string `json:"content,omitempty"`
-	MediaURL           string `amedia_urlomitempty"`
-	MediaType          string `amedia_typeomitempty"`
-	TemplateName       string `etemplate_nameomitempty"`
-	TemplateLang       string `etemplate_langomitempty"`
-	TemplateComponents string `etemplate_componentsomitempty"`
-	APIKeyCiphertext   string `yapi_key_ciphertext`
-	PhoneNumberID      string `rphone_number_idomitempty"`
-	BusinessAccountID  string `tbusiness_account_idomitempty"`
+	MediaURL           string `json:"media_url,omitempty"`
+	MediaType          string `json:"media_type,omitempty"`
+	TemplateName       string `json:"template_name,omitempty"`
+	TemplateLang       string `json:"template_lang,omitempty"`
+	TemplateComponents string `json:"template_components,omitempty"`
+	APIKeyCiphertext   string `json:"api_key_ciphertext"`
+	PhoneNumberID      string `json:"phone_number_id,omitempty"`
+	BusinessAccountID  string `json:"business_account_id,omitempty"`
 	Provider           string `json:"provider"`
-	DeliveryID         string `ydelivery_id`
+	DeliveryID         string `json:"delivery_id"`
 }
 
 type Service struct {

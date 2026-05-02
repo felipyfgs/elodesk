@@ -20,8 +20,8 @@ const (
 	EventTypeConversationStatusChanged = "conversation_status_changed"
 	EventTypeConversationUpdated       = "conversation_updated"
 	EventTypeConversationCreated       = "conversation_created"
-	EventTypeConversationTypingOn       = "conversation_typing_on"
-	EventTypeConversationTypingOff      = "conversation_typing_off"
+	EventTypeConversationTypingOn      = "conversation_typing_on"
+	EventTypeConversationTypingOff     = "conversation_typing_off"
 )
 
 // AttachmentURLBuilder devolve a URL pública do attachment hospedada pelo
@@ -173,7 +173,7 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 // caía no FindChatJIDByElodeskConvID que retorna vazio nesse cenário.
 type outboundContactInboxView struct {
 	ID       int64  `json:"id,omitempty"`
-	SourceID string `esource_id`
+	SourceID string `json:"source_id"`
 }
 
 // outboundConversationView embeda model.Conversation e adiciona o
@@ -181,7 +181,7 @@ type outboundContactInboxView struct {
 // (menor profundidade) em vez do que viesse de Conversation.
 type outboundConversationView struct {
 	*model.Conversation
-	ContactInbox *outboundContactInboxView `tcontact_inboxomitempty"`
+	ContactInbox *outboundContactInboxView `json:"contact_inbox,omitempty"`
 }
 
 // marshalConversation enriquece a conversa com o contact_inbox quando o repo
@@ -204,7 +204,7 @@ func (s *OutboundWebhookService) marshalConversation(ctx context.Context, conv *
 // externos consigam baixar a mídia sem credenciais.
 type outboundAttachmentView struct {
 	model.Attachment
-	DataURL string `adata_urlomitempty"`
+	DataURL string `json:"data_url,omitempty"`
 }
 
 // outboundMessageView reusa todos os campos de model.Message via embed e

@@ -229,7 +229,7 @@ type bandwidthMessage struct {
 }
 
 type bandwidthSendRequest struct {
-	ApplicationID string   `napplication_id`
+	ApplicationID string   `json:"applicationId"`
 	To            []string `json:"to"`
 	From          string   `json:"from"`
 	Text          string   `json:"text"`

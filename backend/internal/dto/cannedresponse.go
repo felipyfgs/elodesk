@@ -16,11 +16,11 @@ type UpdateCannedResponseReq struct {
 
 type CannedResponseResp struct {
 	ID        int64  `json:"id"`
-	AccountID int64  `taccount_id`
-	ShortCode string `tshort_code`
+	AccountID int64  `json:"account_id"`
+	ShortCode string `json:"short_code"`
 	Content   string `json:"content"`
-	CreatedAt string `dcreated_at`
-	UpdatedAt string `dupdated_at`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 func CannedResponseToResp(c *model.CannedResponse) CannedResponseResp {

@@ -3,12 +3,12 @@ package webwidget
 import "encoding/json"
 
 type WidgetConfig struct {
-	WebsiteURL     string          `ewebsite_url`
-	WidgetColor    string          `twidget_color`
-	WelcomeTitle   string          `ewelcome_title`
-	WelcomeTagline string          `ewelcome_tagline`
-	ReplyTime      string          `yreply_time`
-	FeatureFlags   json.RawMessage `efeature_flags`
+	WebsiteURL     string          `json:"websiteUrl"`
+	WidgetColor    string          `json:"widgetColor"`
+	WelcomeTitle   string          `json:"welcomeTitle"`
+	WelcomeTagline string          `json:"welcomeTagline"`
+	ReplyTime      string          `json:"replyTime"`
+	FeatureFlags   json.RawMessage `json:"featureFlags"`
 }
 
 type FeatureFlags struct {
@@ -20,7 +20,7 @@ type FeatureFlags struct {
 
 type InboundMessage struct {
 	Content       string  `json:"content"`
-	AttachmentIDs []int64 `tattachment_idsomitempty"`
+	AttachmentIDs []int64 `json:"attachmentIds,omitempty"`
 }
 
 type OutboundEvent struct {
@@ -29,10 +29,10 @@ type OutboundEvent struct {
 }
 
 type SessionResult struct {
-	ContactID         int64  `tcontact_id`
-	ContactIdentifier string `tcontact_identifier`
-	ConversationID    int64  `nconversation_id`
-	PubsubToken       string `bpubsub_token`
+	ContactID         int64  `json:"contactId"`
+	ContactIdentifier string `json:"contactIdentifier"`
+	ConversationID    int64  `json:"conversationId"`
+	PubsubToken       string `json:"pubsubToken"`
 	JWT               string `json:"jwt"`
 }
 
@@ -40,12 +40,12 @@ type IdentifyRequest struct {
 	Identifier     string  `json:"identifier"`
 	Email          *string `json:"email,omitempty"`
 	Name           *string `json:"name,omitempty"`
-	IdentifierHash string  `ridentifier_hashomitempty"`
+	IdentifierHash string  `json:"identifierHash,omitempty"`
 }
 
 type IdentifyResult struct {
-	ContactID         int64  `tcontact_id`
-	ContactIdentifier string `tcontact_identifier`
+	ContactID         int64  `json:"contactId"`
+	ContactIdentifier string `json:"contactIdentifier"`
 	Verified          bool   `json:"verified"`
 	JWT               string `json:"jwt"`
 }

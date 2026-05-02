@@ -22,10 +22,10 @@ const (
 
 // MetaSendPayload is the asynq task payload for async Meta outbound sends.
 type MetaSendPayload struct {
-	ChannelType string `lchannel_type` // "instagram" or "facebook"
-	ChannelID   int64  `lchannel_id`
-	MessageID   int64  `emessage_id`
-	AccountID   int64  `taccount_id`
+	ChannelType string `json:"channel_type"` // "instagram" or "facebook"
+	ChannelID   int64  `json:"channel_id"`
+	MessageID   int64  `json:"message_id"`
+	AccountID   int64  `json:"account_id"`
 }
 
 // MetaSendRetryDelay implements the spec backoff schedule: 1s, 5s, 30s, 2m, 10m.

@@ -7,8 +7,8 @@ import (
 )
 
 type CreateMessageReq struct {
-	Content           string                `json:"message,omitempty"`
-	ContentType       *int                  `json:"content_type,omitempty"`
+	Content     string `json:"message,omitempty"`
+	ContentType *int   `json:"content_type,omitempty"`
 	// MessageType is accepted from channel-ingest callers (e.g. wzap) that
 	// already know whether a message is "incoming" or "outgoing" (mirrored
 	// from the channel's own from_me flag). Authenticated agent writes
@@ -43,28 +43,28 @@ type MessageSenderResp struct {
 // MessageResp mirrors Chatwoot's Message#push_event_data: snake_case keys,
 // epoch int64 timestamps, polymorphic sender embedded.
 type MessageResp struct {
-	ID                int64                        `json:"id"`
-	AccountID         int64                        `json:"account_id"`
-	InboxID           int64                        `json:"inbox_id"`
-	ConversationID    int64                        `json:"conversation_id"`
-	MessageType       model.MessageType            `json:"message_type"`
-	ContentType       model.MessageContentType     `json:"content_type"`
-	Content           *string                      `json:"content,omitempty"`
-	SourceID          *string                      `json:"source_id,omitempty"`
-	Private           bool                         `json:"private"`
-	Status            model.MessageStatus          `json:"status"`
-	ContentAttributes json.RawMessage              `json:"content_attributes,omitempty"`
-	Attachments       []AttachmentResp             `json:"attachments,omitempty"`
-	EchoID            *string                      `json:"echo_id,omitempty"`
+	ID                int64                    `json:"id"`
+	AccountID         int64                    `json:"account_id"`
+	InboxID           int64                    `json:"inbox_id"`
+	ConversationID    int64                    `json:"conversation_id"`
+	MessageType       model.MessageType        `json:"message_type"`
+	ContentType       model.MessageContentType `json:"content_type"`
+	Content           *string                  `json:"content,omitempty"`
+	SourceID          *string                  `json:"source_id,omitempty"`
+	Private           bool                     `json:"private"`
+	Status            model.MessageStatus      `json:"status"`
+	ContentAttributes json.RawMessage          `json:"content_attributes,omitempty"`
+	Attachments       []AttachmentResp         `json:"attachments,omitempty"`
+	EchoID            *string                  `json:"echo_id,omitempty"`
 	// SenderContactID is the per-message author contact in group conversations
 	// (where sender_id points to the chat-level contact). Echoed in writes and
 	// reads so callers can disambiguate the actual member who sent the message.
-	SenderContactID       *int64                       `json:"sender_contact_id,omitempty"`
-	Sender                *MessageSenderResp           `json:"sender,omitempty"`
-	Conversation          *ConversationSummaryEventDTO `json:"conversation,omitempty"`
-	ForwardedFromMessageID *int64                      `json:"forwarded_from_message_id,omitempty"`
-	CreatedAt             int64                        `json:"created_at"`
-	UpdatedAt             int64                        `json:"updated_at"`
+	SenderContactID        *int64                       `json:"sender_contact_id,omitempty"`
+	Sender                 *MessageSenderResp           `json:"sender,omitempty"`
+	Conversation           *ConversationSummaryEventDTO `json:"conversation,omitempty"`
+	ForwardedFromMessageID *int64                       `json:"forwarded_from_message_id,omitempty"`
+	CreatedAt              int64                        `json:"created_at"`
+	UpdatedAt              int64                        `json:"updated_at"`
 }
 
 // ConversationSummaryEventDTO is a lean conversation snapshot embedded in
@@ -182,12 +182,12 @@ type ForwardMessagesReq struct {
 }
 
 type ForwardResultResp struct {
-	Target             ForwardTargetReq `json:"target"`
-	Status             string           `json:"status"` // "success" | "failed"
-	CreatedMessageIDs  []int64          `json:"created_message_ids,omitempty"`
-	ConversationID     *int64           `json:"conversation_id,omitempty"`
+	Target              ForwardTargetReq `json:"target"`
+	Status              string           `json:"status"` // "success" | "failed"
+	CreatedMessageIDs   []int64          `json:"created_message_ids,omitempty"`
+	ConversationID      *int64           `json:"conversation_id,omitempty"`
 	CreatedConversation bool             `json:"created_conversation"`
-	Error              *string          `json:"error,omitempty"`
+	Error               *string          `json:"error,omitempty"`
 }
 
 type ForwardMessagesResp struct {
@@ -199,20 +199,20 @@ type ForwardMessagesResp struct {
 // — the bare form returns nil sender.
 func MessageToResp(m *model.Message) MessageResp {
 	resp := MessageResp{
-		ID:                    m.ID,
-		AccountID:             m.AccountID,
-		InboxID:               m.InboxID,
-		ConversationID:        m.ConversationID,
-		MessageType:           m.MessageType,
-		ContentType:           m.ContentType,
-		Content:               m.Content,
-		SourceID:              m.SourceID,
-		Private:               m.Private,
-		Status:                m.Status,
-		SenderContactID:       m.SenderContactID,
+		ID:                     m.ID,
+		AccountID:              m.AccountID,
+		InboxID:                m.InboxID,
+		ConversationID:         m.ConversationID,
+		MessageType:            m.MessageType,
+		ContentType:            m.ContentType,
+		Content:                m.Content,
+		SourceID:               m.SourceID,
+		Private:                m.Private,
+		Status:                 m.Status,
+		SenderContactID:        m.SenderContactID,
 		ForwardedFromMessageID: m.ForwardedFromMessageID,
-		CreatedAt:             m.CreatedAt.Unix(),
-		UpdatedAt:             m.UpdatedAt.Unix(),
+		CreatedAt:              m.CreatedAt.Unix(),
+		UpdatedAt:              m.UpdatedAt.Unix(),
 	}
 	if m.ContentAttrs != nil && *m.ContentAttrs != "" {
 		resp.ContentAttributes = json.RawMessage(*m.ContentAttrs)

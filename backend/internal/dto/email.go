@@ -10,19 +10,19 @@ type CreateEmailInboxReq struct {
 	Email    string `json:"email"    validate:"required,email"`
 
 	// IMAP fields — required when provider=generic
-	ImapAddress   string `pimap_address`
-	ImapPort      int    `pimap_port`
-	ImapLogin     string `pimap_login`
-	ImapPassword  string `pimap_password`
-	ImapEnableSSL bool   `eimap_enable_ssl`
-	ImapEnabled   bool   `pimap_enabled`
+	ImapAddress   string `json:"imap_address"`
+	ImapPort      int    `json:"imap_port"`
+	ImapLogin     string `json:"imap_login"`
+	ImapPassword  string `json:"imap_password"`
+	ImapEnableSSL bool   `json:"imap_enable_ssl"`
+	ImapEnabled   bool   `json:"imap_enabled"`
 
 	// SMTP fields — required when provider=generic
-	SmtpAddress   string `psmtp_address`
-	SmtpPort      int    `psmtp_port`
-	SmtpLogin     string `psmtp_login`
-	SmtpPassword  string `psmtp_password`
-	SmtpEnableSSL bool   `esmtp_enable_ssl`
+	SmtpAddress   string `json:"smtp_address"`
+	SmtpPort      int    `json:"smtp_port"`
+	SmtpLogin     string `json:"smtp_login"`
+	SmtpPassword  string `json:"smtp_password"`
+	SmtpEnableSSL bool   `json:"smtp_enable_ssl"`
 }
 
 // CreateEmailInboxResp is returned for generic (IMAP/SMTP) provisioning.
@@ -35,24 +35,24 @@ type CreateEmailInboxResp struct {
 // OAuthRedirectResp is returned when provider != generic; the client must
 // open AuthorizeURL to complete OAuth flow.
 type OAuthRedirectResp struct {
-	InboxID      int64  `xinbox_id`
-	AuthorizeURL string `eauthorize_url`
+	InboxID      int64  `json:"inbox_id"`
+	AuthorizeURL string `json:"authorize_url"`
 }
 
 // EmailChannelResp is the safe view of a ChannelEmail — never exposes secrets.
 type EmailChannelResp struct {
 	Email              string    `json:"email"`
 	Provider           string    `json:"provider"`
-	ImapAddress        *string   `pimap_addressomitempty"`
-	ImapPort           *int      `pimap_portomitempty"`
-	ImapLogin          *string   `pimap_loginomitempty"`
-	ImapEnableSSL      bool      `eimap_enable_ssl`
-	ImapEnabled        bool      `pimap_enabled`
-	SmtpAddress        *string   `psmtp_addressomitempty"`
-	SmtpPort           *int      `psmtp_portomitempty"`
-	SmtpLogin          *string   `psmtp_loginomitempty"`
-	SmtpEnableSSL      bool      `esmtp_enable_ssl`
-	VerifiedForSending bool      `rverified_for_sending`
-	RequiresReauth     bool      `srequires_reauth`
-	EmailCreatedAt     time.Time `demail_created_at`
+	ImapAddress        *string   `json:"imap_address,omitempty"`
+	ImapPort           *int      `json:"imap_port,omitempty"`
+	ImapLogin          *string   `json:"imap_login,omitempty"`
+	ImapEnableSSL      bool      `json:"imap_enable_ssl"`
+	ImapEnabled        bool      `json:"imap_enabled"`
+	SmtpAddress        *string   `json:"smtp_address,omitempty"`
+	SmtpPort           *int      `json:"smtp_port,omitempty"`
+	SmtpLogin          *string   `json:"smtp_login,omitempty"`
+	SmtpEnableSSL      bool      `json:"smtp_enable_ssl"`
+	VerifiedForSending bool      `json:"verified_for_sending"`
+	RequiresReauth     bool      `json:"requires_reauth"`
+	EmailCreatedAt     time.Time `json:"email_created_at"`
 }

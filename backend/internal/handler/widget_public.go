@@ -91,7 +91,7 @@ func (h *WidgetPublicHandler) EmbedScript(c *fiber.Ctx) error {
 // @Router /api/v1/widget/sessions [post]
 func (h *WidgetPublicHandler) CreateSession(c *fiber.Ctx) error {
 	var req struct {
-		WebsiteToken string `ewebsite_token validate:"required"`
+		WebsiteToken string `json:"website_token" validate:"required"`
 	}
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
@@ -156,7 +156,7 @@ func (h *WidgetPublicHandler) SendMessage(c *fiber.Ctx) error {
 
 	var req struct {
 		Content       string  `json:"content" validate:"required"`
-		AttachmentIDs []int64 `tattachment_idsomitempty"`
+		AttachmentIDs []int64 `json:"attachment_ids,omitempty"`
 	}
 	if err := parseAndValidate(c, &req); err != nil {
 		return nil
@@ -293,8 +293,8 @@ func (h *WidgetPublicHandler) GetAttachmentPresigned(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		FileName    string `efile_name validate:"required"`
-		ContentType string `tcontent_type validate:"required"`
+		FileName    string `json:"file_name" validate:"required"`
+		ContentType string `json:"content_type" validate:"required"`
 		Size        int64  `json:"size" validate:"required"`
 	}
 	if err := parseAndValidate(c, &req); err != nil {

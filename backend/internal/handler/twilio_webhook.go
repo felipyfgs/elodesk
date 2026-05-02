@@ -308,6 +308,7 @@ func (h *TwilioWebhookHandler) SyncTemplates(c *fiber.Ctx) error {
 //	@Param			id	path	int	true	"Inbox ID"
 //	@Success		200	{object}	dto.APIResponse
 //	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio [delete]
+//
 // GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twilio.
 func (h *TwilioWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
@@ -342,7 +343,7 @@ func (h *TwilioWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 			MessagingServiceSID:         ch.MessagingServiceSID,
 			WebhookIdentifier:           ch.WebhookIdentifier,
 			ContentTemplatesLastUpdated: ch.ContentTemplatesLastUpdated,
-			RequiresReauth:            ch.RequiresReauth,
+			RequiresReauth:              ch.RequiresReauth,
 			CreatedAt:                   ch.CreatedAt,
 			UpdatedAt:                   ch.UpdatedAt,
 		},
@@ -475,4 +476,3 @@ func generateTwilioIdentifier() (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
-

@@ -1,11 +1,11 @@
 package tiktok
 
 const (
-	APIBase           = "https://business-api.tiktok.com/open_api/v1.3"
-	AuthHost          = "https://www.tiktok.com"
-	AuthorizePath     = "/v2/auth/authorize"
-	TokenEndpoint     = "/tt_user/oauth2/token/"
-	RefreshEndpoint   = "/tt_user/oauth2/refresh_token/"
+	APIBase             = "https://business-api.tiktok.com/open_api/v1.3"
+	AuthHost            = "https://www.tiktok.com"
+	AuthorizePath       = "/v2/auth/authorize"
+	TokenEndpoint       = "/tt_user/oauth2/token/"
+	RefreshEndpoint     = "/tt_user/oauth2/refresh_token/"
 	SendMessageEndpoint = "/business/message/send/"
 	BusinessGetEndpoint = "/business/get/"
 

@@ -370,4 +370,3 @@ func generateSlug(email string) string {
 	_, _ = rand.Read(b)
 	return email + "-" + base64.RawURLEncoding.EncodeToString(b)
 }
-

@@ -49,10 +49,10 @@ func TestSend_WhatsappPrefixesBothEnds(t *testing.T) {
 
 	phone := "+14155552671"
 	ch := &model.ChannelTwilio{
-		ID:         1,
-		AccountID:  10,
-		AccountSID: "ACxxx",
-		Medium:     model.TwilioMediumWhatsApp,
+		ID:          1,
+		AccountID:   10,
+		AccountSID:  "ACxxx",
+		Medium:      model.TwilioMediumWhatsApp,
 		PhoneNumber: &phone,
 	}
 	client := NewClient(nil)
