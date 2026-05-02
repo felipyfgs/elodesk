@@ -117,7 +117,7 @@ Nuxt 4 (`ssr: false`), `@nuxt/ui` v4, Pinia, Vue 3, Tailwind v4, TypeScript. Bun
 ### Pastas ([frontend/app/](frontend/app/))
 - `pages/` — `index.vue`, `login.vue`, `register.vue`, `forgot-password.vue`, `reset-password.vue`, `[...slug].vue`, e seções: `accounts/`, `inboxes/`, `conversations/`, `contacts/`, `notifications/`, `reports/`, `settings/`, `sessions/`
 - `stores/` — 18 Pinia stores: `accounts`, `agents`, `audioPlayer`, `auth`, `cannedResponses`, `contacts`, `conversations`, `customAttributes`, `inboxes`, `labels`, `macros`, `messages`, `notes`, `notifications`, `savedFilters`, `sla`, `teams`, `webhooks`
-- `composables/` — 14 composables: `useApi`, `useAuth`, `useRealtime`, `useConversationRealtime`, `useAttachmentSrc`, `useAccountRoute`, `useAccountUrl`, `useContactSearch`, `useConversationFilters`, `useDashboard`, `useDetailsSidebar`, `useErrorHandler`, `useFilterAttributes`, `useResponsive`
+- `composables/` — 12 composables: `useApi`, `useAuth`, `useRealtime`, `useConversationRealtime`, `useAttachmentSrc`, `useContactSearch`, `useConversationFilters`, `useDashboard`, `useDetailsSidebar`, `useErrorHandler`, `useFilterAttributes`, `useResponsive`
 - `schemas/` — schemas Zod (validação runtime + tipos)
 - `utils/` — helpers (incluindo `chatAdapter.ts` para roles/sides/variants e `attachmentMediaUrl.ts` para resolução estática de URL)
 - `components/`, `layouts/`, `middleware/`, `types/`, `assets/`
