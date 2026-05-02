@@ -135,15 +135,14 @@ func (s *AgentService) AcceptInvitation(ctx context.Context, token, password str
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := s.userRepo.CreateTx(ctx, tx, user); err != nil {
-		if errors.Is(err, repo.ErrUserEmailExists) {
-			existing, findErr := s.userRepo.FindByEmail(ctx, inv.Email)
-			if findErr != nil {
-				return nil, fmt.Errorf("agent.accept: %w", findErr)
-			}
-			user = existing
-		} else {
+		if !errors.Is(err, repo.ErrUserEmailExists) {
 			return nil, fmt.Errorf("agent.accept: %w", err)
 		}
+		existing, findErr := s.userRepo.FindByEmail(ctx, inv.Email)
+		if findErr != nil {
+			return nil, fmt.Errorf("agent.accept: %w", findErr)
+		}
+		user = existing
 	}
 
 	isMember, err := s.agentRepo.IsMember(ctx, inv.AccountID, user.ID)

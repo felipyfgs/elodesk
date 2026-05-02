@@ -122,6 +122,9 @@ func (s *ForwardService) ForwardMessages(
 	// Validate every target up front so a clearly-incompatible request fails as
 	// a single 400 instead of a half-applied batch.
 	for _, t := range targets {
+		if t.ConversationID <= 0 && (t.ContactID <= 0 || t.InboxID <= 0) {
+			return nil, ErrForwardInvalidTarget
+		}
 		if t.ConversationID > 0 {
 			conv, err := s.conversationRepo.FindByID(ctx, t.ConversationID, accountID)
 			if err != nil {
@@ -134,7 +137,7 @@ func (s *ForwardService) ForwardMessages(
 			if err := s.validateCompatibility(inbox.ChannelType, sourceMessages, attachmentsByMsg); err != nil {
 				return nil, fmt.Errorf("conversation %d: %w", t.ConversationID, err)
 			}
-		} else if t.ContactID > 0 && t.InboxID > 0 {
+		} else {
 			if _, err := s.contactRepo.FindByID(ctx, t.ContactID, accountID); err != nil {
 				return nil, fmt.Errorf("target contact %d: %w", t.ContactID, err)
 			}
@@ -145,8 +148,6 @@ func (s *ForwardService) ForwardMessages(
 			if err := s.validateCompatibility(inbox.ChannelType, sourceMessages, attachmentsByMsg); err != nil {
 				return nil, fmt.Errorf("contact %d, inbox %d: %w", t.ContactID, t.InboxID, err)
 			}
-		} else {
-			return nil, ErrForwardInvalidTarget
 		}
 	}
 

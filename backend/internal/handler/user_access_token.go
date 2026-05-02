@@ -39,15 +39,14 @@ func (h *UserAccessTokenHandler) GetAccessToken(c *fiber.Ctx) error {
 
 	token, err := h.userAccessTokenRepo.FindByOwner(c.Context(), "User", authUser.ID)
 	if err != nil {
-		if errors.Is(err, repo.ErrUserAccessTokenNotFound) {
-			token, err = h.userAccessTokenRepo.Create(c.Context(), "User", authUser.ID)
-			if err != nil {
-				logger.Error().Str("component", "user_access_token").Err(err).Int64("userId", authUser.ID).Msg("failed to create access token")
-				return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to create access token"))
-			}
-		} else {
+		if !errors.Is(err, repo.ErrUserAccessTokenNotFound) {
 			logger.Error().Str("component", "user_access_token").Err(err).Int64("userId", authUser.ID).Msg("failed to get access token")
 			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to get access token"))
+		}
+		token, err = h.userAccessTokenRepo.Create(c.Context(), "User", authUser.ID)
+		if err != nil {
+			logger.Error().Str("component", "user_access_token").Err(err).Int64("userId", authUser.ID).Msg("failed to create access token")
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "failed to create access token"))
 		}
 	}
 
