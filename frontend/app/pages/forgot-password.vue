@@ -30,7 +30,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     await api('/auth/forgot', { method: 'POST', body: { email: event.data.email } })
     sent.value = true
   } catch {
-    // Always show success message per spec (never leak email existence).
     sent.value = true
   } finally {
     isLoading.value = false

@@ -28,9 +28,6 @@ const selectedTargets = ref<ForwardTarget[]>([])
 const searchQuery = ref('')
 const expandedContactId = ref<string | null>(null)
 
-// Default contacts list (loaded once when the modal opens). Replaced by the
-// search-API result while the user is typing so contacts without conversations
-// are first-class targets — same as WhatsApp's forward picker.
 const defaultContacts = ref<Contact[]>([])
 const searchResults = ref<Contact[]>([])
 const searching = ref(false)
@@ -56,9 +53,6 @@ function inboxCompatible(channelType: string): boolean {
 
 const trimmedQuery = computed(() => searchQuery.value.trim().toLowerCase())
 
-// Filter recent conversations by the search query (client-side) so the same
-// search box drives both sections. Keeps the recent-first ordering so users
-// can still scan top contacts at a glance.
 const filteredConversations = computed(() => {
   const all = [...conversations.list].sort(
     (a, b) => new Date(b.lastActivityAt ?? 0).getTime() - new Date(a.lastActivityAt ?? 0).getTime()
@@ -74,8 +68,6 @@ const filteredConversations = computed(() => {
   }).slice(0, 20)
 })
 
-// Visible contacts: search results when the user is typing, otherwise the
-// default list loaded on open.
 const visibleContacts = computed<Contact[]>(() => {
   return trimmedQuery.value ? searchResults.value : defaultContacts.value
 })
@@ -96,10 +88,6 @@ async function fetchDefaultContacts() {
   }
 }
 
-// The modal can be opened from pages that haven't loaded the inboxes store
-// (the conversations page does, but ad-hoc entry points may not). Fetch on
-// demand so the per-contact inbox picker is never empty. The endpoint
-// returns the array directly (useApi unwraps the success/data envelope).
 const inboxesLoading = ref(false)
 async function ensureInboxesLoaded() {
   if (!auth.account?.id || inboxes.list.length > 0) return
@@ -178,9 +166,6 @@ function contactDisplayName(c: Contact): string {
 
 function submit() {
   if (selectedTargets.value.length === 0) return
-  // Fire-and-forget: close the modal immediately and let the request run in
-  // the background. Toasts surface the outcome when it resolves so the user
-  // isn't blocked waiting for every fan-out send to finish.
   const sourceMessageIds = props.messageIds
   const targets = [...selectedTargets.value]
   emit('done')
@@ -223,7 +208,6 @@ function submit() {
         </UInput>
 
         <div class="flex flex-col gap-3 max-h-96 overflow-y-auto">
-          <!-- Recent conversations -->
           <div v-if="filteredConversations.length > 0" class="flex flex-col gap-1">
             <p class="text-xs font-medium text-muted">
               {{ t('conversations.forward.modal.recentConversations') }}
@@ -257,9 +241,6 @@ function submit() {
               </button>
             </div>
           </div>
-
-          <!-- Contacts (always visible — contacts without conversations are
-               valid forward targets, the user just picks an inbox). -->
           <div class="flex flex-col gap-1">
             <p class="text-xs font-medium text-muted">
               {{ t('conversations.forward.modal.contacts') }}
@@ -297,10 +278,6 @@ function submit() {
                 </button>
 
                 <div v-if="expandedContactId === contact.id" class="ml-6 flex flex-col gap-0.5 border-l border-default pl-2">
-                  <!-- Always show every account inbox; the backend creates the
-                       contact_inbox + conversation on demand when needed. The
-                       user picks how to reach the contact, the system handles
-                       the rest. -->
                   <p v-if="inboxesLoading && inboxesList.length === 0" class="px-2 py-1 text-xs text-muted">
                     <UIcon name="i-lucide-loader-circle" class="size-3 animate-spin inline mr-1" />
                     {{ t('common.loading') }}
@@ -334,8 +311,6 @@ function submit() {
             </div>
           </div>
         </div>
-
-        <!-- Selected targets chips -->
         <div v-if="selectedTargets.length > 0" class="flex flex-wrap gap-1">
           <UBadge
             v-for="(target, i) in selectedTargets"

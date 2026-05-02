@@ -15,9 +15,6 @@ const (
 	defaultTTL       = 1 * time.Hour
 )
 
-// kindThresholds overrides the default threshold for channels that are known
-// to be sensitive to auth failures (OAuth flows where a single 401 usually
-// means the token is gone) or tolerant (email IMAP that transient-fails a lot).
 var kindThresholds = map[channel.Kind]int{
 	channel.KindInstagram: 1,
 	channel.KindTiktok:    1,
@@ -40,9 +37,6 @@ func NewTracker(client redis.Cmdable) *Tracker {
 	}
 }
 
-// thresholdFor returns the error-count threshold at which the given kind is
-// considered in need of reauth. Kinds without an override use the global
-// default.
 func (t *Tracker) thresholdFor(kind channel.Kind) int {
 	if v, ok := kindThresholds[kind]; ok {
 		return v
@@ -62,8 +56,6 @@ func (t *Tracker) RecordError(ctx context.Context, key string) (promptReauth boo
 	return count >= int64(t.threshold), nil
 }
 
-// RecordErrorForKind is the kind-aware variant of RecordError. Callers that
-// know the channel kind should prefer this so per-kind thresholds apply.
 func (t *Tracker) RecordErrorForKind(ctx context.Context, kind channel.Kind, key string) (promptReauth bool, err error) {
 	k := t.keyPrefix + key
 	count, err := t.client.Incr(ctx, k).Result()
@@ -97,7 +89,6 @@ func (t *Tracker) ShouldPrompt(ctx context.Context, key string) (bool, error) {
 	return count >= t.threshold, nil
 }
 
-// ShouldPromptForKind is the kind-aware variant of ShouldPrompt.
 func (t *Tracker) ShouldPromptForKind(ctx context.Context, kind channel.Kind, key string) (bool, error) {
 	k := t.keyPrefix + key
 	count, err := t.client.Get(ctx, k).Int()

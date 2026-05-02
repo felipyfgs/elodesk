@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// VerifySignature validates the X-Hub-Signature-256 header against the raw
-// request body. Returns true when the signature matches. When
-// META_ALLOW_UNSIGNED=true the check is bypassed (dev only).
 func VerifySignature(body []byte, header, appSecret string) bool {
 	if os.Getenv("META_ALLOW_UNSIGNED") == "true" {
 		return true

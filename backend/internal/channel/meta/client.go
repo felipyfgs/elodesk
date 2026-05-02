@@ -27,9 +27,6 @@ type Client struct {
 	baseURL string
 }
 
-// NewClient creates a Meta Graph API client. baseURL should be the full scheme+host,
-// e.g. "https://graph.facebook.com" or "https://graph.instagram.com". The Graph
-// API version is appended automatically.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		http:    &http.Client{Timeout: clientTimeout},
@@ -63,7 +60,6 @@ func (c *Client) do(ctx context.Context, method, path, token string, body, out a
 		if lastErr == nil {
 			return nil
 		}
-		// only retry on transient errors, not auth or permanent client errors
 		if errors.Is(lastErr, ErrMetaAuthFailed) || errors.Is(lastErr, ErrMetaPermanent) {
 			return lastErr
 		}

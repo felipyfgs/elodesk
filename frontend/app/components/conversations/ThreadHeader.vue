@@ -65,13 +65,6 @@ function toggleDetails() {
 </script>
 
 <template>
-  <!--
-    Header do thread: layout responsivo com 2 zonas elásticas. À esquerda
-    (`flex-1 min-w-0`) o avatar + identidade do contato com truncate
-    forçado em uma linha; à direita ações compactas. Em <sm o identifier
-    (telefone) some pra dar mais espaço pro nome; em <md o badge de canal
-    também some — o agente vê o canal no card da lista e na sidebar.
-  -->
   <header class="flex h-(--ui-header-height) shrink-0 items-center justify-between gap-2 border-b border-default px-2 sm:gap-3 sm:px-4">
     <div class="flex min-w-0 flex-1 items-center gap-2">
       <UTooltip v-if="showBack" :text="t('common.close')">

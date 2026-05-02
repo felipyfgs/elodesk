@@ -17,8 +17,6 @@ const (
 	MessageTypeImage = "image"
 )
 
-// RequiredScopes are the TikTok Business API scopes required for messaging.
-// Kept in sync with _refs/chatwoot/app/services/tiktok/auth_client.rb.
 var RequiredScopes = []string{
 	"user.info.basic",
 	"user.info.username",
@@ -31,7 +29,6 @@ var RequiredScopes = []string{
 	"message.list.manage",
 }
 
-// TokenResponse wraps the access/refresh token envelope returned by
 // /tt_user/oauth2/token/ and /tt_user/oauth2/refresh_token/.
 type TokenResponse struct {
 	Code    int       `json:"code"`
@@ -91,8 +88,6 @@ type SendMessageInfo struct {
 	MessageID string `json:"message_id"`
 }
 
-// WebhookEvent is the outer envelope from TikTok webhook callbacks.
-// `content` is delivered as a JSON-encoded string to be parsed into EventContent.
 type WebhookEvent struct {
 	Event      string `json:"event"`
 	Timestamp  int64  `json:"timestamp"`

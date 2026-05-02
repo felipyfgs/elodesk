@@ -1,10 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from '~/stores/auth'
 
-// Contact mirrors backend dto.ContactResp (Chatwoot-shape, snake_case
-// response keys; apiAdapter normalizes them to camelCase). Thumbnail is the
-// canonical avatar field — `avatarUrl` is kept for legacy components that
-// reference it directly.
 export interface ContactInboxRef {
   sourceId: string
   inbox: {

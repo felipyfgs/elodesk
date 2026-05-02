@@ -3,9 +3,6 @@ import { markRaw, shallowRef } from 'vue'
 
 export interface AudioTrack {
   id: string
-  // src é a URL pública e estável do áudio. Para anexos servidos pelo elodesk,
-  // é a `attachment.dataUrl` (token HMAC permanente, Cache-Control 1y/immutable).
-  // Para previews do composer, é uma blob URL local.
   src?: string
   title?: string
   subtitle?: string
@@ -13,14 +10,6 @@ export interface AudioTrack {
   conversationId?: string | number
 }
 
-// Global singleton audio — lives outside any conversation's DOM so playback
-// survives navigation. Only one track plays at a time; starting a new one
-// pauses and resets the previous.
-//
-// O store NÃO faz mais fetch autenticado/blob: a URL é estável e pública (com
-// token HMAC permanente), o cache HTTP do navegador acerta entre navegações.
-// Isso evita o "load visível" toda vez que o agente reabre uma conversa com
-// áudio — o `<audio>` reutiliza o disk cache.
 export const useAudioPlayerStore = defineStore('audioPlayer', () => {
   const element = shallowRef<HTMLAudioElement | null>(null)
   const track = shallowRef<AudioTrack | null>(null)
@@ -41,7 +30,6 @@ export const useAudioPlayerStore = defineStore('audioPlayer', () => {
       isPlaying.value = false
     })
     audio.addEventListener('ended', () => {
-      // WhatsApp-style auto-close: clear the track so the mini player unmounts.
       isPlaying.value = false
       currentTime.value = 0
       duration.value = 0

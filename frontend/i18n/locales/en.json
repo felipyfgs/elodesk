@@ -135,6 +135,7 @@
     "macros": "Macros",
     "canned": "Canned Responses",
     "attributes": "Attributes",
+    "pipelines": "Pipelines",
     "reports": "Reports",
     "docs": "API docs",
     "goTo": "Go to",
@@ -938,7 +939,37 @@
     "empty": "No notifications yet",
     "emptyDescription": "When something happens here, you'll see the alerts on this page.",
     "emptyUnreadTitle": "You're all caught up",
-    "emptyUnread": "No unread notifications right now."
+    "emptyUnread": "No unread notifications right now.",
+    "selectPrompt": "Select a notification",
+    "selectPromptDescription": "The related conversation appears on the right.",
+    "openConversation": "Open conversation",
+    "noConversation": "Notification has no linked conversation",
+    "noConversationDescription": "There is no related conversation to show.",
+    "loadingConversation": "Loading conversation…",
+    "loadFailed": "Could not load this conversation.",
+    "deletedConversation": "Conversation removed",
+    "deletedConversationDescription": "The related conversation is no longer available.",
+    "conversationLabel": "Conversation #{id}",
+    "markUnread": "Mark as unread",
+    "markRead": "Mark as read",
+    "sort": "Sort",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
+    "shortcuts": {
+      "next": "Next notification",
+      "prev": "Previous notification",
+      "close": "Close conversation"
+    },
+    "unknownContact": "Unknown contact",
+    "openLabel": "Open conversation with {name}",
+    "unreadIndicator": "Unread",
+    "types": {
+      "conversation_assigned": "Conversation assigned to you",
+      "conversation_assignedShort": "Assigned",
+      "sla_breach": "SLA breached",
+      "sla_breachShort": "SLA",
+      "fallback": "Notification"
+    }
   },
   "labels": {
     "title": "Labels",
@@ -1143,7 +1174,84 @@
     "no": "No",
     "retry": "Retry",
     "next": "Next",
-    "open": "Open"
+    "open": "Open",
+    "more": "More",
+    "typeToConfirm": "Type to confirm",
+    "nameMismatch": "Name does not match"
+  },
+  "pipelines": {
+    "title": "Pipelines",
+    "subtitle": "Organize sales, support, and tasks in customizable Kanban boards.",
+    "new": "New pipeline",
+    "create": "Create",
+    "edit": "Edit pipeline",
+    "name": "Pipeline name",
+    "empty": "No pipelines yet.",
+    "fetchFailed": "Failed to load pipelines",
+    "createFailed": "Failed to create pipeline",
+    "updateFailed": "Failed to update pipeline",
+    "archive": "Archive pipeline",
+    "archiveConfirm": "The pipeline will be hidden but data is preserved.",
+    "archiveFailed": "Failed to archive pipeline",
+    "notFound": "Pipeline not found",
+    "templates": {
+      "title": "Choose a template",
+      "subtitle": "Start from a template and customize later.",
+      "fetchFailed": "Failed to load templates"
+    },
+    "stage": {
+      "create": "New column",
+      "edit": "Edit column",
+      "delete": "Delete column",
+      "deleteConfirm": "Columns can only be removed when empty.",
+      "deleteFailed": "Failed to delete column",
+      "saveFailed": "Failed to save column",
+      "name": "Column name",
+      "color": "Color",
+      "isTerminal": "Terminal column",
+      "terminalKind": "Closing kind"
+    },
+    "card": {
+      "create": "New card",
+      "createFailed": "Failed to create card",
+      "saveFailed": "Failed to save card",
+      "deleteFailed": "Failed to delete card",
+      "moveFailed": "Failed to move card",
+      "untitled": "Untitled",
+      "title": "Title",
+      "description": "Description",
+      "dueDate": "Due date",
+      "value": "Value",
+      "assignees": "Assignees",
+      "labels": "Labels",
+      "noAgents": "No agents available",
+      "noLabels": "No labels yet",
+      "linkedContact": "Linked contact",
+      "linkedConversation": "Linked conversation"
+    },
+    "view": {
+      "kanban": "Kanban",
+      "list": "List"
+    },
+    "list": {
+      "title": "Title",
+      "stage": "Stage",
+      "assignees": "Assignees",
+      "labels": "Labels",
+      "dueDate": "Due date",
+      "value": "Value",
+      "createdAt": "Created at",
+      "empty": "No cards in this pipeline yet."
+    },
+    "link": {
+      "pickContact": "Link a contact to the card",
+      "pickConversation": "Link a conversation to the card",
+      "searchContact": "Search contact by name, email or phone…",
+      "noContacts": "No contacts found.",
+      "conversationHelp": "Paste the conversation ID that will be linked to the card.",
+      "conversationId": "Conversation ID",
+      "invalidConversation": "Invalid conversation ID"
+    }
   },
   "reports": {
     "title": "Reports",

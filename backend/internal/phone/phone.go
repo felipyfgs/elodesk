@@ -1,6 +1,3 @@
-// Package phone wraps libphonenumber for E.164 normalization. Lives outside
-// the channel/ tree so any layer (service, repo, channels) can depend on it
-// without pulling in transport-specific code or risking import cycles.
 package phone
 
 import (

@@ -26,9 +26,6 @@ type CreateInboxResp struct {
 	Secret     string `json:"secret"`
 }
 
-// ChannelAPIResp is the sanitized view of a Channel::Api record exposed via
-// GET/PUT /inboxes/:id. Secret fields (hmac_token ciphertext, api_token_hash)
-// are deliberately omitted.
 type ChannelAPIResp struct {
 	ID                   int64          `json:"id"`
 	Identifier           string         `json:"identifier"`
@@ -39,8 +36,6 @@ type ChannelAPIResp struct {
 	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
-// UpdateChannelAPIReq is the whitelist accepted by PUT /inboxes/:id for
-// Channel::Api. The `name` here mirrors the shared UpdateInboxReq behavior.
 type UpdateChannelAPIReq struct {
 	Name                 string         `json:"name,omitempty"`
 	WebhookURL           string         `json:"webhook_url,omitempty"`
@@ -48,8 +43,6 @@ type UpdateChannelAPIReq struct {
 	AdditionalAttributes map[string]any `json:"additional_attributes,omitempty"`
 }
 
-// RotateAPITokenResp is the response of POST /inboxes/:id/rotate_token.
-// APIToken is the plaintext — returned ONCE, never again.
 type RotateAPITokenResp struct {
 	Identifier string `json:"identifier"`
 	APIToken   string `json:"api_token"`

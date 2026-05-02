@@ -10,7 +10,6 @@ import (
 	"backend/internal/model"
 )
 
-// Scheduler manages one goroutine per active email channel.
 type Scheduler struct {
 	mu       sync.Mutex
 	pollers  map[int64]context.CancelFunc
@@ -26,7 +25,6 @@ func NewScheduler(deps PollDeps, interval time.Duration) *Scheduler {
 	}
 }
 
-// Start spawns a poller goroutine for ch if one is not already running.
 func (s *Scheduler) Start(ctx context.Context, ch model.ChannelEmail) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -54,7 +52,6 @@ func (s *Scheduler) Start(ctx context.Context, ch model.ChannelEmail) {
 	}()
 }
 
-// Stop cancels the poller for channelID (no-op if not running).
 func (s *Scheduler) Stop(channelID int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -64,7 +61,6 @@ func (s *Scheduler) Stop(channelID int64) {
 	}
 }
 
-// StopAll cancels every running poller.
 func (s *Scheduler) StopAll() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -75,7 +71,6 @@ func (s *Scheduler) StopAll() {
 	}
 }
 
-// PollerKey returns the reauth tracker key for a channel.
 func PollerKey(channelID int64) string {
 	return fmt.Sprintf("channel:email:%d", channelID)
 }

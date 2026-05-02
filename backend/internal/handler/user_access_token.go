@@ -18,19 +18,17 @@ func NewUserAccessTokenHandler(userAccessTokenRepo *repo.UserAccessTokenRepo) *U
 	return &UserAccessTokenHandler{userAccessTokenRepo: userAccessTokenRepo}
 }
 
-// GetAccessToken godoc
-//
-//	@Summary		Get user access token
-//	@Description	Returns the persistent access token for the authenticated user
-//	@Tags			profile
-//	@Produce		json
-//	@Param			aid	path		int					true	"Account ID"
-//	@Success		200	{object}	dto.APIResponse		"token"
-//	@Failure		401	{object}	dto.APIError
-//	@Failure		403	{object}	dto.APIError
-//	@Failure		500	{object}	dto.APIError
-//	@Router			/accounts/{aid}/profile/access_token [get]
-//	@Security		BearerAuth
+// @Summary		Get user access token
+// @Description	Returns the persistent access token for the authenticated user
+// @Tags			profile
+// @Produce		json
+// @Param			aid	path		int					true	"Account ID"
+// @Success		200	{object}	dto.APIResponse		"token"
+// @Failure		401	{object}	dto.APIError
+// @Failure		403	{object}	dto.APIError
+// @Failure		500	{object}	dto.APIError
+// @Router			/accounts/{aid}/profile/access_token [get]
+// @Security		BearerAuth
 func (h *UserAccessTokenHandler) GetAccessToken(c *fiber.Ctx) error {
 	authUser, ok := c.Locals("user").(*repo.AuthUser)
 	if !ok || authUser == nil {
@@ -53,19 +51,17 @@ func (h *UserAccessTokenHandler) GetAccessToken(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(fiber.Map{"token": token.Token}))
 }
 
-// ResetAccessToken godoc
-//
-//	@Summary		Reset user access token
-//	@Description	Regenerates the persistent access token, invalidating the previous one
-//	@Tags			profile
-//	@Produce		json
-//	@Param			aid	path		int					true	"Account ID"
-//	@Success		200	{object}	dto.APIResponse		"token"
-//	@Failure		401	{object}	dto.APIError
-//	@Failure		403	{object}	dto.APIError
-//	@Failure		500	{object}	dto.APIError
-//	@Router			/accounts/{aid}/profile/access_token/reset [post]
-//	@Security		BearerAuth
+// @Summary		Reset user access token
+// @Description	Regenerates the persistent access token, invalidating the previous one
+// @Tags			profile
+// @Produce		json
+// @Param			aid	path		int					true	"Account ID"
+// @Success		200	{object}	dto.APIResponse		"token"
+// @Failure		401	{object}	dto.APIError
+// @Failure		403	{object}	dto.APIError
+// @Failure		500	{object}	dto.APIError
+// @Router			/accounts/{aid}/profile/access_token/reset [post]
+// @Security		BearerAuth
 func (h *UserAccessTokenHandler) ResetAccessToken(c *fiber.Ctx) error {
 	authUser, ok := c.Locals("user").(*repo.AuthUser)
 	if !ok || authUser == nil {

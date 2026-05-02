@@ -53,9 +53,6 @@ func (h *MessageHandler) SetConversationRepo(r *repo.ConversationRepo) {
 	h.conversationRepo = r
 }
 
-// SetMinio injeta o cliente MinIO usado pelo caminho multipart de criação de
-// mensagens. Sem ele, anexos via multipart são rejeitados — o caminho JSON
-// com presigned upload continua funcionando.
 func (h *MessageHandler) SetMinio(m *media.MinioClient) {
 	h.minio = m
 }
@@ -222,8 +219,6 @@ func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conve
 
 	var rawAttrs json.RawMessage
 	if contentAttrsRaw := c.FormValue("content_attributes"); contentAttrsRaw != "" {
-		// Validar que é JSON antes de persistir — formato livre, mas tem que
-		// fazer parse para não corromper consultas downstream.
 		var parsed map[string]any
 		if err := json.Unmarshal([]byte(contentAttrsRaw), &parsed); err == nil {
 			rawAttrs = json.RawMessage(contentAttrsRaw)
@@ -254,11 +249,6 @@ func (h *MessageHandler) createMultipart(c *fiber.Ctx, accountID, inboxID, conve
 	return c.JSON(dto.SuccessResp(dto.MessageToResp(created)))
 }
 
-// uploadMultipartAttachments lê os arquivos enviados como `attachments[]` (ou
-// `attachments`, sem colchetes — alguns clients não usam) e sobe no MinIO,
-// devolvendo a lista de model.Attachment com FileKey populado. Sem MinIO
-// configurado, retorna 400 — o cliente deve cair no caminho JSON com
-// presigned URL.
 func (h *MessageHandler) uploadMultipartAttachments(c *fiber.Ctx, accountID int64) ([]model.Attachment, error) {
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -423,7 +413,6 @@ func (h *MessageHandler) SoftDelete(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid message id"))
 	}
 
-	// Verify the message belongs to the requested conversation
 	msg, err := h.messageRepo.FindByID(c.Context(), messageID, accountID)
 	if err != nil {
 		return handleNotFound(c, err)
@@ -500,11 +489,6 @@ func (h *MessageHandler) UpdatePublic(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.MessageToResp(msg)))
 }
 
-// mergeEchoID returns a content_attributes JSON blob with `echo_id`
-// injected. When echoID is nil, the original attrs are returned unchanged
-// (nil if empty). Echo IDs are used by the composer for optimistic
-// reconciliation — persisted here so the realtime broadcast can echo them
-// back without a separate column.
 func mergeEchoID(attrs json.RawMessage, echoID *string) *string {
 	if echoID == nil || *echoID == "" {
 		if len(attrs) == 0 {
@@ -528,9 +512,6 @@ func mergeEchoID(attrs json.RawMessage, echoID *string) *string {
 	return &s
 }
 
-// parseMessageType maps the wire-format string used by channel-ingest callers
-// (wzap, etc.) to the internal MessageType enum. Returns the zero value when
-// the field is omitted, letting MessageService.Create apply its default.
 func parseMessageType(raw *string) (model.MessageType, error) {
 	if raw == nil || *raw == "" {
 		return 0, nil
@@ -567,8 +548,6 @@ func buildAttachments(reqs []dto.CreateAttachmentReq) []model.Attachment {
 			fileName := r.FileName
 			att.FileName = &fileName
 		}
-		// Deriva extensão do filename quando ausente — o caminho JSON não
-		// preenchia, fazendo o frontend cair em previews genéricos.
 		if r.FileName != "" {
 			if i := strings.LastIndex(r.FileName, "."); i >= 0 && i < len(r.FileName)-1 {
 				ext := strings.ToLower(r.FileName[i+1:])

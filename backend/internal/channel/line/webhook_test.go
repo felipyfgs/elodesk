@@ -89,5 +89,4 @@ func TestExtractContent_Unsupported(t *testing.T) {
 	}
 }
 
-// compile-time guard: Channel must satisfy the channel.Channel interface.
 var _ channel.Channel = (*Channel)(nil)

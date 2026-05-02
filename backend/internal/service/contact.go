@@ -47,15 +47,12 @@ func NewContactService(
 	}
 }
 
-// WithAudit wires the audit logger + audit log repo. Separated from the
-// constructor so existing call sites keep compiling until router.go wires it.
 func (s *ContactService) WithAudit(logger *audit.Logger, auditLogRepo *repo.AuditLogRepo) *ContactService {
 	s.auditLogger = logger
 	s.auditLogRepo = auditLogRepo
 	return s
 }
 
-// WithMinio wires the MinIO client used for avatar object deletion.
 func (s *ContactService) WithMinio(m *media.MinioClient) *ContactService {
 	s.minio = m
 	return s
@@ -290,11 +287,6 @@ func (s *ContactService) ListEvents(ctx context.Context, accountID, contactID in
 	return out, total, nil
 }
 
-// FindConversations returns the contact's conversations as hydrated DTOs
-// (inbox + sender + last non-activity message), so the contact-detail history
-// sidebar can render full conversation cards instead of bare ids. Hydration
-// per row keeps the change small; if it fails for one row we fall back to the
-// bare DTO so the page still renders.
 func (s *ContactService) FindConversations(ctx context.Context, contactID, accountID int64) ([]dto.ConversationResp, error) {
 	contactIDCopy := contactID
 	filter := repo.ConversationFilter{
@@ -432,9 +424,6 @@ func (s *ContactService) Identify(ctx context.Context, accountID int64, target *
 	if params.AvatarURL != nil {
 		updates["avatar_url"] = params.AvatarURL
 		if result.AvatarURL == nil || *result.AvatarURL != *params.AvatarURL {
-			// URL changed — also recompute hash. Provider (Wzap) cache-buster URLs
-			// already imply content change; we hash the URL itself. v2: HEAD/GET
-			// the URL to hash the actual bytes.
 			hash := avatarHashFromURL(*params.AvatarURL)
 			if err := s.contactRepo.UpdateAvatar(ctx, result.ID, accountID, params.AvatarURL, &hash); err != nil {
 				return nil, err
@@ -471,15 +460,11 @@ func (s *ContactService) Identify(ctx context.Context, accountID int64, target *
 }
 
 type ContactCreateAttrs struct {
-	Name        string
-	Email       *string
-	PhoneNumber *string
-	Identifier  *string
-	AvatarURL   *string
-	// AdditionalAttrs is the raw JSON object as a string (matches the persisted
-	// shape on contacts.additional_attributes). When the caller passes a
-	// non-empty value, it is set on the contact at creation time and merged on
-	// updates of existing contacts.
+	Name            string
+	Email           *string
+	PhoneNumber     *string
+	Identifier      *string
+	AvatarURL       *string
 	AdditionalAttrs *string
 }
 
@@ -526,8 +511,6 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 			return nil, fmt.Errorf("create contact: %w", err)
 		}
 	} else if attrs.AdditionalAttrs != nil && *attrs.AdditionalAttrs != "" {
-		// Merge incoming JSONB into the existing additional_attributes so callers
-		// can attach metadata (e.g. is_group, test_run_id) without erasing prior keys.
 		merged := mergeAdditionalAttrs(contact.AdditionalAttrs, *attrs.AdditionalAttrs)
 		if merged != "" && (contact.AdditionalAttrs == nil || *contact.AdditionalAttrs != merged) {
 			if _, err := s.contactRepo.UpdateAdditionalAttrs(ctx, contact.ID, inbox.AccountID, merged); err == nil {
@@ -538,10 +521,6 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 
 	s.applyAvatarUpdate(ctx, contact.ID, inbox.AccountID, attrs.AvatarURL)
 
-	// Dedupe before minting a fresh source_id: a contact can already have a ci
-	// for this inbox (e.g. matched via email/phone above). Without this guard
-	// we'd accumulate one contact_inbox per visit, which is exactly the
-	// regression seen on production for WhatsApp + widget flows.
 	if existing, err := s.contactInboxRepo.FindByContactAndInbox(ctx, contact.ID, inbox.ID); err != nil {
 		return nil, fmt.Errorf("find contact inbox: %w", err)
 	} else if existing != nil {
@@ -565,14 +544,6 @@ func (s *ContactService) CreateOrReuseContactInbox(ctx context.Context, inbox *m
 	return ci, nil
 }
 
-// applyAvatarUpdate is a best-effort write of avatar_url + avatar_hash.
-// Channels (e.g. Wzap) post the upstream avatar on every contact upsert; we
-// only write when the URL actually changed. avatar_hash is a SHA-256 of the
-// avatar_url string — providers ship cache-buster URLs (WhatsApp embeds a
-// timestamp), so URL inequality already implies content change. Hashing the
-// fetched bytes is deferred to v2 (would add a HEAD/GET round-trip per upsert).
-// Failures are logged and swallowed so a transient DB hiccup does not break
-// message ingestion.
 func (s *ContactService) applyAvatarUpdate(ctx context.Context, contactID, accountID int64, avatarURL *string) {
 	if avatarURL == nil || *avatarURL == "" {
 		return
@@ -591,17 +562,11 @@ func (s *ContactService) applyAvatarUpdate(ctx context.Context, contactID, accou
 	}
 }
 
-// avatarHashFromURL computes SHA-256(avatar_url) as a hex string. Used as a
-// stable, cheap content-cache invalidation key — see applyAvatarUpdate.
 func avatarHashFromURL(url string) string {
 	sum := sha256.Sum256([]byte(url))
 	return hex.EncodeToString(sum[:])
 }
 
-// mergeAdditionalAttrs merges a new JSON object into an existing one (both
-// stored as raw JSON strings on contacts.additional_attributes). Keys in the
-// incoming object overwrite existing keys; everything else is preserved.
-// Returns "" if the incoming JSON is invalid (caller skips the update).
 func mergeAdditionalAttrs(existing *string, incoming string) string {
 	out := map[string]any{}
 	if existing != nil && *existing != "" {

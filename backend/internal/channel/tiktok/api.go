@@ -19,9 +19,6 @@ func NewAPIClient() *APIClient {
 	return &APIClient{httpClient: &http.Client{Timeout: 30 * time.Second}}
 }
 
-// BusinessAccountDetails fetches the TikTok Business profile for a given
-// business_id using the supplied access token.
-// GET /business/get/?business_id=...&fields=["username","display_name","profile_image"]
 func (c *APIClient) BusinessAccountDetails(ctx context.Context, accessToken, businessID string) (*BusinessAccountData, error) {
 	params := url.Values{}
 	params.Set("business_id", businessID)
@@ -57,8 +54,6 @@ func (c *APIClient) BusinessAccountDetails(ctx context.Context, accessToken, bus
 	return &out.Data, nil
 }
 
-// SendMessage posts an outbound TikTok message.
-// POST /business/message/send/
 func (c *APIClient) SendMessage(ctx context.Context, accessToken string, body SendMessageRequest) (*SendMessageInfo, error) {
 	data, err := json.Marshal(body)
 	if err != nil {

@@ -24,9 +24,6 @@ type refreshTokenResponse struct {
 	ExpiresIn   int64  `json:"expires_in"`
 }
 
-// RefreshIfNeeded checks whether the token expires within the threshold and
-// refreshes proactively. On auth failure, the reauth tracker is incremented and
-// requires_reauth is set on the channel record.
 func RefreshIfNeeded(
 	ctx context.Context,
 	ch *model.ChannelInstagram,

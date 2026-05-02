@@ -99,9 +99,6 @@ type InboxBusinessHours struct {
 	UpdatedAt time.Time                    `json:"updated_at"`
 }
 
-// ChannelAPI is the persisted shape of a Channel::Api record. Secret fields
-// (HMACToken ciphertext, APITokenHash) are marked json:"-" so they never leak
-// through accidental marshalling (broadcasts, responses, logs).
 type ChannelAPI struct {
 	ID                   int64          `json:"id"`
 	AccountID            int64          `json:"account_id"`
@@ -588,4 +585,83 @@ type OutboundWebhook struct {
 	Active        bool      `json:"active"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type CardKind int
+
+const (
+	CardKindFree         CardKind = 0
+	CardKindContact      CardKind = 1
+	CardKindConversation CardKind = 2
+)
+
+type LinkedEntityType int
+
+const (
+	LinkedEntityContact      LinkedEntityType = 0
+	LinkedEntityConversation LinkedEntityType = 1
+)
+
+type TerminalKind int
+
+const (
+	TerminalKindWon      TerminalKind = 0
+	TerminalKindLost     TerminalKind = 1
+	TerminalKindResolved TerminalKind = 2
+)
+
+type Pipeline struct {
+	ID          int64      `json:"id"`
+	AccountID   int64      `json:"account_id"`
+	Name        string     `json:"name"`
+	Description *string    `json:"description,omitempty"`
+	TemplateKey *string    `json:"template_key,omitempty"`
+	CardKind    CardKind   `json:"card_kind"`
+	Icon        *string    `json:"icon,omitempty"`
+	Color       string     `json:"color"`
+	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	CreatedBy   *int64     `json:"created_by,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type PipelineStage struct {
+	ID           int64         `json:"id"`
+	PipelineID   int64         `json:"pipeline_id"`
+	Name         string        `json:"name"`
+	Position     float64       `json:"position"`
+	Color        string        `json:"color"`
+	IsTerminal   bool          `json:"is_terminal"`
+	TerminalKind *TerminalKind `json:"terminal_kind,omitempty"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+type PipelineCard struct {
+	ID               int64             `json:"id"`
+	PipelineID       int64             `json:"pipeline_id"`
+	StageID          int64             `json:"stage_id"`
+	Position         float64           `json:"position"`
+	Title            string            `json:"title"`
+	Description      *string           `json:"description,omitempty"`
+	ValueCents       *int64            `json:"value_cents,omitempty"`
+	ValueCurrency    *string           `json:"value_currency,omitempty"`
+	DueDate          *time.Time        `json:"due_date,omitempty"`
+	CustomAttrs      string            `json:"custom_attrs"`
+	LinkedEntityType *LinkedEntityType `json:"linked_entity_type,omitempty"`
+	LinkedEntityID   *int64            `json:"linked_entity_id,omitempty"`
+	CreatedBy        *int64            `json:"created_by,omitempty"`
+	CreatedAt        time.Time         `json:"created_at"`
+	UpdatedAt        time.Time         `json:"updated_at"`
+}
+
+type PipelineCardAssignee struct {
+	CardID     int64     `json:"card_id"`
+	UserID     int64     `json:"user_id"`
+	AssignedAt time.Time `json:"assigned_at"`
+}
+
+type PipelineCardLabel struct {
+	CardID  int64 `json:"card_id"`
+	LabelID int64 `json:"label_id"`
 }

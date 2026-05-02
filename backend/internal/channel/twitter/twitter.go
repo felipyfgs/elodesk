@@ -14,7 +14,6 @@ import (
 	"backend/internal/repo"
 )
 
-// Channel implements channel.Channel for Twitter/X DMs.
 type Channel struct {
 	twitterRepo      *repo.ChannelTwitterRepo
 	inboxRepo        *repo.InboxRepo
@@ -111,9 +110,6 @@ func (c *Channel) SyncTemplates(_ context.Context) ([]channel.Template, error) {
 	return nil, channel.ErrUnsupported
 }
 
-// handleReauth records a reauth signal and, when the per-kind threshold is
-// reached, persists requires_reauth=true. Logged errors are intentionally
-// swallowed — reauth is a best-effort signal, not a critical write.
 func (c *Channel) handleReauth(ctx context.Context, channelID int64) {
 	key := fmt.Sprintf("twitter:%d", channelID)
 	prompt, err := c.tracker.RecordErrorForKind(ctx, channel.KindTwitter, key)

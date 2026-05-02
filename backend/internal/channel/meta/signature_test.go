@@ -45,7 +45,6 @@ func TestVerifySignature_MissingPrefix(t *testing.T) {
 
 func TestVerifySignature_AllowUnsigned(t *testing.T) {
 	t.Setenv("META_ALLOW_UNSIGNED", "true")
-	// Reload GraphVersion (won't affect VerifySignature, but re-init env)
 	_ = os.Setenv("META_ALLOW_UNSIGNED", "true")
 	defer func() { _ = os.Unsetenv("META_ALLOW_UNSIGNED") }()
 

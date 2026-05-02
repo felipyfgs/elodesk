@@ -39,8 +39,6 @@ type MFAService struct {
 	mfaTokenStore MFATokenStore
 }
 
-// MFATokenStore is an interface for storing ephemeral MFA tokens.
-// In production this uses Redis; for now we use an in-memory store.
 type MFATokenStore interface {
 	Set(key string, userID int64, ttl time.Duration) error
 	GetAndDelete(key string) (int64, bool)
@@ -124,8 +122,6 @@ type MFASetupResult struct {
 	Secret     string
 }
 
-// Setup generates a new TOTP secret, encrypts and stores it (mfa_enabled=false),
-// and returns the URI and plaintext secret for QR display.
 func (s *MFAService) Setup(ctx context.Context, userID int64) (*MFASetupResult, error) {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
@@ -162,8 +158,6 @@ type MFAEnableResult struct {
 	RecoveryCodes []string
 }
 
-// Enable validates the TOTP code, enables MFA, generates recovery codes,
-// and returns them ONCE in plaintext.
 func (s *MFAService) Enable(ctx context.Context, userID int64, code string) (*MFAEnableResult, error) {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
@@ -188,7 +182,6 @@ func (s *MFAService) Enable(ctx context.Context, userID int64, code string) (*MF
 		return nil, fmt.Errorf("failed to enable mfa: %w", err)
 	}
 
-	// Generate recovery codes.
 	codes, hashes, err := generateRecoveryCodes(recoveryCodeCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate recovery codes: %w", err)
@@ -214,8 +207,6 @@ type MFAVerifyResult struct {
 	UsedRecovery bool
 }
 
-// Verify validates a TOTP code or recovery code against the stored MFA secret.
-// If the mfaToken is valid, it returns the user ID for JWT generation.
 func (s *MFAService) Verify(ctx context.Context, mfaToken, code string) (*MFAVerifyResult, error) {
 	userID, ok := s.mfaTokenStore.GetAndDelete(mfaToken)
 	if !ok {
@@ -236,12 +227,10 @@ func (s *MFAService) Verify(ctx context.Context, mfaToken, code string) (*MFAVer
 		return nil, fmt.Errorf("failed to decrypt mfa secret: %w", err)
 	}
 
-	// Try TOTP first.
 	valid := totp.Validate(code, secret)
 	usedRecovery := false
 
 	if !valid {
-		// Try recovery code.
 		codeHash := hashRecoveryCode(code)
 		recoveryCode, err := s.recoveryRepo.FindByHash(ctx, codeHash)
 		if err != nil {
@@ -262,7 +251,6 @@ func (s *MFAService) Verify(ctx context.Context, mfaToken, code string) (*MFAVer
 	}, nil
 }
 
-// Disable deactivates MFA, clears secrets and recovery codes.
 func (s *MFAService) Disable(ctx context.Context, userID int64, currentPassword string) error {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
@@ -295,7 +283,6 @@ func (s *MFAService) Disable(ctx context.Context, userID int64, currentPassword 
 	return nil
 }
 
-// GenerateMFAToken creates an ephemeral token for the MFA verification step.
 func (s *MFAService) GenerateMFAToken(userID int64) (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {

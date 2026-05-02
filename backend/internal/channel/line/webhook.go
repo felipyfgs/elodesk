@@ -20,9 +20,6 @@ const (
 	lineChannelAttrsKey = "line_channel_id"
 )
 
-// VerifySignature computes HMAC-SHA256 over the raw request body and compares to the
-// base64-encoded signature provided in the X-Line-Signature header.
-// https://developers.line.biz/en/reference/messaging-api/#signature-validation
 func VerifySignature(secret string, rawBody []byte, signature string) bool {
 	if secret == "" || signature == "" {
 		return false
@@ -33,8 +30,6 @@ func VerifySignature(secret string, rawBody []byte, signature string) bool {
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-// ProcessWebhook parses a LINE webhook payload and persists contacts/messages.
-// The caller is expected to have already verified the X-Line-Signature header.
 func ProcessWebhook(
 	ctx context.Context,
 	body []byte,
@@ -76,7 +71,6 @@ func processEvent(
 	conversationRepo *repo.ConversationRepo,
 	messageRepo *repo.MessageRepo,
 ) error {
-	// Only process 1:1 messages from users; ignore group/room for now.
 	if evt.Source.Type != "user" || evt.Source.UserID == "" {
 		return nil
 	}
@@ -89,7 +83,6 @@ func processEvent(
 		return processMessage(ctx, evt, ch, inbox, dedup, api, channelToken,
 			contactRepo, contactInboxRepo, conversationRepo, messageRepo)
 	case EventTypeFollow, EventTypeUnfollow:
-		// ensure the contact exists but don't create a message
 		_, _, err := ensureContactAndConversation(ctx, evt.Source.UserID, ch.AccountID, inbox.ID,
 			api, channelToken, contactRepo, contactInboxRepo, conversationRepo)
 		return err

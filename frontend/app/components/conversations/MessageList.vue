@@ -92,13 +92,6 @@ function messageUi(m: Message) {
 </script>
 
 <template>
-  <!--
-    `!flex-none` sobrescreve o `flex-1` default do slot root do
-    UChatMessages (definido em @nuxt/ui chat-messages.ts). Sem isso, o
-    componente cresce até preencher 100% da altura do scroll container,
-    anulando o `justify-end` do wrapper em Thread.vue — que é o que faz
-    poucas mensagens grudarem no fundo, próximas ao composer.
-  -->
   <UChatMessages
     class="mx-auto w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl px-0 py-4 !flex-none"
     :should-scroll-to-bottom="false"

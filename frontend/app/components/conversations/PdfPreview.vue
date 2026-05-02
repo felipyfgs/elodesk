@@ -10,30 +10,20 @@ const pageCount = ref<number | null>(null)
 const isLoading = ref(true)
 const errored = ref(false)
 
-// Renderiza a primeira página do PDF para um canvas e gera dataURL pra usar
-// como thumbnail. PDF.js é carregado dinamicamente pra não inflar o bundle
-// inicial — só quando uma mensagem com PDF aparece na tela.
 async function renderThumbnail() {
   isLoading.value = true
   errored.value = false
   try {
     const pdfjs = await import('pdfjs-dist')
-    // Worker precisa ser configurado uma vez. PDF.js v5 expõe worker como
-    // `pdf.worker.min.mjs` via package exports — Vite resolve via ?url.
     if (!pdfjs.GlobalWorkerOptions.workerSrc) {
       const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
     }
 
-    // verbosity: 0 (ERRORS only) silencia warnings benignos como
-    // "TT: undefined function: 21" que aparecem quando o PDF usa features
-    // de fonte TrueType que o PDF.js não implementa — não afeta render.
     const doc = await pdfjs.getDocument({ url: props.src, isEvalSupported: false, verbosity: 0 }).promise
     pageCount.value = doc.numPages
 
     const page = await doc.getPage(1)
-    // Escala fixa que dá uma imagem nítida sem ser pesada (~ 220px de largura
-    // dependendo do tamanho da página). 1.4 é um bom equilíbrio.
     const viewport = page.getViewport({ scale: 1.4 })
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -77,7 +67,6 @@ const metaLine = computed(() => {
     :title="fileName"
     class="block w-[260px] max-w-full text-current opacity-100 transition-opacity hover:opacity-90"
   >
-    <!-- Thumbnail da primeira página -->
     <div class="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-white/90">
       <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center text-current/60">
         <UIcon name="i-lucide-loader-2" class="size-6 animate-spin" />
@@ -94,10 +83,6 @@ const metaLine = computed(() => {
         loading="lazy"
       >
     </div>
-
-    <!-- Linha de metadata sem moldura: ícone + nome + páginas/tamanho. Cores
-         seguem `currentColor` do balão (texto inverted no outgoing, default
-         no incoming). -->
     <div class="mt-1.5 flex items-center gap-2 px-0.5">
       <span class="grid size-8 shrink-0 place-content-center rounded-md bg-white/85">
         <span class="text-[10px] font-bold text-error">PDF</span>

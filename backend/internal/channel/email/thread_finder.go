@@ -11,8 +11,6 @@ import (
 	"backend/internal/repo"
 )
 
-// inboundDomain is the base domain used for reply+<uuid>@inbound.<domain>
-// receiver addresses. Loaded from env via Config.
 var inboundDomain = "inbound.elodesk.io"
 
 var (
@@ -20,7 +18,6 @@ var (
 	reFallbackMsgID = regexp.MustCompile(`<account/\d+/conversation/([0-9a-f-]{36})@`)
 )
 
-// Deps holds the repo dependencies needed by ConversationFinder.
 type Deps struct {
 	ConversationRepo interface {
 		FindByUUID(ctx context.Context, uuid string, accountID, inboxID int64) (*model.Conversation, error)
@@ -39,7 +36,6 @@ type Deps struct {
 	ConversationCreate func(ctx context.Context, conv *model.Conversation) error
 }
 
-// ConversationFinder resolves which conversation an inbound email belongs to.
 type ConversationFinder struct {
 	deps      Deps
 	accountID int64
@@ -50,29 +46,23 @@ func NewConversationFinder(deps Deps, accountID, inboxID int64) *ConversationFin
 	return &ConversationFinder{deps: deps, accountID: accountID, inboxID: inboxID}
 }
 
-// Resolve tries four strategies in order and returns the conversation plus
-// whether it was newly created.
 func (f *ConversationFinder) Resolve(ctx context.Context, env *Envelope) (*model.Conversation, bool, error) {
-	// Strategy 1 — UUID receiver
 	if conv, err := f.byUUIDReceiver(ctx, env); err == nil && conv != nil {
 		return conv, false, nil
 	}
 
-	// Strategy 2 — In-Reply-To
 	if env.InReplyTo != "" {
 		if conv, err := f.byMessageID(ctx, env.InReplyTo); err == nil && conv != nil {
 			return conv, false, nil
 		}
 	}
 
-	// Strategy 3 — References chain (last 50, newest first for speed)
 	for i := len(env.References) - 1; i >= 0; i-- {
 		if conv, err := f.byMessageID(ctx, env.References[i]); err == nil && conv != nil {
 			return conv, false, nil
 		}
 	}
 
-	// Strategy 4 — new conversation
 	conv, err := f.newConversation(ctx, env)
 	if err != nil {
 		return nil, false, fmt.Errorf("thread_finder: create new conversation: %w", err)
@@ -96,19 +86,14 @@ func (f *ConversationFinder) byUUIDReceiver(ctx context.Context, env *Envelope) 
 }
 
 func (f *ConversationFinder) byMessageID(ctx context.Context, msgID string) (*model.Conversation, error) {
-	// Try direct source_id match (anti-hijack: scoped to this inbox).
 	msg, err := f.deps.MessageRepo.FindBySourceIDInbox(ctx, msgID, f.inboxID)
 	if err == nil {
 		conv, err := f.deps.ConversationRepo.FindByUUID(ctx, "", f.accountID, f.inboxID)
 		_ = conv
-		// we need the conversation id from the message
 		_ = err
-		// Re-fetch by conversation id via a simpler approach: return the conversation
-		// using the message's conversation_id - we'll store the convRepo as a wider iface.
 		return f.convByMessageConvID(ctx, msg)
 	}
 
-	// Try fallback pattern <account/<id>/conversation/<uuid>@<domain>>
 	if m := reFallbackMsgID.FindStringSubmatch(msgID); m != nil {
 		uuid := m[1]
 		conv, err := f.deps.ConversationRepo.FindByUUID(ctx, uuid, f.accountID, f.inboxID)
@@ -119,8 +104,6 @@ func (f *ConversationFinder) byMessageID(ctx context.Context, msgID string) (*mo
 	return nil, nil
 }
 
-// convByMessageConvID looks up the conversation that owns msg.
-// We do this by carrying a broader ConversationRepo interface.
 func (f *ConversationFinder) convByMessageConvID(ctx context.Context, msg *model.Message) (*model.Conversation, error) {
 	type convByIDer interface {
 		FindByConvID(ctx context.Context, convID, accountID int64) (*model.Conversation, error)
@@ -178,7 +161,6 @@ func (f *ConversationFinder) newConversation(ctx context.Context, env *Envelope)
 	return conv, nil
 }
 
-// extractEmail returns the bare email address from "Name <addr>" or "addr".
 func extractEmail(addr string) string {
 	addr = strings.TrimSpace(addr)
 	if i := strings.Index(addr, "<"); i >= 0 {
@@ -190,7 +172,6 @@ func extractEmail(addr string) string {
 	return strings.ToLower(strings.TrimSpace(addr))
 }
 
-// extractName returns the display name portion of "Name <addr>".
 func extractName(addr string) string {
 	if i := strings.Index(addr, "<"); i > 0 {
 		return strings.TrimSpace(addr[:i])

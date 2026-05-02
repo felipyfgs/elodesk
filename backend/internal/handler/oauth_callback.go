@@ -14,7 +14,6 @@ import (
 	"backend/internal/service"
 )
 
-// OAuthCallbackHandler handles OAuth provider callbacks for email channel creation.
 type OAuthCallbackHandler struct {
 	channelEmailRepo *repo.ChannelEmailRepo
 	inboxRepo        *repo.InboxRepo
@@ -39,26 +38,22 @@ func NewOAuthCallbackHandler(
 	}
 }
 
-// GoogleCallback handles GET /oauth/google/callback?code=...&state=...
-//
-//	@Summary     Google OAuth callback for email inbox
-//	@Description Exchanges the OAuth code for tokens, creates the email channel, redirects to frontend
-//	@Tags        oauth
-//	@Param       code  query string true "Authorization code"
-//	@Param       state query string true "CSRF state token"
-//	@Router      /oauth/google/callback [get]
+// @Summary     Google OAuth callback for email inbox
+// @Description Exchanges the OAuth code for tokens, creates the email channel, redirects to frontend
+// @Tags        oauth
+// @Param       code  query string true "Authorization code"
+// @Param       state query string true "CSRF state token"
+// @Router      /oauth/google/callback [get]
 func (h *OAuthCallbackHandler) GoogleCallback(c *fiber.Ctx) error {
 	return h.handleCallback(c, "google")
 }
 
-// MicrosoftCallback handles GET /oauth/microsoft/callback?code=...&state=...
-//
-//	@Summary     Microsoft OAuth callback for email inbox
-//	@Description Exchanges the OAuth code for tokens, creates the email channel, redirects to frontend
-//	@Tags        oauth
-//	@Param       code  query string true "Authorization code"
-//	@Param       state query string true "CSRF state token"
-//	@Router      /oauth/microsoft/callback [get]
+// @Summary     Microsoft OAuth callback for email inbox
+// @Description Exchanges the OAuth code for tokens, creates the email channel, redirects to frontend
+// @Tags        oauth
+// @Param       code  query string true "Authorization code"
+// @Param       state query string true "CSRF state token"
+// @Router      /oauth/microsoft/callback [get]
 func (h *OAuthCallbackHandler) MicrosoftCallback(c *fiber.Ctx) error {
 	return h.handleCallback(c, "microsoft")
 }

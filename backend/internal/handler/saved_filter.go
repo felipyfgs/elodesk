@@ -145,7 +145,6 @@ func (h *SavedFilterHandler) FilterConversations(c *fiber.Ctx) error {
 
 	customKeys, _ := h.defRepo.ListKeysByModel(c.Context(), accountID, "conversation")
 
-	// startArgN=2 reserves $1 for account_id which is prepended in the repo.
 	where, args, err := filterquery.BuildSQL(req.Query, "conversation", customKeys, 2)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", err.Error()))

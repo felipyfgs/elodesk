@@ -98,5 +98,4 @@ func TestExtractContent_Image(t *testing.T) {
 	}
 }
 
-// guard: Channel must satisfy the channel.Channel interface.
 var _ channel.Channel = (*Channel)(nil)

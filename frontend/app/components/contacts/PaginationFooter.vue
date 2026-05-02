@@ -28,12 +28,9 @@ const endItem = computed(() => {
 <template>
   <div class="px-6 py-4 max-w-5xl mx-auto">
     <div class="flex items-center justify-between gap-4">
-      <!-- Contador -->
       <div class="text-sm text-muted">
         {{ t('contacts.pagination.showing', { start: startItem, end: endItem, total: totalItems }) }}
       </div>
-
-      <!-- Paginação -->
       <UPagination
         :model-value="currentPage"
         :total="totalItems"

@@ -112,12 +112,9 @@ function reset() {
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full space-y-6">
-        <!-- Step 1: Upload -->
         <div v-if="currentStep === 'upload'">
           <ContactsImportDropzone @file-selected="onFileSelected" />
         </div>
-
-        <!-- Step 2: Preview -->
         <div v-else-if="currentStep === 'preview'" class="space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium">
@@ -156,8 +153,6 @@ function reset() {
             </UButton>
           </div>
         </div>
-
-        <!-- Step 3: Result -->
         <div v-else-if="currentStep === 'result'">
           <ContactsImportReport :result="importResult" />
 

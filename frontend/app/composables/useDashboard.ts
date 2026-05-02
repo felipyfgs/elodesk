@@ -34,8 +34,6 @@ const _useDashboard = () => {
     isSidebarOpen.value = false
   }
 
-  // Pre-warm caches used across the dashboard (sidebar tree, filter pickers,
-  // label managers, etc.). Each store is fed once when the account resolves.
   async function fetchSidebarData() {
     if (!aid.value) return
     const base = `/accounts/${aid.value}`
@@ -57,14 +55,19 @@ const _useDashboard = () => {
     if (id) void fetchSidebarData()
   }, { immediate: true })
 
-  // Scope pickers and the Unattended view live inside the conversations list
-  // panel now (ConversationsStatusBar + tabs). The sidebar keeps a flat link.
   const operationLinks = computed<SidebarItem[]>(() => [
     {
       label: t('nav.conversations'),
       icon: 'i-lucide-messages-square',
       to: accountPath('/conversations'),
       active: isSectionActive('conversations'),
+      onSelect: closeSidebar
+    },
+    {
+      label: t('nav.pipelines'),
+      icon: 'i-lucide-kanban-square',
+      to: accountPath('/pipelines'),
+      active: isSectionActive('pipelines'),
       onSelect: closeSidebar
     },
     {

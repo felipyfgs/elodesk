@@ -57,16 +57,14 @@ func NewTelegramWebhookHandler(
 	}
 }
 
-// Receive handles POST /webhooks/telegram/:identifier (inbound messages).
-//
-//	@Summary		Telegram webhook delivery
-//	@Tags			webhooks
-//	@Accept			json
-//	@Produce		json
-//	@Param			identifier	path		string	true	"Webhook identifier"
-//	@Success		200			{object}	dto.APIResponse
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/telegram/{identifier} [post]
+// @Summary		Telegram webhook delivery
+// @Tags			webhooks
+// @Accept			json
+// @Produce		json
+// @Param			identifier	path		string	true	"Webhook identifier"
+// @Success		200			{object}	dto.APIResponse
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/telegram/{identifier} [post]
 func (h *TelegramWebhookHandler) Receive(c *fiber.Ctx) error {
 	identifier := c.Params("identifier")
 
@@ -101,18 +99,16 @@ func (h *TelegramWebhookHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Provision handles POST /api/v1/accounts/:aid/inboxes/telegram.
-//
-//	@Summary		Provision Telegram inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Accept			json
-//	@Produce		json
-//	@Param			aid		path		int							true	"Account ID"
-//	@Param			body	body		dto.CreateTelegramInboxReq	true	"Provisioning request"
-//	@Success		201		{object}	dto.APIResponse{data=dto.TelegramInboxResp}
-//	@Failure		400		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/telegram [post]
+// @Summary		Provision Telegram inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Accept			json
+// @Produce		json
+// @Param			aid		path		int							true	"Account ID"
+// @Param			body	body		dto.CreateTelegramInboxReq	true	"Provisioning request"
+// @Success		201		{object}	dto.APIResponse{data=dto.TelegramInboxResp}
+// @Failure		400		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/telegram [post]
 func (h *TelegramWebhookHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -202,16 +198,14 @@ func (h *TelegramWebhookHandler) Provision(c *fiber.Ctx) error {
 	}))
 }
 
-// Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/telegram.
-//
-//	@Summary		Delete Telegram inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Param			aid		path		int		true	"Account ID"
-//	@Param			id		path		int		true	"Inbox ID"
-//	@Success		200		{object}	dto.APIResponse
-//	@Failure		404		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/{id}/telegram [delete]
+// @Summary		Delete Telegram inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Param			aid		path		int		true	"Account ID"
+// @Param			id		path		int		true	"Inbox ID"
+// @Success		200		{object}	dto.APIResponse
+// @Failure		404		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/{id}/telegram [delete]
 func (h *TelegramWebhookHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

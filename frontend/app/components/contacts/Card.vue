@@ -92,7 +92,6 @@ function handleDelete() {
       class="flex items-center gap-4 px-4 py-3 cursor-pointer select-none"
       @click="handleToggle"
     >
-      <!-- Avatar com checkbox overlay -->
       <div class="relative flex-shrink-0" @click.stop>
         <UAvatar
           :text="initials"
@@ -111,8 +110,6 @@ function handleDelete() {
           />
         </div>
       </div>
-
-      <!-- Informações do contato -->
       <div class="flex-1 min-w-0">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mb-0.5">
           <span class="text-base font-semibold truncate text-highlighted">
@@ -172,8 +169,6 @@ function handleDelete() {
         />
       </div>
     </div>
-
-    <!-- Conteúdo expandido -->
     <UCollapsible
       :open="isExpanded"
       class="w-full"

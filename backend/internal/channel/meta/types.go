@@ -2,13 +2,11 @@ package meta
 
 import "encoding/json"
 
-// WebhookPayload is the top-level Meta webhook body.
 type WebhookPayload struct {
 	Object string  `json:"object"`
 	Entry  []Entry `json:"entry"`
 }
 
-// Entry is one entry in a Meta webhook payload.
 type Entry struct {
 	ID        string           `json:"id"`
 	Time      int64            `json:"time"`
@@ -17,7 +15,6 @@ type Entry struct {
 	Changes   []Change         `json:"changes"`
 }
 
-// MessagingEntry represents a single messaging event inside an Entry.
 type MessagingEntry struct {
 	Sender    IDHolder  `json:"sender"`
 	Recipient IDHolder  `json:"recipient"`
@@ -32,7 +29,6 @@ type IDHolder struct {
 	ID string `json:"id"`
 }
 
-// Message is the message object inside a MessagingEntry.
 type Message struct {
 	Mid         string       `json:"mid"`
 	Text        string       `json:"text,omitempty"`

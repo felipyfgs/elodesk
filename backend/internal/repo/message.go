@@ -33,11 +33,6 @@ func NewMessageRepo(pool *pgxpool.Pool) *MessageRepo {
 	return &MessageRepo{pool: pool}
 }
 
-// Create inserts a message. When source_id is non-nil the operation is
-// idempotent via the partial unique index idx_messages_inbox_source: a
-// subsequent call from the same provider with the same (inbox_id, source_id)
-// returns the existing row with content refreshed (providers may re-deliver
-// edited content). When source_id is nil each call inserts a new row.
 func (r *MessageRepo) Create(ctx context.Context, m *model.Message) (*model.Message, error) {
 	if m.SourceID != nil {
 		query := `INSERT INTO messages (account_id, inbox_id, conversation_id, message_type, content_type, content, source_id, private, status, content_attributes, sender_type, sender_id, sender_contact_id, forwarded_from_message_id)
@@ -65,8 +60,6 @@ func (r *MessageRepo) Create(ctx context.Context, m *model.Message) (*model.Mess
 	return &result, nil
 }
 
-// FindByIDs retrieves multiple messages by their IDs, all scoped to the same account.
-// Returns an error if any of the messages is not found or belongs to a different account.
 func (r *MessageRepo) FindByIDs(ctx context.Context, ids []int64, accountID int64) ([]model.Message, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -129,9 +122,6 @@ func (r *MessageRepo) FindBySourceID(ctx context.Context, sourceID string, accou
 	return &m, nil
 }
 
-// FindBySourceIDConv looks up a message by source_id scoped to both account
-// and conversation. Used by the idempotence check in MessageService.Create
-// to ensure the same source_id is not reused across different conversations.
 func (r *MessageRepo) FindBySourceIDConv(ctx context.Context, sourceID string, conversationID, accountID int64) (*model.Message, error) {
 	query := `SELECT ` + messageSelectColumns + ` FROM messages WHERE source_id = $1 AND conversation_id = $2 AND account_id = $3 AND deleted_at IS NULL`
 	row := r.pool.QueryRow(ctx, query, sourceID, conversationID, accountID)
@@ -145,8 +135,6 @@ func (r *MessageRepo) FindBySourceIDConv(ctx context.Context, sourceID string, c
 	return &m, nil
 }
 
-// FindBySourceIDInbox looks up a message by source_id scoped to a specific inbox.
-// This prevents cross-inbox thread hijacking via spoofed In-Reply-To headers.
 func (r *MessageRepo) FindBySourceIDInbox(ctx context.Context, sourceID string, inboxID int64) (*model.Message, error) {
 	query := `SELECT ` + messageSelectColumns + ` FROM messages WHERE source_id = $1 AND inbox_id = $2 AND deleted_at IS NULL`
 	row := r.pool.QueryRow(ctx, query, sourceID, inboxID)
@@ -248,9 +236,6 @@ func mustMarshalString(s string) json.RawMessage {
 	return b
 }
 
-// MarkDeliveredBefore updates outgoing messages in a conversation to the given
-// status when their created_at is at or before the watermark timestamp.
-// Returns the number of rows updated.
 func (r *MessageRepo) MarkDeliveredBefore(ctx context.Context, conversationID, accountID int64, before time.Time, status model.MessageStatus) (int, error) {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE messages SET status = $1, updated_at = NOW()

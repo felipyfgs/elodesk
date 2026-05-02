@@ -2,8 +2,6 @@ import { format } from 'date-fns'
 import type { Message } from '~/stores/messages'
 import type { Conversation } from '~/stores/conversations'
 
-// --- Contact helpers (S3.1) ---
-
 export function resolveContactName(c: Conversation): string {
   return c.meta?.sender?.name
     ?? c.meta?.sender?.phoneNumber
@@ -24,8 +22,6 @@ export function resolveContactAvatar(c: Conversation): string | undefined {
     ?? undefined
 }
 
-// --- Message role mapping (S1.3) ---
-
 export type ChatRole = 'user' | 'assistant' | 'system'
 
 export function messageRole(m: Message): ChatRole {
@@ -42,8 +38,6 @@ export function messageVariant(m: Message): 'solid' | 'outline' | 'soft' | 'subt
 export function messageSide(m: Message): 'left' | 'right' {
   return m.messageType === 1 ? 'right' : 'left'
 }
-
-// --- Bubble kind (S2.5) ---
 
 export type BubbleKind = 'text' | 'attachment' | 'private' | 'deleted' | 'activity' | 'template' | 'error' | 'empty'
 
@@ -77,16 +71,8 @@ export function messageIsForwardable(m: Message): boolean {
   return messageBubbleKind(m) !== 'deleted'
 }
 
-// --- Attachment helpers (S1.2) ---
-
 export interface MessageAttachment {
   id?: number
-  // dataUrl é a URL ESTÁVEL servida pelo elodesk (espelha Chatwoot
-  // `attachment.data_url`). Tem precedência sobre fileUrl porque é a única que
-  // sabemos estar imutável byte-a-byte — fileUrl externo (CDN do Meta) pode
-  // expirar, ser assinada por janela curta etc. Quando definida, o template
-  // monta `<img :src="att.dataUrl">` e o cache HTTP do navegador acerta entre
-  // re-aberturas da conversa.
   dataUrl?: string
   fileUrl?: string
   path?: string
@@ -103,10 +89,6 @@ export function hasAttachments(m: Message): boolean {
   return !!(attachments && attachments.length > 0)
 }
 
-// Backend AttachmentFileType enum: 0=image, 1=audio, 2=video, 3=file,
-// 4=location, 5=fallback. When the server-side contentType (MIME) is
-// absent we fall back to mapping the numeric enum to a string token the
-// UI can pattern-match against.
 const FILE_TYPE_MAP: Record<number, string> = {
   0: 'image',
   1: 'audio',
@@ -127,8 +109,6 @@ export function getAttachments(m: Message): MessageAttachment[] {
   if (m.attachments && m.attachments.length > 0) {
     return m.attachments.map(a => ({
       id: a.id,
-      // dataUrl: estável (token HMAC permanente, Cache-Control 1y immutable).
-      // fileUrl: externalUrl é CDN externa (Meta/Telegram) — fallback.
       dataUrl: a.dataUrl,
       path: a.fileKey,
       fileUrl: a.externalUrl,
@@ -141,8 +121,6 @@ export function getAttachments(m: Message): MessageAttachment[] {
   const ca = messageContentAttributes(m)
   return (ca?.attachments as MessageAttachment[] | undefined) ?? []
 }
-
-// --- Status mapping (S1.4) ---
 
 export interface StatusDisplay {
   icon: string
@@ -160,11 +138,7 @@ export function messageStatusDisplay(m: Message, t: (key: string) => string): St
   }
 }
 
-// --- Message grouping (S2.9) ---
-
 function senderKey(m: Message): string {
-  // Prefer the hydrated `sender` struct (new Chatwoot shape); fall back to the
-  // legacy senderType/senderId pair used by optimistic composer messages.
   if (m.sender?.id != null) return `${m.sender.type ?? ''}:${m.sender.id}`
   return `${m.senderType ?? ''}:${m.senderId ?? ''}`
 }
@@ -178,8 +152,6 @@ export function shouldGroupWith(prev: Message, curr: Message): boolean {
   return Math.abs(currTime - prevTime) < 60_000 // same minute
 }
 
-// --- Message parts (S2.3) ---
-
 export function messageParts(m: Message) {
   const parts: { type: 'text', text: string }[] = []
   if (m.content) {
@@ -188,21 +160,12 @@ export function messageParts(m: Message) {
   return parts
 }
 
-// --- Forward helpers ---
-
-// Mensagens encaminhadas chegam por dois caminhos:
-//   1. Forward intra-elodesk (agente clica "encaminhar" na UI) — backend grava
-//      forwardedFromMessageId apontando pra mensagem-raiz.
-//   2. Mensagem inbound de canal externo (ex.: WhatsApp via wzap) que veio
-//      marcada como encaminhada do lado do cliente — wzap repassa em
-//      contentAttributes.is_forwarded já que não há mensagem-raiz no elodesk.
 export function messageIsForwarded(m: Message): boolean {
   if (m.forwardedFromMessageId != null) return true
   const ca = messageContentAttributes(m)
   return ca?.is_forwarded === true
 }
 
-// Channel compatibility matrix matching backend service/channel_compat.go.
 const CHANNEL_FILE_TYPE_SUPPORT: Record<string, string[]> = {
   'Channel::Whatsapp': ['image', 'audio', 'video', 'file'],
   'Channel::Telegram': ['image', 'audio', 'video', 'file'],
@@ -234,8 +197,6 @@ export function isInboxCompatibleWithAttachments(
   }
   return true
 }
-
-// --- Time formatting ---
 
 export function messageTime(m: Message): string {
   if (!m.createdAt) return ''

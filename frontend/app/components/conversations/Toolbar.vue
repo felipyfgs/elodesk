@@ -126,8 +126,6 @@ async function bulkDelete() {
       )
     )
     ids.forEach(id => convs.remove(id))
-    // If the open thread was among the deleted ones, drop the URL param so
-    // the right pane doesn't sit on a 404 fetch loop.
     const openId = String(route.params.conversationId ?? '')
     if (openId && ids.some(id => String(id) === openId)) {
       router.replace(`/accounts/${accountId}/conversations`)
@@ -140,8 +138,6 @@ async function bulkDelete() {
   }
 }
 
-// Status actions are split into two groups: terminal transitions (resolve /
-// reopen) and snooze durations. Grouping with a separator avoids nesting menus.
 const statusMenuItems = computed(() => [
   [
     { label: t('conversations.bulk.resolve'), icon: 'i-lucide-check-circle', onSelect: () => bulkToggleStatus('RESOLVED') },

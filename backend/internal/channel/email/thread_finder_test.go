@@ -9,8 +9,6 @@ import (
 	"backend/internal/repo"
 )
 
-// --- stubs ---
-
 type stubConvRepo struct {
 	byUUID map[string]*model.Conversation
 	byID   map[int64]*model.Conversation
@@ -90,8 +88,6 @@ func makeDeps(convRepo *stubConvRepo, msgRepo *stubMsgRepo, contactRepo *stubCon
 	}
 }
 
-// --- tests ---
-
 func TestThreadFinder_UUIDReceiver(t *testing.T) {
 	conv := &model.Conversation{ID: 1, UUID: "aaaabbbb-cccc-dddd-eeee-ffffffffffff"}
 	convRepo := &stubConvRepo{byUUID: map[string]*model.Conversation{conv.UUID: conv}}
@@ -143,7 +139,6 @@ func TestThreadFinder_InReplyTo(t *testing.T) {
 }
 
 func TestThreadFinder_CrossInboxRejected(t *testing.T) {
-	// Message exists but belongs to a different inbox — FindBySourceIDInbox returns not-found.
 	convRepo := &stubConvRepo{byUUID: map[string]*model.Conversation{}}
 	msgRepo := &stubMsgRepo{bySourceInbox: map[string]*model.Message{}} // empty = anti-hijack
 	contactRepo := &stubContactRepo{byEmail: map[string]*model.Contact{}}

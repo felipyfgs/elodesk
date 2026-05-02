@@ -73,6 +73,9 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	agentInvitationRepo := repo.NewAgentInvitationRepo(db.Pool)
 	auditLogRepo := repo.NewAuditLogRepo(db.Pool)
 	notificationRepo := repo.NewNotificationRepo(db.Pool)
+	pipelineRepo := repo.NewPipelineRepo(db.Pool)
+	pipelineStageRepo := repo.NewPipelineStageRepo(db.Pool)
+	pipelineCardRepo := repo.NewPipelineCardRepo(db.Pool)
 
 	mfaTokenStore := service.NewInMemoryMFATokenStore()
 	mfaSvc := service.NewMFAService(userRepo, mfaRecoveryCodeRepo, refreshTokenRepo, cipher, mfaTokenStore)
@@ -156,7 +159,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	realtimeHandler := handler.NewRealtimeHandler(authSvc, hub, accountRepo, inboxRepo, conversationRepo)
 
 	notificationSvc := service.NewNotificationService(notificationRepo, realtimeSvc)
-	notificationsHandler := handler.NewNotificationHandler(notificationSvc)
+	notificationsHandler := handler.NewNotificationHandler(notificationSvc, conversationRepo)
 	conversationSvc.SetNotifications(notificationSvc)
 
 	s.slaBreachJob = service.NewSLABreachJob(slaRepo, notificationSvc, realtimeSvc, auditLogger, 60*time.Second)
@@ -164,6 +167,9 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	labelsSvc := service.NewLabelService(labelRepo, realtimeSvc).WithAudit(auditLogger)
 	labelsHandler := handler.NewLabelHandler(labelsSvc)
+
+	pipelineSvc := service.NewPipelineService(pipelineRepo, pipelineStageRepo, pipelineCardRepo, labelRepo, accountRepo, realtimeSvc).WithAudit(auditLogger)
+	pipelineHandler := handler.NewPipelineHandler(pipelineSvc)
 
 	teamsSvc := service.NewTeamService(teamRepo, teamMemberRepo, accountRepo)
 	teamsHandler := handler.NewTeamHandler(teamsSvc)
@@ -196,15 +202,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	contactSvc.WithMinio(minioClient)
 	messageHandler.SetMinio(minioClient)
 
-	// Padrão Chatwoot/ActiveStorage: o elodesk hospeda a URL pública da mídia
-	// e proxia bytes do MinIO. Integradores externos só veem a URL do elodesk.
-	// Token HMAC-SHA256 com a KEK (já validada como ≥32 bytes base64) — não há
-	// criptografia, só integridade.
-	//
-	// Token permanente: a URL final é determinística pra um (accountID,
-	// attachmentID), o que faz o navegador acertar o HTTP cache (max-age=1y +
-	// immutable em PublicAttachmentDownload) entre re-aberturas da conversa.
-	// Sem isso, cada visita gerava token novo → URL nova → re-download.
 	tokenSecret, _ := base64.StdEncoding.DecodeString(cfg.BackendKEK)
 	uploadHandler.SetAttachmentTokenSecret(tokenSecret)
 	attachmentURLBuilder := func(accountID, attachmentID int64) string {
@@ -212,9 +209,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 		return fmt.Sprintf("%s/api/v1/attachments/%d/file?token=%s", cfg.APIURL, attachmentID, token)
 	}
 	outboundWebhookSvc.WithAttachmentURLBuilder(attachmentURLBuilder)
-	// Injeta o builder no DTO pra que MessageResp.attachments[].data_url venha
-	// pronto na resposta (espelha Chatwoot push_event_data: cliente lê URL
-	// estável da mensagem direto, sem round-trip extra ao /media-url).
 	dto.SetAttachmentURLBuilder(attachmentURLBuilder)
 
 	healthHandler := handler.NewHealthHandler(db, redisClient)
@@ -226,10 +220,6 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 
 	api := s.App.Group("/api/v1")
 
-	// Endpoint público de download de attachment (padrão Chatwoot/ActiveStorage).
-	// Sem Bearer — autenticação é o token HMAC na query. Registrado fora do
-	// grupo `/auth` e do grupo `/accounts/:aid` (que tem JWTAuth) pra ser
-	// alcançável por integradores externos (wzap, n8n) com URL estável.
 	api.Get("/attachments/:id/file", uploadHandler.PublicAttachmentDownload)
 
 	auth := api.Group("/auth")
@@ -317,6 +307,27 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Patch("/labels/:id", ownerAdmin, labelsHandler.Update)
 	accounts.Delete("/labels/:id", ownerAdmin, labelsHandler.Delete)
 
+	// Pipelines (Kanban)
+	accounts.Get("/pipelines/templates", agentPlus, pipelineHandler.ListTemplates)
+	accounts.Get("/pipelines", agentPlus, pipelineHandler.List)
+	accounts.Post("/pipelines", ownerAdmin, pipelineHandler.Create)
+	accounts.Get("/pipelines/:id", agentPlus, pipelineHandler.Get)
+	accounts.Patch("/pipelines/:id", ownerAdmin, pipelineHandler.Update)
+	accounts.Delete("/pipelines/:id", ownerAdmin, pipelineHandler.Archive)
+	accounts.Post("/pipelines/:id/stages", ownerAdmin, pipelineHandler.CreateStage)
+	accounts.Patch("/pipelines/:id/stages/:sid", ownerAdmin, pipelineHandler.UpdateStage)
+	accounts.Delete("/pipelines/:id/stages/:sid", ownerAdmin, pipelineHandler.DeleteStage)
+	accounts.Get("/pipelines/:id/cards", agentPlus, pipelineHandler.ListCards)
+	accounts.Post("/pipelines/:id/cards", agentPlus, pipelineHandler.CreateCard)
+	accounts.Get("/cards/:cid", agentPlus, pipelineHandler.GetCard)
+	accounts.Patch("/cards/:cid", agentPlus, pipelineHandler.UpdateCard)
+	accounts.Post("/cards/:cid/move", agentPlus, pipelineHandler.MoveCard)
+	accounts.Delete("/cards/:cid", agentPlus, pipelineHandler.DeleteCard)
+	accounts.Post("/cards/:cid/assignees", agentPlus, pipelineHandler.AddAssignee)
+	accounts.Delete("/cards/:cid/assignees/:uid", agentPlus, pipelineHandler.RemoveAssignee)
+	accounts.Post("/cards/:cid/labels", agentPlus, pipelineHandler.ApplyLabel)
+	accounts.Delete("/cards/:cid/labels/:lid", agentPlus, pipelineHandler.RemoveLabel)
+
 	accounts.Get("/teams", teamsHandler.List)
 	accounts.Post("/teams", ownerAdmin, teamsHandler.Create)
 	accounts.Patch("/teams/:id", ownerAdmin, teamsHandler.Update)
@@ -390,6 +401,7 @@ func (s *Server) SetupRoutes(cfg *config.Config, db *database.DB, redisClient *r
 	accounts.Get("/notifications", agentPlus, notificationsHandler.List)
 	accounts.Post("/notifications/mark_all_read", agentPlus, notificationsHandler.MarkAllRead)
 	accounts.Post("/notifications/:id/read", agentPlus, notificationsHandler.MarkRead)
+	accounts.Post("/notifications/:id/unread", agentPlus, notificationsHandler.MarkUnread)
 
 	api.Get("/users/:id/notification_preferences", jwtAuth, notificationsHandler.GetPreferences)
 	api.Put("/users/:id/notification_preferences", jwtAuth, notificationsHandler.SetPreferences)

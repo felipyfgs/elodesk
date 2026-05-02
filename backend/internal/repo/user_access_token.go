@@ -35,7 +35,6 @@ func NewUserAccessTokenRepo(pool *pgxpool.Pool) *UserAccessTokenRepo {
 
 func (r *UserAccessTokenRepo) Pool() *pgxpool.Pool { return r.pool }
 
-// generateToken creates a cryptographically random 48-byte token encoded as base64url (64 chars)
 func generateToken() (string, error) {
 	bytes := make([]byte, 48)
 	if _, err := rand.Read(bytes); err != nil {
@@ -44,7 +43,6 @@ func generateToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
 
-// Create generates and inserts a new access token for the given owner
 func (r *UserAccessTokenRepo) Create(ctx context.Context, ownerType string, ownerID int64) (*model.UserAccessToken, error) {
 	token, err := generateToken()
 	if err != nil {
@@ -61,7 +59,6 @@ func (r *UserAccessTokenRepo) Create(ctx context.Context, ownerType string, owne
 		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// A token already exists for this owner (conflict); return it.
 			return r.FindByOwner(ctx, ownerType, ownerID)
 		}
 		return nil, fmt.Errorf("failed to create user access token: %w", err)
@@ -73,7 +70,6 @@ func (r *UserAccessTokenRepo) Create(ctx context.Context, ownerType string, owne
 	return &m, nil
 }
 
-// CreateTx creates a token within a transaction
 func (r *UserAccessTokenRepo) CreateTx(ctx context.Context, tx pgx.Tx, ownerType string, ownerID int64) (*model.UserAccessToken, error) {
 	token, err := generateToken()
 	if err != nil {
@@ -90,7 +86,6 @@ func (r *UserAccessTokenRepo) CreateTx(ctx context.Context, tx pgx.Tx, ownerType
 		Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// Conflict: token already exists for this owner; return it.
 			return r.FindByOwner(ctx, ownerType, ownerID)
 		}
 		return nil, fmt.Errorf("failed to create user access token: %w", err)
@@ -102,7 +97,6 @@ func (r *UserAccessTokenRepo) CreateTx(ctx context.Context, tx pgx.Tx, ownerType
 	return &m, nil
 }
 
-// FindByToken looks up a token by its plaintext value
 func (r *UserAccessTokenRepo) FindByToken(ctx context.Context, token string) (*model.UserAccessToken, error) {
 	query := `SELECT ` + userAccessTokenSelectColumns + ` FROM user_access_tokens WHERE token = $1`
 	row := r.pool.QueryRow(ctx, query, token)
@@ -116,7 +110,6 @@ func (r *UserAccessTokenRepo) FindByToken(ctx context.Context, token string) (*m
 	return &m, nil
 }
 
-// FindByOwner finds the token for a specific owner (polymorphic)
 func (r *UserAccessTokenRepo) FindByOwner(ctx context.Context, ownerType string, ownerID int64) (*model.UserAccessToken, error) {
 	query := `SELECT ` + userAccessTokenSelectColumns + ` FROM user_access_tokens WHERE owner_type = $1 AND owner_id = $2`
 	row := r.pool.QueryRow(ctx, query, ownerType, ownerID)
@@ -130,7 +123,6 @@ func (r *UserAccessTokenRepo) FindByOwner(ctx context.Context, ownerType string,
 	return &m, nil
 }
 
-// Regenerate deletes the old token and creates a new one for the owner
 func (r *UserAccessTokenRepo) Regenerate(ctx context.Context, ownerType string, ownerID int64) (*model.UserAccessToken, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -138,7 +130,6 @@ func (r *UserAccessTokenRepo) Regenerate(ctx context.Context, ownerType string, 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Delete existing token
 	_, err = tx.Exec(ctx,
 		`DELETE FROM user_access_tokens WHERE owner_type = $1 AND owner_id = $2`,
 		ownerType, ownerID)
@@ -146,7 +137,6 @@ func (r *UserAccessTokenRepo) Regenerate(ctx context.Context, ownerType string, 
 		return nil, fmt.Errorf("failed to delete old token: %w", err)
 	}
 
-	// Create new token
 	newToken, err := r.CreateTx(ctx, tx, ownerType, ownerID)
 	if err != nil {
 		return nil, err
@@ -159,10 +149,7 @@ func (r *UserAccessTokenRepo) Regenerate(ctx context.Context, ownerType string, 
 	return newToken, nil
 }
 
-// EnsureForUser creates a token for a user if they don't already have one
-// Used for backfilling existing users
 func (r *UserAccessTokenRepo) EnsureForUser(ctx context.Context, userID int64) (*model.UserAccessToken, error) {
-	// Try to find existing token
 	existing, err := r.FindByOwner(ctx, "User", userID)
 	if err == nil {
 		return existing, nil
@@ -171,6 +158,5 @@ func (r *UserAccessTokenRepo) EnsureForUser(ctx context.Context, userID int64) (
 		return nil, err
 	}
 
-	// Create new token
 	return r.Create(ctx, "User", userID)
 }

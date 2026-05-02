@@ -63,19 +63,17 @@ func NewTwilioWebhookHandler(
 	}
 }
 
-// Provision handles POST /api/v1/accounts/:aid/inboxes/twilio.
-//
-//	@Summary		Provision Twilio inbox (SMS or WhatsApp)
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Accept			json
-//	@Produce		json
-//	@Param			aid		path		int							true	"Account ID"
-//	@Param			body	body		dto.CreateTwilioInboxReq	true	"Provisioning request"
-//	@Success		201		{object}	dto.APIResponse{data=dto.TwilioInboxResp}
-//	@Failure		400		{object}	dto.APIError
-//	@Failure		403		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/twilio [post]
+// @Summary		Provision Twilio inbox (SMS or WhatsApp)
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Accept			json
+// @Produce		json
+// @Param			aid		path		int							true	"Account ID"
+// @Param			body	body		dto.CreateTwilioInboxReq	true	"Provisioning request"
+// @Success		201		{object}	dto.APIResponse{data=dto.TwilioInboxResp}
+// @Failure		400		{object}	dto.APIError
+// @Failure		403		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/twilio [post]
 func (h *TwilioWebhookHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -178,16 +176,14 @@ func (h *TwilioWebhookHandler) Provision(c *fiber.Ctx) error {
 	}))
 }
 
-// Receive handles POST /webhooks/twilio/:identifier.
-//
-//	@Summary		Twilio webhook delivery
-//	@Tags			webhooks
-//	@Accept			x-www-form-urlencoded
-//	@Produce		json
-//	@Param			identifier	path		string	true	"Webhook identifier"
-//	@Success		200			{string}	string	"OK"
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/twilio/{identifier} [post]
+// @Summary		Twilio webhook delivery
+// @Tags			webhooks
+// @Accept			x-www-form-urlencoded
+// @Produce		json
+// @Param			identifier	path		string	true	"Webhook identifier"
+// @Success		200			{string}	string	"OK"
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/twilio/{identifier} [post]
 func (h *TwilioWebhookHandler) Receive(c *fiber.Ctx) error {
 	ch, ok := h.verifySignatureAndLoad(c, "twilio_webhook")
 	if !ok {
@@ -208,16 +204,14 @@ func (h *TwilioWebhookHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Status handles POST /webhooks/twilio/:identifier/status.
-//
-//	@Summary		Twilio status callback
-//	@Tags			webhooks
-//	@Accept			x-www-form-urlencoded
-//	@Produce		json
-//	@Param			identifier	path		string	true	"Webhook identifier"
-//	@Success		200			{string}	string	"OK"
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/twilio/{identifier}/status [post]
+// @Summary		Twilio status callback
+// @Tags			webhooks
+// @Accept			x-www-form-urlencoded
+// @Produce		json
+// @Param			identifier	path		string	true	"Webhook identifier"
+// @Success		200			{string}	string	"OK"
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/twilio/{identifier}/status [post]
 func (h *TwilioWebhookHandler) Status(c *fiber.Ctx) error {
 	ch, ok := h.verifySignatureAndLoad(c, "twilio_status")
 	if !ok {
@@ -247,15 +241,13 @@ func (h *TwilioWebhookHandler) Status(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// SyncTemplates handles POST /api/v1/accounts/:aid/inboxes/:id/twilio_templates.
-//
-//	@Summary		Sync Twilio WhatsApp content templates
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Param			aid	path		int	true	"Account ID"
-//	@Param			id	path		int	true	"Inbox ID"
-//	@Success		200	{object}	dto.APIResponse{data=dto.SyncTwilioTemplatesResp}
-//	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio_templates [post]
+// @Summary		Sync Twilio WhatsApp content templates
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Param			aid	path		int	true	"Account ID"
+// @Param			id	path		int	true	"Inbox ID"
+// @Success		200	{object}	dto.APIResponse{data=dto.SyncTwilioTemplatesResp}
+// @Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio_templates [post]
 func (h *TwilioWebhookHandler) SyncTemplates(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -299,17 +291,13 @@ func (h *TwilioWebhookHandler) SyncTemplates(c *fiber.Ctx) error {
 	}))
 }
 
-// Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/twilio.
-//
-//	@Summary		Delete Twilio inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Param			aid	path	int	true	"Account ID"
-//	@Param			id	path	int	true	"Inbox ID"
-//	@Success		200	{object}	dto.APIResponse
-//	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio [delete]
-//
-// GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twilio.
+// @Summary		Delete Twilio inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Param			aid	path	int	true	"Account ID"
+// @Param			id	path	int	true	"Inbox ID"
+// @Success		200	{object}	dto.APIResponse
+// @Router			/api/v1/accounts/{aid}/inboxes/{id}/twilio [delete]
 func (h *TwilioWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -350,7 +338,6 @@ func (h *TwilioWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	}))
 }
 
-// Update handles PUT /api/v1/accounts/:aid/inboxes/:id/twilio.
 func (h *TwilioWebhookHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

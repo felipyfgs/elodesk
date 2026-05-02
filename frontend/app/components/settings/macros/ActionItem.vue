@@ -27,9 +27,7 @@ const params = computed({
     try {
       const parsed = v ? JSON.parse(v) : {}
       emit('update:modelValue', { ...props.modelValue, params: parsed })
-    } catch {
-      // keep previous
-    }
+    } catch { void 0 }
   }
 })
 </script>

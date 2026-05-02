@@ -16,7 +16,6 @@ import (
 	"backend/internal/repo"
 )
 
-// Channel implements channel.Channel for Twilio (sms + whatsapp mediums).
 type Channel struct {
 	channelRepo      *repo.ChannelTwilioRepo
 	inboxRepo        *repo.InboxRepo
@@ -57,8 +56,6 @@ func NewChannel(
 
 func (c *Channel) Kind() channel.Kind { return channel.KindTwilio }
 
-// HandleInbound is called when the webhook handler has already verified the
-// X-Twilio-Signature and JSON-encoded the form values as the request body.
 func (c *Channel) HandleInbound(ctx context.Context, req *channel.InboundRequest) (*channel.InboundResult, error) {
 	identifier := req.PathParams["identifier"]
 	if identifier == "" {
@@ -91,9 +88,6 @@ func (c *Channel) HandleInbound(ctx context.Context, req *channel.InboundRequest
 	return &channel.InboundResult{}, nil
 }
 
-// SendOutbound resolves the channel record, decrypts the auth token and
-// dispatches to Twilio. On 401/403 it nudges the reauth tracker; on 429 it
-// returns the error so the caller can back off.
 func (c *Channel) SendOutbound(ctx context.Context, msg *channel.OutboundMessage) (string, error) {
 	if msg == nil || msg.ChannelID == 0 {
 		return "", fmt.Errorf("twilio send: missing channel id")
@@ -130,14 +124,10 @@ func (c *Channel) SendOutbound(ctx context.Context, msg *channel.OutboundMessage
 	return sid, nil
 }
 
-// SyncTemplates on the Channel interface is a no-op without channel context.
-// Callers with a resolved channel use SyncTemplatesForChannel directly.
 func (c *Channel) SyncTemplates(_ context.Context) ([]channel.Template, error) {
 	return nil, channel.ErrUnsupported
 }
 
-// SyncTemplatesForChannel pages over the Twilio Content API for a single
-// channel and persists the result. WhatsApp-only.
 func (c *Channel) SyncTemplatesForChannel(ctx context.Context, ch *model.ChannelTwilio) ([]ContentTemplate, error) {
 	if ch.Medium != model.TwilioMediumWhatsApp {
 		return nil, channel.ErrUnsupported
@@ -178,7 +168,6 @@ func (c *Channel) markReauthOnThreshold(ctx context.Context, ch *model.ChannelTw
 	}
 }
 
-// nowFn is a package-level clock override hook so tests can freeze time.
 var nowFn = func() time.Time { return time.Now() }
 
 var _ channel.Channel = (*Channel)(nil)

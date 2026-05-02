@@ -7,7 +7,6 @@ import (
 	"backend/internal/model"
 )
 
-// strPtr returns a pointer to the given string. Test-only helper.
 func strPtr(s string) *string { return &s }
 
 func TestSourceIDForChannel_PhoneChannelsPreferE164(t *testing.T) {

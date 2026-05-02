@@ -22,8 +22,6 @@ const contactIdentifier = computed(() => resolveContactIdentifier(props.conversa
 const contactAvatar = computed(() => resolveContactAvatar(props.conversation))
 
 const statusLabel = computed(() => {
-  // Index-based lookup espelha o enum do backend: 0=open, 1=resolved,
-  // 2=pending, 3=snoozed. Mantém o mapeamento sincronizado com STATUS_MAP.
   const keys = ['open', 'resolved', 'pending', 'snoozed'] as const
   return t(`conversations.status.${keys[props.conversation.status]}`)
 })
@@ -55,9 +53,6 @@ const channelBadge = computed(() => {
   return type.split('::').pop() || ''
 })
 
-// Mostra apenas info que NÃO está visível no header (avatar / nome /
-// identifier / badges de conversa+inbox+canal). Telefone/identifier/inbox/
-// canal já estão acima — exibir de novo na lista é poluição.
 const contactRows = computed(() => {
   const rows: { icon: string, title: string, value: string }[] = []
   const phone = contact.value?.phoneNumber
@@ -85,13 +80,6 @@ const detailSections = computed(() => [
 </script>
 
 <template>
-  <!--
-    Sidebar é um wrapper "burro" com flex-col cobrindo 100% do container.
-    O caller (Thread.vue) decide o envólucro: <aside> com largura fixa em
-    ≥lg, ou USlideover.content em <lg. Manter a estrutura interna idêntica
-    nos dois modos garante que o conteúdo (header + scroll) renderize
-    consistente em desktop e mobile.
-  -->
   <div class="flex h-full w-full min-w-0 flex-col bg-default">
     <div class="flex h-(--ui-header-height) shrink-0 items-center justify-between border-b border-default px-4">
       <h2 class="text-sm font-semibold text-highlighted">

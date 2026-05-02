@@ -13,13 +13,8 @@ import (
 	"backend/internal/repo"
 )
 
-// refreshMargin tells how early we should proactively refresh an access token
-// before it actually expires. Matches the Chatwoot reference (5 minutes).
 const refreshMargin = 5 * time.Minute
 
-// TokenService owns the logic to return a valid access_token for a TikTok
-// channel, refreshing the short-term token when necessary. On permanent
-// failures, it ticks the reauth tracker and flags requires_reauth on the row.
 type TokenService struct {
 	oauth   *OAuthClient
 	repo    *repo.ChannelTiktokRepo
@@ -31,9 +26,6 @@ func NewTokenService(oauth *OAuthClient, r *repo.ChannelTiktokRepo, cipher *appc
 	return &TokenService{oauth: oauth, repo: r, cipher: cipher, tracker: tracker}
 }
 
-// AccessToken returns a non-empty access token when possible, refreshing the
-// underlying credentials if the short-term access token is within the
-// expiration margin and the refresh token itself has not expired.
 func (s *TokenService) AccessToken(ctx context.Context, ch *model.ChannelTiktok) (string, error) {
 	if ch == nil {
 		return "", fmt.Errorf("tiktok token: nil channel")
@@ -48,7 +40,6 @@ func (s *TokenService) AccessToken(ctx context.Context, ch *model.ChannelTiktok)
 	}
 
 	if !time.Now().Before(ch.RefreshTokenExpiresAt) {
-		// refresh token itself expired; flag reauth and return whatever we have
 		if !ch.RequiresReauth {
 			_ = s.repo.SetRequiresReauth(ctx, ch.ID, true)
 			ch.RequiresReauth = true

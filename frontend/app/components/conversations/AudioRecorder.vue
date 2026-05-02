@@ -18,14 +18,8 @@ let ws: WaveSurfer | null = null
 let record: ReturnType<typeof RecordPlugin.create> | null = null
 let recordedMime = ''
 
-// Bitrate "PTT do WhatsApp": 32 kbps em mono é o que o app oficial usa para
-// voice notes. Bate o ouvido humano de voz sem inflar o arquivo.
 const PTT_BITRATE = 32000
 
-// Padrão de mercado para voice note: OGG/Opus. Firefox e Chromium 113+
-// gravam ogg/opus diretamente via MediaRecorder; Safari ainda não, então
-// caímos em webm/opus e o wzap re-encoda com ffmpeg antes de despachar pro
-// WhatsApp. A prioridade aqui garante .ogg sempre que o browser permitir.
 const PREFERRED_MIME_TYPES = [
   'audio/ogg;codecs=opus',
   'audio/ogg',
@@ -89,9 +83,6 @@ async function start() {
     renderRecordedAudio: false,
     audioBitsPerSecond: PTT_BITRATE
   }
-  // Só injeta `mimeType` quando algum candidato passou no isTypeSupported —
-  // o RecordPlugin valida internamente e quebra se a string não for suportada
-  // (ex.: passar 'audio/ogg' no Safari faz a gravação nem iniciar).
   if (recordedMime) recordOpts.mimeType = recordedMime
   record = ws.registerPlugin(RecordPlugin.create(recordOpts))
 
@@ -131,9 +122,6 @@ async function stop() {
     })
     record!.stopRecording()
   })
-  // `recordedMime` é o que o MediaRecorder aceitou; `blob.type` às vezes vem
-  // vazio (Firefox antigo) ou normalizado (sem ;codecs=opus). Preferimos o
-  // mime que pedimos, pra preservar a indicação de codec até o wzap.
   const mime = recordedMime || blob.type || 'audio/webm'
   const ext = extensionForMime(mime)
   const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mime })

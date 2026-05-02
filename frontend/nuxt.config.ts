@@ -43,10 +43,13 @@ export default defineNuxtConfig({
         '@tiptap/vue-3',
         '@tiptap/starter-kit',
         '@tiptap/extension-link',
+        '@tiptap/extension-italic',
+        '@tiptap/extension-blockquote',
         'tiptap-markdown',
         'wavesurfer.js',
         'wavesurfer.js/dist/plugins/record.esm.js',
         'vue-audio-visual',
+        'vue-draggable-plus',
         'markdown-it',
         'dompurify',
         'pdfjs-dist'

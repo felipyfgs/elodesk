@@ -26,7 +26,6 @@ const (
 	deliveryTimeout = 10 * time.Second
 )
 
-// OutboundRetryDelay implements the spec retry schedule: 1s, 5s, 30s, 2m, 10m.
 func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	delays := []time.Duration{
 		1 * time.Second,
@@ -41,12 +40,6 @@ func OutboundRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	return 10 * time.Minute
 }
 
-// OutboundPayload is the task payload enqueued by OutboundWebhookService.
-// Secret holds the channel secret encrypted with BACKEND_KEK (AES-256-GCM).
-// HMACCiphertext carries the per-channel HMAC key encrypted with BACKEND_KEK;
-// the processor decrypts both right before signing so plaintext never lives in
-// Redis. DeliveryID is generated at enqueue time and stays stable across all
-// retries of the same delivery.
 type OutboundPayload struct {
 	EventType              string          `json:"event"`
 	AccountID              int64           `json:"account_id"`
@@ -72,8 +65,6 @@ func NewOutboundProcessor(cipher *crypto.Cipher) *OutboundProcessor {
 	}
 }
 
-// NewOutboundTask marshals the payload for asynq. Callers MUST populate
-// payload.DeliveryID before calling this.
 func NewOutboundTask(payload *OutboundPayload) (*asynq.Task, error) {
 	if payload.DeliveryID == "" {
 		return nil, fmt.Errorf("outbound webhook: DeliveryID is required")
@@ -88,8 +79,6 @@ func NewOutboundTask(payload *OutboundPayload) (*asynq.Task, error) {
 	), nil
 }
 
-// publicBody is what we ship to the provider (excludes infra fields like
-// webhookUrl and hmacCiphertext).
 type publicBody struct {
 	EventType              string          `json:"event"`
 	AccountID              int64           `json:"account_id"`

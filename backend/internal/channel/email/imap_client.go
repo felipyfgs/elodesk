@@ -13,13 +13,10 @@ import (
 	"backend/internal/model"
 )
 
-// ImapClient wraps go-imap/v2 and handles PLAIN and XOAUTH2 auth.
 type ImapClient struct {
 	client *imapclient.Client
 }
 
-// Connect dials the IMAP server and authenticates.
-// For provider=generic it uses PLAIN login; for google/microsoft it uses OAuthBearer.
 func Connect(ctx context.Context, ch *model.ChannelEmail, decryptFn func(string) (string, error)) (*ImapClient, error) {
 	addr := fmt.Sprintf("%s:%d", *ch.ImapAddress, *ch.ImapPort)
 
@@ -87,8 +84,6 @@ func Connect(ctx context.Context, ch *model.ChannelEmail, decryptFn func(string)
 	return &ImapClient{client: c}, nil
 }
 
-// FetchSince fetches messages with UIDs > sinceUID from INBOX.
-// It returns a list of raw RFC 2822 messages paired with their UIDs.
 func (ic *ImapClient) FetchSince(sinceUID uint32) ([]FetchedMessage, error) {
 	if _, err := ic.client.Select("INBOX", nil).Wait(); err != nil {
 		return nil, fmt.Errorf("imap select INBOX: %w", err)
@@ -149,12 +144,10 @@ func (ic *ImapClient) FetchSince(sinceUID uint32) ([]FetchedMessage, error) {
 	return msgs, nil
 }
 
-// Close terminates the IMAP connection.
 func (ic *ImapClient) Close() error {
 	return ic.client.Logout().Wait()
 }
 
-// FetchedMessage pairs a UID with a raw RFC 2822 message body.
 type FetchedMessage struct {
 	UID uint32
 	Raw []byte

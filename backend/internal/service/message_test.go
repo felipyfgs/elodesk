@@ -32,10 +32,6 @@ func (m *mockRealtimeNotifier) Broadcast(conversationID, accountID int64, event 
 	})
 }
 
-// TestMessageService_Create_EmitsRealtimeEvent covers the path after the
-// message has been persisted: broadcastMessageEvent is what Create/SoftDelete/
-// UpdateStatus call once the DB write succeeds, so exercising it directly
-// verifies the event contract without spinning up pgx.
 func TestMessageService_Create_EmitsRealtimeEvent(t *testing.T) {
 	notifier := &mockRealtimeNotifier{}
 	svc := &MessageService{realtime: notifier}
@@ -154,8 +150,6 @@ func TestMessageService_resolveSender_OutgoingWithoutSender(t *testing.T) {
 	}
 }
 
-// mockConversationStore satisfies the conversationStore interface used by
-// MessageService. Tracks calls so tests can assert on what was invoked.
 type mockConversationStore struct {
 	conv             *model.Conversation
 	hydrated         *repo.ConversationHydrated
@@ -287,8 +281,6 @@ func TestMessageService_reopenIfClosed_SkipsAlreadyOpen(t *testing.T) {
 }
 
 func TestMessageService_reopenIfClosed_SkipsPending(t *testing.T) {
-	// Pending is a triage state, not a closed state — inbound messages should
-	// not auto-promote it to Open. Only Resolved and Snoozed reopen.
 	svc, store, notifier := newReopenFixture(model.ConversationPending)
 
 	svc.reopenIfClosed(context.Background(), incomingMsg())
@@ -302,8 +294,6 @@ func TestMessageService_reopenIfClosed_SkipsPending(t *testing.T) {
 }
 
 func TestMessageService_reopenIfClosed_ReopensOutgoing(t *testing.T) {
-	// Diverge do Chatwoot: mensagens outgoing também reabrem (cobre echo
-	// externo do wzap quando o operador envia do próprio WhatsApp).
 	svc, store, notifier := newReopenFixture(model.ConversationResolved)
 	msg := incomingMsg()
 	msg.MessageType = model.MessageOutgoing
@@ -383,7 +373,6 @@ func TestMessageService_reopenIfClosed_HydrationErrorSwallowed(t *testing.T) {
 	svc, store, notifier := newReopenFixture(model.ConversationResolved)
 	store.findByIDFullErr = errors.New("hydrate failed")
 
-	// Must not panic and must not broadcast — hydration failure swallows.
 	svc.reopenIfClosed(context.Background(), incomingMsg())
 
 	if store.toggleStatusCalls != 1 {

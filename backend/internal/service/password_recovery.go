@@ -37,14 +37,10 @@ func NewPasswordRecoveryService(
 	}
 }
 
-// RequestReset always returns nil (generic success). If the email exists,
-// a token is generated, hashed, stored, and logged. Response time is constant
-// to prevent timing attacks.
 func (s *PasswordRecoveryService) RequestReset(ctx context.Context, email string) error {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repo.ErrUserNotFound) {
-			// Return silently — same response as success.
 			return nil
 		}
 		return fmt.Errorf("failed to lookup user for password reset: %w", err)
@@ -67,7 +63,6 @@ func (s *PasswordRecoveryService) RequestReset(ctx context.Context, email string
 		return fmt.Errorf("failed to store reset token: %w", err)
 	}
 
-	// Log token for development — in production this would be sent via email.
 	logger.Info().
 		Str("component", "auth").
 		Str("event", "password_reset_requested").
@@ -78,7 +73,6 @@ func (s *PasswordRecoveryService) RequestReset(ctx context.Context, email string
 	return nil
 }
 
-// ValidateToken checks if a reset token is valid (not expired, not consumed).
 func (s *PasswordRecoveryService) ValidateToken(ctx context.Context, token string) (bool, error) {
 	tokenHash := hashResetToken(token)
 	stored, err := s.tokenRepo.FindByHash(ctx, tokenHash)
@@ -96,8 +90,6 @@ func (s *PasswordRecoveryService) ValidateToken(ctx context.Context, token strin
 	return true, nil
 }
 
-// ResetPassword validates the token, hashes the new password, updates the user,
-// marks the token as consumed, and revokes all refresh tokens.
 func (s *PasswordRecoveryService) ResetPassword(ctx context.Context, token, newPassword string) error {
 	tokenHash := hashResetToken(token)
 	stored, err := s.tokenRepo.FindByHash(ctx, tokenHash)

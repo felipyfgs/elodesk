@@ -24,8 +24,6 @@ const statusPrimaryLabel = computed(() => (
     : t('conversations.actions.resolve')
 ))
 
-// Em <sm o label do botão primário some pra liberar espaço; o ícone
-// continua sinalizando a ação (check = resolver, undo = reabrir).
 const statusPrimaryIcon = computed(() => (
   props.conversation.status === STATUS_MAP.RESOLVED
     ? 'i-lucide-rotate-ccw'
@@ -79,11 +77,6 @@ async function updateStatus(status: StatusAction) {
 
 <template>
   <UFieldGroup size="sm">
-    <!--
-      Em <sm o botão fica icon-only pra caber no header. A partir de sm
-      mostra o label completo (Resolver/Reabrir). aria-label preserva
-      acessibilidade nos dois modos.
-    -->
     <UButton
       class="hidden sm:inline-flex"
       :label="statusPrimaryLabel"

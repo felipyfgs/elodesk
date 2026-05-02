@@ -28,8 +28,6 @@ func NewOAuthClient(clientKey, clientSecret, redirectURL string) *OAuthClient {
 	}
 }
 
-// AuthorizeURL builds the user-facing consent URL.
-// https://developers.tiktok.com/doc/oauth-user-access-token-management
 func (c *OAuthClient) AuthorizeURL(state string) string {
 	params := url.Values{}
 	params.Set("response_type", "code")
@@ -40,8 +38,6 @@ func (c *OAuthClient) AuthorizeURL(state string) string {
 	return AuthHost + AuthorizePath + "?" + params.Encode()
 }
 
-// ExchangeCode redeems an auth code for access + refresh tokens and business id.
-// POST https://business-api.tiktok.com/open_api/v1.3/tt_user/oauth2/token/
 func (c *OAuthClient) ExchangeCode(ctx context.Context, authCode string) (*TokenData, error) {
 	body := map[string]string{
 		"client_id":     c.clientKey,
@@ -53,7 +49,6 @@ func (c *OAuthClient) ExchangeCode(ctx context.Context, authCode string) (*Token
 	return c.postTokenEndpoint(ctx, APIBase+TokenEndpoint, body)
 }
 
-// Refresh exchanges a refresh_token for a new access/refresh pair.
 func (c *OAuthClient) Refresh(ctx context.Context, refreshToken string) (*TokenData, error) {
 	body := map[string]string{
 		"client_id":     c.clientKey,
@@ -98,8 +93,6 @@ func (c *OAuthClient) postTokenEndpoint(ctx context.Context, endpoint string, bo
 	return &tr.Data, nil
 }
 
-// ScopesGranted returns true when every required scope is present in the
-// comma-separated scope string from TikTok.
 func ScopesGranted(granted string) bool {
 	have := make(map[string]struct{}, 16)
 	for _, s := range strings.Split(granted, ",") {

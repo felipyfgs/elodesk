@@ -54,7 +54,6 @@ func TestVerifySignature_Tampered(t *testing.T) {
 		"Body":       {"hi"},
 	}
 	sig := computeSignature(authToken, fullURL, params)
-	// flip one form value after signing
 	params.Set("Body", "bye")
 	if VerifySignature(authToken, fullURL, params, sig) {
 		t.Fatalf("tampered params should fail signature check")
@@ -104,5 +103,4 @@ func TestParseInbound_WithMedia(t *testing.T) {
 	}
 }
 
-// guard: Channel must satisfy the channel.Channel interface.
 var _ channel.Channel = (*Channel)(nil)

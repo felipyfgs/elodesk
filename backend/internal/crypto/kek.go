@@ -40,7 +40,6 @@ func NewCipher(kekBase64 string) (*Cipher, error) {
 	return &Cipher{aead: gcm}, nil
 }
 
-// Encrypt encrypts plaintext with AES-256-GCM and returns base64(nonce || ciphertext).
 func (c *Cipher) Encrypt(plaintext string) (string, error) {
 	nonce := make([]byte, c.aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -53,7 +52,6 @@ func (c *Cipher) Encrypt(plaintext string) (string, error) {
 	return base64.StdEncoding.EncodeToString(out), nil
 }
 
-// Decrypt reverses Encrypt.
 func (c *Cipher) Decrypt(encoded string) (string, error) {
 	raw, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
@@ -71,8 +69,6 @@ func (c *Cipher) Decrypt(encoded string) (string, error) {
 	return string(pt), nil
 }
 
-// HashLookup produces a deterministic SHA-256 hex digest used as a lookup key
-// for values whose plaintext we never want to store (e.g. api_access_token).
 func HashLookup(plaintext string) string {
 	sum := sha256.Sum256([]byte(plaintext))
 	return hex.EncodeToString(sum[:])

@@ -6,7 +6,6 @@ import (
 	"fmt"
 )
 
-// SendOptions controls reply-vs-push behavior and optional attachments.
 type SendOptions struct {
 	To           string
 	ReplyToken   string
@@ -16,9 +15,6 @@ type SendOptions struct {
 	ContentAttrs string
 }
 
-// Send dispatches an outbound LINE message. It prefers the reply path when a
-// valid reply_token is available and falls back to push otherwise.
-// LINE reply tokens are single-use and expire shortly after the inbound event.
 func Send(ctx context.Context, api *APIClient, channelToken string, opts SendOptions) (string, error) {
 	if channelToken == "" {
 		return "", fmt.Errorf("line send: empty channel token")
@@ -74,8 +70,6 @@ func buildOutboundMessages(opts SendOptions) []Message {
 	return msgs
 }
 
-// replyTokenFromAttrs extracts a previously-stored reply token from the message
-// content_attributes JSON (see webhook.go mergeContentAttrs).
 func replyTokenFromAttrs(raw string) string {
 	if raw == "" {
 		return ""

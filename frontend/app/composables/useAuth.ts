@@ -91,16 +91,13 @@ export const useAuth = () => {
     if (auth.refreshToken) {
       try {
         await api('/auth/logout', { method: 'POST', body: { refreshToken: auth.refreshToken } })
-      } catch {
-        /* ignore */
-      }
+      } catch { void 0 }
     }
     auth.clear()
     await navigateTo('/login')
   }
 
   async function refreshMemberships() {
-    // Placeholder — backend exposes `/me/accounts` (to implement).
   }
 
   return { login, verifyMfa, register, logout, auth }

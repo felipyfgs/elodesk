@@ -16,8 +16,6 @@ import (
 	"backend/internal/repo"
 )
 
-// InstagramWebhookHandler handles Instagram webhook verification, webhook
-// delivery, and inbox provisioning.
 type InstagramWebhookHandler struct {
 	igRepo           *repo.ChannelInstagramRepo
 	inboxRepo        *repo.InboxRepo
@@ -59,29 +57,25 @@ func NewInstagramWebhookHandler(
 	}
 }
 
-// Verify handles GET /webhooks/instagram/:identifier (Meta hub.challenge handshake).
-//
-//	@Summary		Instagram webhook verification
-//	@Tags			webhooks
-//	@Produce		plain
-//	@Param			identifier	path		string	true	"Instagram ID"
-//	@Success		200			{string}	string	"hub.challenge"
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/instagram/{identifier} [get]
+// @Summary		Instagram webhook verification
+// @Tags			webhooks
+// @Produce		plain
+// @Param			identifier	path		string	true	"Instagram ID"
+// @Success		200			{string}	string	"hub.challenge"
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/instagram/{identifier} [get]
 func (h *InstagramWebhookHandler) Verify(c *fiber.Ctx) error {
 	return meta.HandleVerifyChallenge(c, h.verifyToken)
 }
 
-// Receive handles POST /webhooks/instagram/:identifier (inbound messages).
-//
-//	@Summary		Instagram webhook delivery
-//	@Tags			webhooks
-//	@Accept			json
-//	@Produce		json
-//	@Param			identifier	path		string	true	"Instagram ID"
-//	@Success		200			{object}	dto.APIResponse
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/instagram/{identifier} [post]
+// @Summary		Instagram webhook delivery
+// @Tags			webhooks
+// @Accept			json
+// @Produce		json
+// @Param			identifier	path		string	true	"Instagram ID"
+// @Success		200			{object}	dto.APIResponse
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/instagram/{identifier} [post]
 func (h *InstagramWebhookHandler) Receive(c *fiber.Ctx) error {
 	body := c.Body()
 
@@ -92,7 +86,6 @@ func (h *InstagramWebhookHandler) Receive(c *fiber.Ctx) error {
 	instagramID := c.Params("identifier")
 	ch, err := h.igRepo.FindByInstagramID(c.Context(), instagramID)
 	if err != nil {
-		// Return 200 to Meta even when the channel isn't found to avoid retry storms
 		return c.SendStatus(fiber.StatusOK)
 	}
 
@@ -106,25 +99,22 @@ func (h *InstagramWebhookHandler) Receive(c *fiber.Ctx) error {
 		h.dedup, h.asynqClient,
 		h.contactRepo, h.contactInboxRepo, h.conversationRepo, h.messageRepo,
 	); err != nil {
-		// Log but always ack to Meta
 		_ = err
 	}
 
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Provision handles POST /api/v1/accounts/:aid/inboxes/instagram.
-//
-//	@Summary		Provision Instagram inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Accept			json
-//	@Produce		json
-//	@Param			aid		path		int							true	"Account ID"
-//	@Param			body	body		dto.CreateInstagramInboxReq	true	"Provisioning request"
-//	@Success		201		{object}	dto.APIResponse{data=dto.InstagramInboxResp}
-//	@Failure		400		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/instagram [post]
+// @Summary		Provision Instagram inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Accept			json
+// @Produce		json
+// @Param			aid		path		int							true	"Account ID"
+// @Param			body	body		dto.CreateInstagramInboxReq	true	"Provisioning request"
+// @Success		201		{object}	dto.APIResponse{data=dto.InstagramInboxResp}
+// @Failure		400		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/instagram [post]
 func (h *InstagramWebhookHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

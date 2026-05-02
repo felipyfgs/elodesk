@@ -24,9 +24,6 @@ type clientMessage struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
-// pongMessage is the canned reply to a client `ping` text frame. Pre-marshalled
-// to avoid per-ping allocation; the payload is intentionally empty since the
-// client only needs to see *any* response to keep its heartbeat alive.
 var pongMessage = []byte(`{"type":"pong"}`)
 
 type joinPayload struct {
@@ -105,17 +102,6 @@ func (c *Client) WritePump() {
 	}
 }
 
-// handleMessage routes inbound client commands. All join.* variants validate
-// membership via the checker before admitting the client to the room: a user
-// can only join rooms belonging to an account they are a member of.
-// Cross-tenant join attempts are dropped silently (do not leak room existence).
-//
-// `leave.*` are membership-free: a client can always remove itself from a room
-// it is currently in. Unknown/foreign rooms are no-ops.
-//
-// `ping` is the application-level keepalive sent by clients (vueuse useWebSocket
-// heartbeat). The hub answers with `pong` so the heartbeat watchdog sees a
-// response on idle conversations — without this, idle sockets die every 30 s.
 func (c *Client) handleMessage(cm clientMessage) {
 	switch cm.Type {
 	case "join.account":
@@ -193,9 +179,6 @@ func (c *Client) handleMessage(cm clientMessage) {
 	}
 }
 
-// enqueue is a non-blocking send to the writer pump. If the buffer is full the
-// client is too slow to keep up — let the hub drop it on the next broadcast
-// (same backpressure path) instead of stalling the read loop here.
 func (c *Client) enqueue(msg []byte) {
 	select {
 	case c.send <- msg:

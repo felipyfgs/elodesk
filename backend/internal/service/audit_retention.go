@@ -8,8 +8,6 @@ import (
 	"backend/internal/repo"
 )
 
-// AuditRetentionJob periodically purges audit_logs older than the configured
-// retention window (default 90 days) and logs how many rows were removed.
 type AuditRetentionJob struct {
 	auditRepo *repo.AuditLogRepo
 	days      int

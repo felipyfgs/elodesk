@@ -37,16 +37,10 @@ func (h *UploadHandler) SetMediaResolver(fn MediaResolveFunc) {
 	h.mediaResolver = fn
 }
 
-// SetAttachmentTokenSecret injeta a chave usada pra assinar/validar o token
-// de download público (GET /attachments/:id/file?token=...). Sem isso, o
-// endpoint público é desabilitado.
 func (h *UploadHandler) SetAttachmentTokenSecret(secret []byte) {
 	h.tokenSecret = secret
 }
 
-// SignedUploadURL generates a presigned PUT URL. The object path MUST begin
-// with "{accountId}/" of the authenticated request — this prevents an agent
-// from requesting a presigned URL that writes into another tenant's prefix.
 func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -81,10 +75,6 @@ func (h *UploadHandler) SignedUploadURL(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(fiber.Map{"upload_url": presignedURL.String()}))
 }
 
-// ProxyUpload accepts a multipart file from the authenticated user and uploads
-// it to MinIO using the internal client, bypassing CORS and public endpoint
-// concerns. Returns the storage path so the caller can reference it in a
-// subsequent message create.
 func (h *UploadHandler) ProxyUpload(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -163,12 +153,6 @@ func sanitizeFileName(name string) string {
 	return out
 }
 
-// PublicAttachmentDownload é o endpoint sem-Bearer que aceita um token
-// HMAC na query (`?token=...`) e faz stream do attachment correspondente.
-// Espelha o padrão do Chatwoot/ActiveStorage: integradores externos só
-// precisam saber a URL pública do elodesk; o storage real (MinIO/S3) fica
-// abstraído. O handler resolve o file_key do attachment e lê via cliente
-// interno (rede docker), sem expor o endpoint do MinIO.
 func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 	if len(h.tokenSecret) == 0 {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(dto.ErrorResp("Service Unavailable", "attachment download disabled"))
@@ -208,9 +192,6 @@ func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 		}
 	}
 	if objectPath == "" {
-		// Attachment com só external_url (mídia ainda não baixada pro MinIO):
-		// 302 redireciona pra URL externa. Hoje cobre o caminho Meta Cloud
-		// direto, antes da Fase 1 do plano de mídia (proxy ingestion).
 		if attachment.ExternalURL != nil && *attachment.ExternalURL != "" {
 			return c.Redirect(*attachment.ExternalURL, fiber.StatusFound)
 		}
@@ -235,11 +216,6 @@ func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 		c.Set("Content-Type", stat.ContentType)
 	}
 	c.Set("Content-Length", strconv.FormatInt(stat.Size, 10))
-	// 1 ano + immutable: espelha o Chatwoot/ActiveStorage. Combinado com a URL
-	// permanente (token sem expiração), o navegador acerta o cache em todas as
-	// re-aberturas da conversa — não há novo GET, nem 304: o browser serve
-	// direto do disk cache. ETag fortalece a revalidação se algum proxy
-	// intermediário precisar (origem é imutável: attachment ID é 1:1 com blob).
 	c.Set("Cache-Control", "public, max-age=31536000, immutable")
 	if stat.ETag != "" {
 		c.Set("ETag", stat.ETag)
@@ -248,9 +224,6 @@ func (h *UploadHandler) PublicAttachmentDownload(c *fiber.Ctx) error {
 	return c.SendStream(obj, int(stat.Size))
 }
 
-// ProxyDownload streams an object from MinIO through the backend so the
-// browser can access it without touching MinIO directly. Scoped to the
-// authenticated account's prefix.
 func (h *UploadHandler) ProxyDownload(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -285,9 +258,6 @@ func (h *UploadHandler) ProxyDownload(c *fiber.Ctx) error {
 	return c.SendStream(obj, int(stat.Size))
 }
 
-// SignedObjectDownloadURL generates a presigned GET URL for an object path
-// already scoped to the authenticated account. This is used for private
-// account-owned objects that are not attachment rows, such as contact avatars.
 func (h *UploadHandler) SignedObjectDownloadURL(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -322,22 +292,6 @@ func scopedObjectPath(c *fiber.Ctx, accountID int64) (string, error) {
 	return objectPath, nil
 }
 
-// AttachmentMediaURL é o endpoint Chatwoot/ActiveStorage-style de token de
-// mídia. Mantido para compatibilidade com integradores externos — o caminho
-// in-app já recebe a URL pronta em MessageResp.attachments[].data_url, sem
-// round-trip extra.
-//
-// O token devolvido é PERMANENTE (espelha exatamente o ActiveStorage signed_id
-// do Chatwoot, que também é estável). Isso preserva o cache HTTP do navegador
-// (Cache-Control: max-age=1y, immutable em PublicAttachmentDownload) entre
-// navegações — sem o token mudar, a URL fica byte-a-byte idêntica e o browser
-// dispensa o GET por completo.
-//
-// Response: { token: "...", expires_at: 0 }
-//
-// expires_at=0 sinaliza "sem expiração" pra clientes legados que ainda esperam
-// esse campo; clientes novos podem ignorar. Os bytes vêm de
-// PublicAttachmentDownload, que valida o HMAC.
 func (h *UploadHandler) AttachmentMediaURL(c *fiber.Ctx) error {
 	if len(h.tokenSecret) == 0 {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(
@@ -355,7 +309,6 @@ func (h *UploadHandler) AttachmentMediaURL(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Bad Request", "invalid attachment id"))
 	}
 
-	// Ownership check — attachment must belong to this account.
 	_, err = h.attachmentRepo.FindByID(c.Context(), attachmentID, accountID)
 	if err != nil {
 		return handleNotFound(c, err)

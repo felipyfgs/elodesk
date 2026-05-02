@@ -9,15 +9,6 @@ import (
 	"backend/internal/repo"
 )
 
-// NotificationService persists per-user notifications and broadcasts them on
-// the user's realtime room so UI slideovers/badges update instantly.
-//
-// Eventos emitidos (todos via RealtimeService.BroadcastUserEvent — mesma forma
-// `{type, payload}` dos demais broadcasts):
-//
-//   - notification.new      → payload completo da notificação persistida
-//   - notification.read     → {id}
-//   - notification.read_all → {}
 type NotificationService struct {
 	repo *repo.NotificationRepo
 	rt   *RealtimeService
@@ -27,9 +18,6 @@ func NewNotificationService(repo *repo.NotificationRepo, rt *RealtimeService) *N
 	return &NotificationService{repo: repo, rt: rt}
 }
 
-// Create persists a notification and publishes a realtime `notification.new`
-// event on the user's private room. Payload is marshalled to JSON — callers
-// pass typed structs or map[string]any.
 func (s *NotificationService) Create(ctx context.Context, accountID, userID int64, ntype string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -71,6 +59,18 @@ func (s *NotificationService) MarkRead(ctx context.Context, id, accountID, userI
 	}
 	if s.rt != nil {
 		s.rt.BroadcastUserEvent(accountID, userID, "notification.read", map[string]any{"id": id})
+	}
+	return nil
+}
+
+// MarkUnread reverts a previously read notification back to unread and emits
+// `notification.unread` so the bell badge increments live across tabs.
+func (s *NotificationService) MarkUnread(ctx context.Context, id, accountID, userID int64) error {
+	if err := s.repo.MarkUnread(ctx, id, accountID, userID); err != nil {
+		return err
+	}
+	if s.rt != nil {
+		s.rt.BroadcastUserEvent(accountID, userID, "notification.unread", map[string]any{"id": id})
 	}
 	return nil
 }

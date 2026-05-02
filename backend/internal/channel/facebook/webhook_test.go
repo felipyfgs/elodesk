@@ -31,7 +31,6 @@ func TestProcessWebhookPayload_Standby(t *testing.T) {
 
 	body, _ := json.Marshal(payload)
 
-	// Nil repos - we test that the standby path is reached without panicking.
 	err := ProcessWebhook(context.Background(), body, nil, 0, nil, nil, nil, nil, nil, nil)
 	_ = err
 }

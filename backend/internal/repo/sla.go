@@ -209,11 +209,6 @@ func (r *SLARepo) Report(ctx context.Context, accountID int64, from, to string) 
 	}, nil
 }
 
-// AttachIfUnset resolves the SLA policy for a conversation's inbox (via
-// sla_bindings) and sets sla_policy_id, first-response and resolution due-at
-// columns if they are still NULL. Returns the applied policy id (0 when none
-// matched). The operation is idempotent — subsequent calls are no-ops once a
-// policy is attached.
 func (r *SLARepo) AttachIfUnset(ctx context.Context, accountID, conversationID int64) (int64, error) {
 	query := `UPDATE conversations c
 		SET sla_policy_id = sp.id,
@@ -238,9 +233,6 @@ func (r *SLARepo) AttachIfUnset(ctx context.Context, accountID, conversationID i
 	return policyID, nil
 }
 
-// BreachedCandidates returns conversations in the given account that are past
-// their SLA due-at and not yet flagged as breached. Used by the periodic breach
-// detection job.
 type BreachCandidate struct {
 	ID         int64
 	AccountID  int64
@@ -251,9 +243,6 @@ type BreachCandidate struct {
 	Kind       string // "first_response" or "resolution"
 }
 
-// ListBreachCandidates returns conversations whose first-response or resolution
-// due-at has passed and that are not yet flagged as breached. Used by the
-// periodic breach detection job. Results are limited to avoid unbounded scans.
 func (r *SLARepo) ListBreachCandidates(ctx context.Context, limit int) ([]BreachCandidate, error) {
 	if limit <= 0 {
 		limit = 500
@@ -300,7 +289,6 @@ func (r *SLARepo) ListBreachCandidates(ctx context.Context, limit int) ([]Breach
 	return result, rows.Err()
 }
 
-// MarkBreached flags a conversation as SLA-breached. Idempotent.
 func (r *SLARepo) MarkBreached(ctx context.Context, conversationID int64) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE conversations SET sla_breached = TRUE, updated_at = NOW() WHERE id = $1 AND sla_breached = FALSE`,

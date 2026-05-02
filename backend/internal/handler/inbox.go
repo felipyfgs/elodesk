@@ -23,9 +23,6 @@ func handleNotFound(c *fiber.Ctx, err error) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 }
 
-// handleError maps domain errors to standard HTTP status codes. Callers
-// SHOULD pass the error from service/repo layers; the function checks known
-// sentinel errors via errors.Is and maps to 404, 409, 422, or 500.
 func handleError(c *fiber.Ctx, err error) error {
 	if repo.IsErrNotFound(err) {
 		return c.Status(fiber.StatusNotFound).JSON(dto.ErrorResp("Not Found", "resource not found"))
@@ -100,10 +97,6 @@ func (h *InboxHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(resp))
 }
 
-// UpdateChannelAPI handles PUT /inboxes/:id when the inbox is Channel::Api.
-// Accepts the whitelist in UpdateChannelAPIReq. Other channel kinds have
-// their own handlers — this one rejects non-Api inboxes to avoid stepping on
-// per-kind update logic.
 func (h *InboxHandler) UpdateChannelAPI(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -148,8 +141,6 @@ func (h *InboxHandler) UpdateChannelAPI(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(channelAPIModelToResp(ch)))
 }
 
-// GetChannelAPI returns the editable, non-secret Channel::Api metadata for an
-// inbox. Plaintext API/HMAC tokens are intentionally never returned here.
 func (h *InboxHandler) GetChannelAPI(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -172,10 +163,6 @@ func (h *InboxHandler) GetChannelAPI(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(channelAPIModelToResp(ch)))
 }
 
-// RotateAPIToken issues a new identifier + api_token for the inbox. The
-// previous credentials are invalidated on success. RBAC: caller must be
-// Owner/Admin on the account (enforced by the RequireAdmin middleware in
-// router.go).
 func (h *InboxHandler) RotateAPIToken(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

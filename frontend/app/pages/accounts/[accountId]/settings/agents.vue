@@ -16,7 +16,6 @@ onMounted(() => {
 })
 
 function onEdit(_agent: Agent) {
-  // role change: future — for now removal handles primary lifecycle action
 }
 
 function onRemove(agent: Agent) {

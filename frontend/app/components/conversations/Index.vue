@@ -21,10 +21,6 @@ const toast = useToast()
 const route = useRoute()
 const router = useRouter()
 
-// Selection state is driven by the URL so /accounts/:aid/conversations/:cid
-// is shareable and survives reload. `selected` derives from the route param
-// and the cached list (or convs.current for deep-fetched threads); writing it
-// triggers a router.push so the URL stays in sync.
 const selectedId = computed(() => {
   const id = route.params.conversationId
   return typeof id === 'string' && id ? id : null
@@ -64,20 +60,11 @@ const isPanelOpen = computed({
   }
 })
 
-// O USlideover precisa ficar montado pra evitar race de HMR com o Teleport,
-// mas em ≥lg (não-compact) a Thread vira inline e o slideover não pode
-// abrir — caso contrário cobre a tela inteira (`sm:max-w-full`) parecendo
-// mobile no desktop. Gate via :open ao invés de v-show porque o root do
-// USlideover é um componente (DialogRoot) e v-show é silenciosamente
-// ignorado.
 const compactPanelOpen = computed({
   get: () => isCompact.value && isPanelOpen.value,
   set: (v: boolean) => { isPanelOpen.value = v }
 })
 
-// Deep-link support: when the URL carries a :conversationId that isn't in the
-// currently loaded list, fetch it directly. A 404 means the conversation was
-// deleted (e.g. another tab) — drop it from the store and route back.
 async function ensureSelectedLoaded(id: string | null) {
   if (!id || !auth.account?.id) return
   if (convs.list.find(c => String(c.id) === id)) return
@@ -107,9 +94,6 @@ watch(selectedId, (id) => {
   ensureSelectedLoaded(id)
 })
 
-// `isCompact` cobre mobile + tablet (qualquer coisa abaixo de lg). Nesse
-// modo a Thread vira slideover em cima da lista; em ≥lg as duas colunas
-// coexistem lado a lado.
 const { isCompact } = useResponsive()
 
 const filters = useConversationFilters(load)
@@ -117,10 +101,6 @@ const { connect: connectRealtime } = useConversationRealtime(selected, () => {
   loadMeta()
 })
 
-// Backend `/conversations/meta` only knows `inbox_id`. For label / team /
-// unattended / advanced-filter scopes we derive counters locally from the
-// already-loaded list — otherwise the tab badges would show account-wide
-// totals and contradict the filtered list.
 const STATUS_TO_BUCKET: Record<ConversationStatus, keyof ConversationMeta> = {
   0: 'open', 1: 'resolved', 2: 'pending', 3: 'snoozed'
 }
@@ -180,9 +160,6 @@ async function loadMeta() {
   }
 
   const params: Record<string, string> = {}
-  // Backend supports a single inbox filter only; meta numbers reflect that
-  // when exactly one inbox is selected. With 0 or 2+ selected we leave the
-  // count global since the meta endpoint can't aggregate multi-inbox.
   if (convs.filters.inboxIds?.length === 1) params.inbox_id = convs.filters.inboxIds[0]!
   const qs = new URLSearchParams(params).toString()
   const url = `/accounts/${auth.account.id}/conversations/meta${qs ? `?${qs}` : ''}`
@@ -211,16 +188,7 @@ async function load() {
       const params: Record<string, string> = { page: '1', per_page: '100', sort_by: convs.filters.sortBy }
       const statusCode = convs.filters.status ? STATUS_CODE[convs.filters.status] : undefined
       if (statusCode) params.status = statusCode
-      // Single inbox: pass to backend so the list comes pre-filtered.
-      // Multi or no selection: pull all and let `filteredList` do client-side.
       if (convs.filters.inboxIds?.length === 1) params.inbox_id = convs.filters.inboxIds[0]!
-      // Flags ortogonais (unread / unattended) agora são tratadas no backend
-      // (whereClause), então a filtragem real acontece no SQL. Mas mantemos o
-      // skip de `assignee_type` quando alguma está ligada: o `localTabCounts`
-      // calcula Minhas/Sem agente/Todas a partir de `convs.list`, e isso só
-      // funciona se a list não estiver pré-particionada por assignee.
-      // (Trade-off: mais dados quando flags estão ativas. Conversas ainda são
-      // filtradas pelo backend via `unread`/`conversation_type`.)
       const hasOrthogonalFlag = !!convs.filters.unread || convs.filters.conversationType === 'unattended'
       if (!hasOrthogonalFlag) {
         if (convs.filters.unassignedOnly) {
@@ -278,9 +246,6 @@ onMounted(async () => {
   connectRealtime()
 })
 
-// `flush: 'post'` defers the reload until after the DOM update tied to the
-// route navigation finishes, avoiding `instance.update is not a function`
-// when the middleware mutates filters mid-navigation.
 watch(() => convs.filters, () => {
   if (!filters.advancedQuery.value) load()
 }, { deep: true, flush: 'post' })
@@ -317,17 +282,6 @@ const filtersBundle = computed(() => ({
     @advanced-saved="filters.onAdvancedSaved"
     @apply-saved-filter="filters.applySavedFilter"
   />
-
-  <!--
-    Avoid HMR race conditions by keeping both views mounted and toggling
-    visibility instead of v-if. When Vite hot-replaces the component tree,
-    v-if triggers unmount/recreate that races with async watchers and
-    Teleported elements (USlideover), causing:
-      "can't access property 'subTree', vnode.component is null"
-      "can't access property 'parentNode', node is null"
-    v-show preserves the DOM tree across HMR updates and defers actual
-    removal to the transition hooks, which are safe.
-  -->
   <div v-show="!isCompact" class="flex flex-1">
     <ConversationsThread
       v-if="selected"

@@ -1,9 +1,5 @@
 package twilio
 
-// Twilio webhook and content API primitives kept small on purpose — we talk to
-// Twilio over plain net/http rather than the official SDK so the dependency
-// footprint stays in line with the other channel packages (see design.md D5).
-
 const (
 	APIBase     = "https://api.twilio.com/2010-04-01"
 	ContentBase = "https://content.twilio.com/v1"
@@ -12,8 +8,6 @@ const (
 	WhatsappPrefix  = "whatsapp:"
 )
 
-// APIBaseOverride, when non-empty, replaces APIBase. Reserved for tests that
-// point the client at an httptest server.
 var APIBaseOverride string
 
 type SendResponse struct {

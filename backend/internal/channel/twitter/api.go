@@ -12,13 +12,8 @@ import (
 	"time"
 )
 
-// ErrReauthRequired indicates a 401/403 from Twitter — the access token was
-// revoked or the consumer credentials were rotated. Callers must record this
-// against the reauth tracker and surface it via realtime.
 var ErrReauthRequired = errors.New("twitter: reauth required")
 
-// APIClient performs OAuth 1.0a-signed requests against Twitter's v2 API
-// using a consumer key/secret + per-channel access token/secret pair.
 type APIClient struct {
 	httpClient     *http.Client
 	consumerKey    string
@@ -33,9 +28,6 @@ func NewAPIClient(consumerKey, consumerSecret string) *APIClient {
 	}
 }
 
-// GetMe resolves the authenticated user's profile id. Used right after the
-// OAuth handshake to materialize the channels_twitter row when /access_token
-// did not return a user_id (Twitter v2-only flows).
 func (c *APIClient) GetMe(ctx context.Context, accessToken, accessTokenSecret string) (*MeResponse, error) {
 	endpoint := apiBase + usersMePath
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -70,9 +62,6 @@ func (c *APIClient) GetMe(ctx context.Context, accessToken, accessTokenSecret st
 	return &out, nil
 }
 
-// SendDM posts an outbound direct message via
-// POST /2/dm_conversations/with/:participant_id/messages.
-// Returns the v2 dm_event id of the created message.
 func (c *APIClient) SendDM(ctx context.Context, accessToken, accessTokenSecret, participantID, text string) (string, error) {
 	endpoint := apiBase + fmt.Sprintf(dmConversationsFmt, url.PathEscape(participantID))
 	body, err := json.Marshal(map[string]any{"text": text})
@@ -118,9 +107,6 @@ func (c *APIClient) SendDM(ctx context.Context, accessToken, accessTokenSecret, 
 	return out.Data.DMEventID, nil
 }
 
-// signedHeader builds the OAuth 1.0a Authorization header used by the API
-// client (no body signing — v2 endpoints accept JSON bodies that are NOT
-// included in the signature base string).
 func (c *APIClient) signedHeader(method, endpoint, token, tokenSecret string, extraOauth map[string]string, body url.Values) (string, error) {
 	signer := &OAuthClient{consumerKey: c.consumerKey, consumerSecret: c.consumerSecret}
 	return signer.buildAuthHeader(method, endpoint, token, tokenSecret, extraOauth, body)

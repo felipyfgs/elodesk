@@ -12,7 +12,6 @@ import (
 	"backend/internal/repo"
 )
 
-// backoffSteps defines the wait durations after consecutive IMAP errors.
 var backoffSteps = []time.Duration{
 	1 * time.Second,
 	5 * time.Second,
@@ -21,7 +20,6 @@ var backoffSteps = []time.Duration{
 	10 * time.Minute,
 }
 
-// PollDeps are the dependencies injected into every EmailPoller.
 type PollDeps struct {
 	ChannelEmailRepo   *repo.ChannelEmailRepo
 	ConversationFinder func(accountID, inboxID int64) *ConversationFinder
@@ -32,7 +30,6 @@ type PollDeps struct {
 	InboxID            int64
 }
 
-// EmailPoller polls a single email channel's IMAP mailbox on a ticker.
 type EmailPoller struct {
 	ch       model.ChannelEmail
 	deps     PollDeps
@@ -46,7 +43,6 @@ func NewEmailPoller(ch model.ChannelEmail, deps PollDeps, interval time.Duration
 	return &EmailPoller{ch: ch, deps: deps, interval: interval}
 }
 
-// Run starts polling until ctx is cancelled.
 func (p *EmailPoller) Run(ctx context.Context) {
 	key := fmt.Sprintf("channel:email:%d", p.ch.ID)
 	ticker := time.NewTicker(p.interval)
@@ -71,7 +67,6 @@ func (p *EmailPoller) Run(ctx context.Context) {
 				return
 			}
 
-			// exponential backoff
 			wait := backoffSteps[backoffIdx]
 			if backoffIdx < len(backoffSteps)-1 {
 				backoffIdx++

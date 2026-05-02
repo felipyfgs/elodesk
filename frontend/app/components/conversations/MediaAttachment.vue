@@ -4,11 +4,7 @@ import type { MessageAttachment } from '~/utils/chatAdapter'
 const props = defineProps<{
   attachment: MessageAttachment
   accountId?: string | number
-  // conversationId é repassado pro AudioPlayer/audioStore. O GlobalAudioMiniPlayer
-  // usa esse id pra esconder o card flutuante quando o agente já está dentro
-  // da conversa que possui o áudio (evita UI duplicada).
   conversationId?: string | number
-  // Stickers ficam menores, sem balão. Outros tipos seguem o tamanho do bubble.
   isSticker?: boolean
 }>()
 
@@ -26,10 +22,6 @@ const kind = computed<'image' | 'video' | 'audio' | 'sticker' | 'pdf' | 'file'>(
   return 'file'
 })
 
-// Prefer the original filename (with accents, spaces, parens) sent by the
-// backend's `file_name` column. Fallback to recovering from the MinIO path
-// (which follows `{accountId}/uploads/{uuid}-{sanitizedFilename}`) for legacy
-// rows persisted before the column existed.
 const UUID_PREFIX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i
 
 const fileName = computed(() => {
@@ -65,7 +57,6 @@ const fileSizeLabel = computed(() => {
 </script>
 
 <template>
-  <!-- Sticker: imagem solta, sem fundo -->
   <div v-if="kind === 'sticker'" class="max-w-[160px]">
     <img
       v-if="src"
@@ -75,8 +66,6 @@ const fileSizeLabel = computed(() => {
       loading="lazy"
     >
   </div>
-
-  <!-- Imagem com lightbox -->
   <template v-else-if="kind === 'image'">
     <button
       type="button"
@@ -112,8 +101,6 @@ const fileSizeLabel = computed(() => {
       </template>
     </UModal>
   </template>
-
-  <!-- Vídeo: player nativo -->
   <video
     v-else-if="kind === 'video' && src"
     :src="src"
@@ -121,9 +108,6 @@ const fileSizeLabel = computed(() => {
     preload="metadata"
     class="block max-h-[320px] max-w-[320px] rounded-md bg-black"
   />
-
-  <!-- Áudio: cai pro AudioPlayer já existente. `src` vem resolvido sincrono
-       de useAttachmentSrc (preferência: dataUrl estável → fileUrl externo). -->
   <ConversationsAudioPlayer
     v-else-if="kind === 'audio'"
     :src="src ?? undefined"
@@ -131,16 +115,12 @@ const fileSizeLabel = computed(() => {
     :conversation-id="conversationId"
     :track-id="attachment.id ? `att:${attachment.id}` : undefined"
   />
-
-  <!-- PDF: thumbnail da primeira página + metadata -->
   <ConversationsPdfPreview
     v-else-if="kind === 'pdf' && src"
     :src="src"
     :file-name="fileName"
     :file-size-label="fileSizeLabel"
   />
-
-  <!-- File: card de download com nome, ícone tipado e tamanho -->
   <a
     v-else-if="src"
     :href="src"

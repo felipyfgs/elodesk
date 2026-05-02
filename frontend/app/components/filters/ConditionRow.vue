@@ -74,7 +74,6 @@ const isMultiValue = computed(() =>
 const valueType = computed(() => currentAttribute.value?.type)
 const valueOptions = computed(() => currentAttribute.value?.options ?? [])
 
-// Normalize the value depending on operator shape (single vs array)
 const singleValue = computed<string | number | undefined>({
   get: () => {
     const v = condition.value.value
@@ -145,7 +144,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
     />
 
     <div class="flex-1 min-w-0">
-      <!-- No input needed -->
       <UInput
         v-if="hideValueInput"
         :model-value="$t('savedFilters.noValueNeeded')"
@@ -153,8 +151,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         class="w-full"
         size="sm"
       />
-
-      <!-- Between: two inputs -->
       <div v-else-if="isBetween" class="flex items-center gap-1.5">
         <UInput
           v-model="betweenFrom"
@@ -172,8 +168,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
           size="sm"
         />
       </div>
-
-      <!-- Enum with options, multi -->
       <USelectMenu
         v-else-if="valueOptions.length && isMultiValue"
         v-model="multiValue"
@@ -184,8 +178,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         class="w-full"
         size="sm"
       />
-
-      <!-- Enum with options, single -->
       <USelectMenu
         v-else-if="valueOptions.length"
         v-model="singleValue"
@@ -195,8 +187,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         class="w-full"
         size="sm"
       />
-
-      <!-- Free-form multi value (text IN) -->
       <UInput
         v-else-if="isMultiValue"
         :model-value="multiValue.join(',')"
@@ -205,8 +195,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         size="sm"
         @update:model-value="(v: string) => { multiValue = v.split(',').map((s: string) => s.trim()).filter(Boolean) }"
       />
-
-      <!-- Number -->
       <UInput
         v-else-if="valueType === 'number'"
         v-model.number="singleValue"
@@ -215,8 +203,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         class="w-full"
         size="sm"
       />
-
-      <!-- Date -->
       <UInput
         v-else-if="valueType === 'date'"
         v-model="singleValue"
@@ -224,8 +210,6 @@ const isBetween = computed(() => condition.value.filter_operator === 'between')
         class="w-full"
         size="sm"
       />
-
-      <!-- Fallback text -->
       <UInput
         v-else
         v-model="singleValue"

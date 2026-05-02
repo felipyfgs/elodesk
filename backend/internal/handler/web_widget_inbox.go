@@ -46,7 +46,6 @@ func generateToken(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-// Create provisions a new Web Widget channel and inbox.
 // @Summary Create web widget inbox
 // @Description Creates a new Web Widget channel with encrypted HMAC token and returns embed script
 // @Tags Admin/Inboxes
@@ -182,7 +181,6 @@ func (h *WebWidgetInboxHandler) FindByInboxID(c *fiber.Ctx) error {
 	}))
 }
 
-// RotateHMAC generates a new HMAC token for the widget channel.
 // @Summary Rotate HMAC token
 // @Description Generates a new HMAC token and returns it once
 // @Tags Admin/Inboxes

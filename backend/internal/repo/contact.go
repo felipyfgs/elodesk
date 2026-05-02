@@ -80,7 +80,6 @@ func (r *ContactRepo) FindByID(ctx context.Context, id, accountID int64) (*model
 	return &m, nil
 }
 
-// FindByIDIncludeDeleted finds a contact even if soft-deleted.
 func (r *ContactRepo) FindByIDIncludeDeleted(ctx context.Context, id, accountID int64) (*model.Contact, error) {
 	query := `SELECT ` + contactSelectColumns + ` FROM contacts WHERE id = $1 AND account_id = $2`
 	row := r.pool.QueryRow(ctx, query, id, accountID)
@@ -373,8 +372,6 @@ func (r *ContactRepo) Delete(ctx context.Context, id, accountID int64) error {
 	return nil
 }
 
-// HardDelete permanently removes a contact row. Use sparingly — most callers
-// should use Delete (soft-delete) instead.
 func (r *ContactRepo) HardDelete(ctx context.Context, id, accountID int64) error {
 	cmd, err := r.pool.Exec(ctx, `DELETE FROM contacts WHERE id = $1 AND account_id = $2`, id, accountID)
 	if err != nil {
@@ -386,9 +383,6 @@ func (r *ContactRepo) HardDelete(ctx context.Context, id, accountID int64) error
 	return nil
 }
 
-// UpdateLastActivity bumps last_activity_at to the given timestamp without
-// touching updated_at. Called whenever an incoming message from this contact
-// is created, mirroring Chatwoot's contact activity heuristic.
 func (r *ContactRepo) UpdateLastActivity(ctx context.Context, id, accountID int64, at time.Time) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE contacts SET last_activity_at = GREATEST(COALESCE(last_activity_at, to_timestamp(0)), $3) WHERE id = $1 AND account_id = $2`,
@@ -421,10 +415,6 @@ func (r *ContactRepo) UpdateAvatarURL(ctx context.Context, id, accountID int64, 
 	return nil
 }
 
-// UpdateAvatar stores avatar_url and avatar_hash atomically. When caller
-// resolves the new hash (from an HTTP HEAD or provider callback), both
-// fields are written together so subsequent UpsertContact calls can detect
-// content changes without re-downloading the full payload.
 func (r *ContactRepo) UpdateAvatar(ctx context.Context, id, accountID int64, url, hash *string) error {
 	cmd, err := r.pool.Exec(ctx, `UPDATE contacts SET avatar_url = $3, avatar_hash = $4, updated_at = NOW() WHERE id = $1 AND account_id = $2`, id, accountID, url, hash)
 	if err != nil {
@@ -436,8 +426,6 @@ func (r *ContactRepo) UpdateAvatar(ctx context.Context, id, accountID int64, url
 	return nil
 }
 
-// Merge moves all dependent records from childID to primaryID atomically and
-// deletes the child. Returns the updated primary contact.
 func (r *ContactRepo) Merge(ctx context.Context, childID, primaryID, accountID int64) (*model.Contact, error) {
 	if childID == primaryID {
 		return nil, ErrSameContactMerge
@@ -480,7 +468,6 @@ func (r *ContactRepo) Merge(ctx context.Context, childID, primaryID, accountID i
 	if _, err := tx.Exec(ctx, `DELETE FROM label_taggings WHERE taggable_type = 'contact' AND taggable_id = $1 AND account_id = $2`, childID, accountID); err != nil {
 		return nil, fmt.Errorf("merge label_taggings delete: %w", err)
 	}
-	// additional_attributes merge: primary wins on conflicting keys.
 	if _, err := tx.Exec(ctx,
 		`UPDATE contacts p SET additional_attributes = COALESCE(c.additional_attributes, '{}'::jsonb) || COALESCE(p.additional_attributes, '{}'::jsonb),
 		 updated_at = NOW()

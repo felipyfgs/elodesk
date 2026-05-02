@@ -9,22 +9,10 @@ import (
 	"backend/internal/repo"
 )
 
-// NotificationCreator is the minimal surface SLABreachJob needs to persist a
-// user notification. The full NotificationService (phase 8) implements this;
-// passing nil disables notification delivery.
 type NotificationCreator interface {
 	Create(ctx context.Context, accountID, userID int64, ntype string, payload any) error
 }
 
-// SLABreachJob scans for conversations past their SLA due-at and flags them as
-// breached. For each newly detected breach it emits `sla.breached` on the
-// account realtime room, persists a notification for the assignee (when
-// present) and records an audit log entry.
-//
-// The job is run as a tight goroutine ticker (default 60s). This keeps the
-// worker path simple: no separate asynq server is needed — the main process
-// owns detection. If the loop panics or the ticker stalls the next ticker
-// iteration resumes work.
 type SLABreachJob struct {
 	slaRepo         *repo.SLARepo
 	notificationSvc NotificationCreator

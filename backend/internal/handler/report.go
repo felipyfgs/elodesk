@@ -20,8 +20,6 @@ func NewReportHandler(reportsRepo *repo.ReportsRepo, slaRepo *repo.SLARepo) *Rep
 	return &ReportHandler{reportsRepo: reportsRepo, slaRepo: slaRepo}
 }
 
-// parseRange parses ?from=&to= query params (RFC3339 dates) with a 30-day
-// default window ending now when omitted.
 func parseRange(c *fiber.Ctx) (time.Time, time.Time) {
 	now := time.Now().UTC()
 	to := now

@@ -47,9 +47,6 @@ export const useApi = () => {
       if (response._data?.success && response._data?.data !== undefined) {
         response._data = response._data.data
       }
-      // Normalize Chatwoot-shape (snake_case + epoch seconds) responses to the
-      // camelCase + ms-epoch form the stores/components were written against.
-      // See utils/apiAdapter.ts for the rules.
       if (response._data) {
         response._data = normalizeApiResponse(response._data)
       }

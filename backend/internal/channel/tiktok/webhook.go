@@ -18,8 +18,6 @@ import (
 	"backend/internal/repo"
 )
 
-// ErrReauthRequired is returned by outbound/sink operations when TikTok responds
-// with 401/403, indicating the current credentials are no longer valid.
 var ErrReauthRequired = errors.New("tiktok: reauth required")
 
 const (
@@ -27,9 +25,6 @@ const (
 	maxSignatureSkew = 5 * time.Second
 )
 
-// VerifySignature validates the `Tiktok-Signature: t=TIMESTAMP,s=HEX-HMAC`
-// header against the raw body using the TikTok app secret.
-// https://business-api.tiktok.com/portal/docs?id=1832190670631937
 func VerifySignature(secret string, rawBody []byte, signatureHeader string, now time.Time) bool {
 	if secret == "" || signatureHeader == "" {
 		return false
@@ -66,9 +61,6 @@ func VerifySignature(secret string, rawBody []byte, signatureHeader string, now 
 	return hmac.Equal([]byte(expected), []byte(sig))
 }
 
-// ProcessWebhook parses a TikTok webhook event and upserts inbound messages.
-// outgoing echo (im_send_msg) is still recorded but marked as external_echo so
-// the UI can display operator replies typed directly in the TikTok app.
 func ProcessWebhook(
 	ctx context.Context,
 	rawEvent []byte,
@@ -87,9 +79,7 @@ func ProcessWebhook(
 
 	switch evt.Event {
 	case EventReceiveMsg, EventSendMsg:
-		// supported below
 	case EventMarkRead:
-		// read status not modelled yet; ignore silently
 		return nil
 	default:
 		logger.Info().Str("component", "channel.tiktok").Str("event", evt.Event).Msg("ignored unsupported event")
@@ -107,7 +97,6 @@ func ProcessWebhook(
 		messageType = model.MessageOutgoing
 	}
 
-	// For incoming events the contact is `from_user`; for outgoing echoes it's `to_user`.
 	var sourceUserID, displayName string
 	if outgoingEcho {
 		if content.ToUser != nil {

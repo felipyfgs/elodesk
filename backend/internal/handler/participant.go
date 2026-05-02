@@ -10,10 +10,6 @@ import (
 	"backend/internal/service"
 )
 
-// ParticipantHandler exposes the conversation participants endpoint
-// (GET /api/v1/accounts/:aid/conversations/:id/participants). Used by the
-// frontend to render the group members list and by integrations (Wzap) to
-// sync the roster when a WhatsApp group changes.
 type ParticipantHandler struct {
 	svc *service.ParticipantService
 }
@@ -22,8 +18,6 @@ func NewParticipantHandler(svc *service.ParticipantService) *ParticipantHandler 
 	return &ParticipantHandler{svc: svc}
 }
 
-// List handles GET /api/v1/accounts/:aid/conversations/:id/participants.
-// Returns an empty array (not 404) for 1:1 conversations with no participants.
 func (h *ParticipantHandler) List(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -51,9 +45,6 @@ func (h *ParticipantHandler) List(c *fiber.Ctx) error {
 	return c.JSON(dto.ParticipantListResp{Data: out})
 }
 
-// Sync handles POST /api/v1/accounts/:aid/conversations/:id/participants/sync.
-// Accepts a list of members to reconcile against the conversation's current
-// participants. Used by Wzap when a WhatsApp group's roster changes.
 func (h *ParticipantHandler) Sync(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

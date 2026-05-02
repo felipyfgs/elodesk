@@ -19,7 +19,6 @@ async function load() {
   if (!auth.account?.id) return
   const items = await api<EntityMetric[]>(`/accounts/${auth.account.id}/reports/${entity.value}`)
   metric.value = items.find(m => m.entityId === id.value) ?? null
-  // Timeline: reuse conversations report scoped by entity (best-effort)
   try {
     const convs = await api<{ payload?: Array<{ createdAt: string }> } | Array<{ createdAt: string }>>(
       `/accounts/${auth.account.id}/reports/conversations`,

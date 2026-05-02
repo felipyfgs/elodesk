@@ -14,15 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ErrInvalidAgentReplyTimeWindow is returned when callers pass
-// additional_attributes.agent_reply_time_window <= 0. The Chatwoot contract
-// requires a strictly positive integer (minutes).
 var ErrInvalidAgentReplyTimeWindow = errors.New("agent_reply_time_window must be greater than 0")
 var ErrInvalidBusinessHours = errors.New("invalid business hours")
 
-// InboxCredentials carries plaintext secrets returned ONCE at inbox creation.
-// Plaintexts are never persisted (api_token is stored as SHA-256 hash,
-// hmac_token as AES-GCM ciphertext) and never returned again.
 type InboxCredentials struct {
 	Inbox      *model.Inbox
 	ChannelAPI *model.ChannelAPI
@@ -51,9 +45,6 @@ func NewInboxService(pool *pgxpool.Pool, inboxRepo *repo.InboxRepo, channelAPIRe
 	}
 }
 
-// ProvisionAPIInput carries the editable fields accepted at creation time.
-// Any unset field (zero value) means "use default": webhook_url stays NULL,
-// hmac_mandatory defaults to false, additional_attributes defaults to {}.
 type ProvisionAPIInput struct {
 	Name                 string
 	WebhookURL           string
@@ -65,9 +56,6 @@ func (s *InboxService) Provision(ctx context.Context, accountID int64, name stri
 	return s.ProvisionAPI(ctx, accountID, ProvisionAPIInput{Name: name})
 }
 
-// ProvisionAPI creates a Channel::Api inbox with the supplied editable
-// attributes. Rejects invalid agent_reply_time_window up-front to avoid a
-// half-built channel record.
 func (s *InboxService) ProvisionAPI(ctx context.Context, accountID int64, in ProvisionAPIInput) (*InboxCredentials, error) {
 	if err := validateAgentReplyTimeWindow(in.AdditionalAttributes); err != nil {
 		return nil, err
@@ -129,9 +117,6 @@ func (s *InboxService) ProvisionAPI(ctx context.Context, accountID int64, in Pro
 	}, nil
 }
 
-// UpdateAPIInput is the whitelist of fields accepted by PUT /inboxes/:id for
-// Channel::Api. Anything else is ignored (belt-and-suspenders against DTO
-// drift).
 type UpdateAPIInput struct {
 	WebhookURL           string
 	HMACMandatory        bool
@@ -149,9 +134,6 @@ func (s *InboxService) GetChannelAPIEditable(ctx context.Context, inboxID, accou
 	return ch, nil
 }
 
-// UpdateChannelAPIEditable updates the editable fields of a Channel::Api. The
-// inbox is located from the channel row (by inboxID) so the account_id scope
-// is enforced before any write.
 func (s *InboxService) UpdateChannelAPIEditable(ctx context.Context, inboxID, accountID int64, in UpdateAPIInput) (*model.ChannelAPI, error) {
 	if err := validateAgentReplyTimeWindow(in.AdditionalAttributes); err != nil {
 		return nil, err
@@ -175,9 +157,6 @@ func (s *InboxService) UpdateChannelAPIEditable(ctx context.Context, inboxID, ac
 	return ch, nil
 }
 
-// RotateAPIToken issues a fresh identifier + api_token for an existing
-// Channel::Api inbox, invalidating the previous token. Returns the plaintext
-// api_token once — callers MUST surface it to the integrator and drop it.
 func (s *InboxService) RotateAPIToken(ctx context.Context, inboxID, accountID int64) (*model.ChannelAPI, string, string, error) {
 	ch, err := s.channelAPIRepo.FindByInboxID(ctx, inboxID)
 	if err != nil {
@@ -210,9 +189,6 @@ func (s *InboxService) RotateAPIToken(ctx context.Context, inboxID, accountID in
 	return ch, newAPIToken, newSecret, nil
 }
 
-// validateAgentReplyTimeWindow enforces the Chatwoot contract: when the key
-// is present, its value MUST parse as a positive integer (minutes). Absence
-// is fine (the field is optional).
 func validateAgentReplyTimeWindow(attrs map[string]any) error {
 	v, ok := attrs["agent_reply_time_window"]
 	if !ok {
@@ -241,7 +217,6 @@ func (s *InboxService) ListByAccount(ctx context.Context, accountID int64) ([]mo
 	return s.inboxRepo.ListByAccount(ctx, accountID)
 }
 
-// channelTypeTable maps channel_type values to their backing channel tables.
 var channelTypeTable = map[string]string{
 	"Channel::Api":          "channels_api",
 	"Channel::Whatsapp":     "channels_whatsapp",
@@ -257,9 +232,6 @@ var channelTypeTable = map[string]string{
 	"Channel::Email":        "channels_email",
 }
 
-// DeleteInbox removes the inbox and its backing channel record. The channel
-// row is deleted first because the inbox no longer has a CASCADE constraint
-// on channel_id (polymorphic reference).
 func (s *InboxService) DeleteInbox(ctx context.Context, inboxID, accountID int64) error {
 	inbox, err := s.inboxRepo.FindByID(ctx, inboxID, accountID)
 	if err != nil {
@@ -282,8 +254,6 @@ func (s *InboxService) FindByID(ctx context.Context, id, accountID int64) (*mode
 	return s.inboxRepo.FindByID(ctx, id, accountID)
 }
 
-// DecryptHMACToken returns the plaintext HMAC key from the stored ciphertext.
-// Callers must not log or leak the result; it is a per-channel signing secret.
 func (s *InboxService) DecryptHMACToken(ciphertext string) (string, error) {
 	return s.cipher.Decrypt(ciphertext)
 }

@@ -8,9 +8,7 @@ const text = computed({
     try {
       const parsed = v ? JSON.parse(v) : {}
       emit('update:modelValue', parsed)
-    } catch {
-      // ignore invalid JSON until fixed
-    }
+    } catch { void 0 }
   }
 })
 </script>

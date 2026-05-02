@@ -127,6 +127,7 @@
     "macros": "Macros",
     "canned": "Respostas rápidas",
     "attributes": "Atributos",
+    "pipelines": "Pipelines",
     "reports": "Relatórios",
     "docs": "Documentação da API",
     "goTo": "Ir para",
@@ -899,7 +900,37 @@
     "empty": "Sem notificações no momento",
     "emptyDescription": "Quando algo acontecer por aqui, você verá os avisos nesta página.",
     "emptyUnreadTitle": "Você está em dia",
-    "emptyUnread": "Nenhuma notificação não lida no momento."
+    "emptyUnread": "Nenhuma notificação não lida no momento.",
+    "selectPrompt": "Selecione uma notificação",
+    "selectPromptDescription": "A conversa relacionada aparece aqui à direita.",
+    "openConversation": "Abrir conversa",
+    "noConversation": "Notificação sem conversa vinculada",
+    "noConversationDescription": "Não há uma conversa relacionada para mostrar.",
+    "loadingConversation": "Carregando conversa…",
+    "loadFailed": "Não foi possível carregar esta conversa.",
+    "deletedConversation": "Conversa removida",
+    "deletedConversationDescription": "A conversa relacionada não está mais disponível.",
+    "conversationLabel": "Conversa #{id}",
+    "markUnread": "Marcar como não lida",
+    "markRead": "Marcar como lida",
+    "sort": "Ordenar",
+    "sortNewest": "Mais recentes",
+    "sortOldest": "Mais antigas",
+    "shortcuts": {
+      "next": "Próxima notificação",
+      "prev": "Notificação anterior",
+      "close": "Fechar conversa"
+    },
+    "unknownContact": "Sem contato",
+    "openLabel": "Abrir conversa de {name}",
+    "unreadIndicator": "Não lida",
+    "types": {
+      "conversation_assigned": "Conversa atribuída a você",
+      "conversation_assignedShort": "Atribuída",
+      "sla_breach": "SLA em atraso",
+      "sla_breachShort": "SLA",
+      "fallback": "Notificação"
+    }
   },
   "labels": {
     "title": "Labels",
@@ -1104,7 +1135,84 @@
     "no": "Não",
     "retry": "Tentar novamente",
     "next": "Próximo",
-    "open": "Abrir"
+    "open": "Abrir",
+    "more": "Mais",
+    "typeToConfirm": "Digite para confirmar",
+    "nameMismatch": "Nome não confere"
+  },
+  "pipelines": {
+    "title": "Pipelines",
+    "subtitle": "Organize negociações, suporte e tarefas em quadros Kanban customizáveis.",
+    "new": "Novo pipeline",
+    "create": "Criar",
+    "edit": "Editar pipeline",
+    "name": "Nome do pipeline",
+    "empty": "Nenhum pipeline criado ainda.",
+    "fetchFailed": "Falha ao carregar pipelines",
+    "createFailed": "Falha ao criar pipeline",
+    "updateFailed": "Falha ao atualizar pipeline",
+    "archive": "Arquivar pipeline",
+    "archiveConfirm": "O pipeline ficará oculto, mas os dados são preservados.",
+    "archiveFailed": "Falha ao arquivar pipeline",
+    "notFound": "Pipeline não encontrado",
+    "templates": {
+      "title": "Escolher template",
+      "subtitle": "Comece com um modelo pronto e personalize depois.",
+      "fetchFailed": "Falha ao carregar templates"
+    },
+    "stage": {
+      "create": "Nova coluna",
+      "edit": "Editar coluna",
+      "delete": "Excluir coluna",
+      "deleteConfirm": "A coluna só pode ser excluída se estiver vazia.",
+      "deleteFailed": "Falha ao excluir coluna",
+      "saveFailed": "Falha ao salvar coluna",
+      "name": "Nome da coluna",
+      "color": "Cor",
+      "isTerminal": "Coluna final",
+      "terminalKind": "Tipo de fechamento"
+    },
+    "card": {
+      "create": "Novo card",
+      "createFailed": "Falha ao criar card",
+      "saveFailed": "Falha ao salvar card",
+      "deleteFailed": "Falha ao excluir card",
+      "moveFailed": "Falha ao mover card",
+      "untitled": "Sem título",
+      "title": "Título",
+      "description": "Descrição",
+      "dueDate": "Vencimento",
+      "value": "Valor",
+      "assignees": "Responsáveis",
+      "labels": "Etiquetas",
+      "noAgents": "Nenhum agente disponível",
+      "noLabels": "Nenhuma etiqueta cadastrada",
+      "linkedContact": "Contato vinculado",
+      "linkedConversation": "Conversa vinculada"
+    },
+    "view": {
+      "kanban": "Kanban",
+      "list": "Lista"
+    },
+    "list": {
+      "title": "Título",
+      "stage": "Coluna",
+      "assignees": "Responsáveis",
+      "labels": "Etiquetas",
+      "dueDate": "Vencimento",
+      "value": "Valor",
+      "createdAt": "Criado em",
+      "empty": "Nenhum card neste pipeline."
+    },
+    "link": {
+      "pickContact": "Vincular contato ao card",
+      "pickConversation": "Vincular conversa ao card",
+      "searchContact": "Buscar contato por nome, e-mail ou telefone…",
+      "noContacts": "Nenhum contato encontrado.",
+      "conversationHelp": "Cole o ID da conversa que será vinculada ao card.",
+      "conversationId": "ID da conversa",
+      "invalidConversation": "ID de conversa inválido"
+    }
   },
   "reports": {
     "title": "Relatórios",

@@ -168,9 +168,6 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 		msgType = model.MessageOutgoing
 	}
 
-	// Mantém external_source_urls em content_attributes pra retrocompat — alguns
-	// caminhos legados ainda olham aí. A persistência canônica agora é a linha
-	// na tabela attachments com external_url, criada abaixo.
 	var contentAttrs *string
 	if im.MediaURL != "" {
 		attrs := map[string]interface{}{
@@ -218,9 +215,6 @@ func (s *Service) processInboundMessage(ctx context.Context, ch *model.ChannelWh
 	return nil
 }
 
-// contentAndFileTypeFromMediaKind mapeia o "kind" do canal (image/video/audio/
-// document/sticker) pros enums correspondentes. Default file/file pra qualquer
-// outra coisa que ainda não temos render dedicado.
 func contentAndFileTypeFromMediaKind(kind string) (model.MessageContentType, model.AttachmentFileType) {
 	switch kind {
 	case "image":

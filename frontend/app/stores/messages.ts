@@ -3,10 +3,7 @@ import type { Conversation } from './conversations'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 
-// Backend sends numeric enums; use these helpers/consts for UI mapping.
-// MessageType: 0=Incoming, 1=Outgoing, 2=Activity, 3=Template
 export type MessageType = 0 | 1 | 2 | 3
-// MessageStatus: 0=Sent, 1=Delivered, 2=Read, 3=Failed | 'sending' (optimistic)
 export type MessageStatus = 0 | 1 | 2 | 3 | 'sending'
 
 export type FetchState = 'empty' | 'warmed' | 'fetching' | 'fetched'
@@ -14,33 +11,17 @@ export type FetchState = 'empty' | 'warmed' | 'fetching' | 'fetched'
 export interface MessageAttachmentResponse {
   id: number
   messageId: number
-  // Backend sends AttachmentFileType as numeric enum; chatAdapter normalizes.
   fileType: string | number
   fileKey?: string
-  // Nome original do arquivo (com acentos/espaços/parênteses) preservado
-  // pelo backend separado da chave do MinIO (que é sanitizada).
   fileName?: string
-  // dataUrl é a URL ESTÁVEL servida pelo elodesk (espelha o
-  // `attachment.data_url` do Chatwoot push_event_data). Token HMAC permanente
-  // + Cache-Control: max-age=1y, immutable em PublicAttachmentDownload.
-  // Re-aberturas da conversa devolvem a mesma URL byte-a-byte → o navegador
-  // serve direto do disk cache, sem novo GET. Vem populada quando o anexo já
-  // tem fileKey (blob no MinIO).
   dataUrl?: string
-  // URL externa (CDN do Meta/Telegram) usada quando o backend ainda não
-  // baixou o blob pro MinIO. Fallback de dataUrl.
   externalUrl?: string
   extension?: string
   contentType?: string
   size?: number
-  // ISO string (optimistic/realtime) or epoch ms (apiAdapter-normalized REST).
   createdAt: string | number
 }
 
-// MessageSender mirrors backend dto.MessageSenderResp — polymorphic sender
-// embedded in MessageResp. `type` matches Chatwoot's lowercase tokens
-// (contact/user/agent_bot); the legacy uppercase `senderType` field below is
-// kept for in-memory optimistic messages built by the composer.
 export interface MessageSender {
   id?: string
   name?: string
@@ -57,8 +38,6 @@ export interface Message {
   content: string | null
   contentType: string
   messageType: MessageType
-  // Backend now embeds the polymorphic sender as a struct; senderType/senderId
-  // are kept optional for legacy callers and optimistic placeholders.
   sender?: MessageSender | null
   senderType?: 'CONTACT' | 'USER' | 'SYSTEM'
   senderId?: string | null
@@ -69,12 +48,10 @@ export interface Message {
   contentAttributes: Record<string, unknown> | string | null
   forwardedFromMessageId?: number | null
   attachments?: MessageAttachmentResponse[]
-  // ISO string (optimistic/realtime) or epoch ms (apiAdapter-normalized REST).
   createdAt: string | number
   updatedAt: string | number
 }
 
-// Forward types
 export type ForwardTarget
   = | { conversationId: string }
     | { contactId: string, inboxId: string }
@@ -95,17 +72,8 @@ export interface ForwardMessagesResponse {
 export const useMessagesStore = defineStore('messages', {
   state: () => ({
     byConversation: {} as Record<string, Message[]>,
-    // Per-conversation reply draft. The composer reads from this to show a
-    // quoted preview and embeds the in_reply_to payload on send.
     replyingTo: {} as Record<string, Message | null>,
-    // Per-conversation fetch state:
-    // - empty: no data
-    // - warmed: seed-only (last message from conversation list)
-    // - fetching: request in flight (replaces legacy `inflight` set)
-    // - fetched: full history loaded
     fetchState: {} as Record<string, FetchState>,
-    // Timestamp do último fetch bem-sucedido por conversa. Usado pelo
-    // prefetch como TTL anti-hammer (não chama de novo se acabou de cachear).
     fetchedAt: {} as Record<string, number>
   }),
   actions: {
@@ -114,9 +82,6 @@ export const useMessagesStore = defineStore('messages', {
       this.fetchState[conversationId] = 'fetched'
       this.fetchedAt[conversationId] = Date.now()
     },
-    // fetchMessages é o caminho único pra puxar mensagens de uma conversa —
-    // tanto o click (Thread.vue) quanto o hover (List.vue) passam por aqui pra
-    // dedupe automático. mergeFetched preserva itens vindos por WS.
     async fetchMessages(conversationId: string, opts?: { freshMs?: number }) {
       if (!conversationId) return
       if (this.fetchState[conversationId] === 'fetching') return
@@ -140,37 +105,25 @@ export const useMessagesStore = defineStore('messages', {
         this.fetchState[conversationId] = 'fetched'
         this.fetchedAt[conversationId] = Date.now()
       } catch (err) {
-        // Best-effort: fallback to previous state on error
         this.fetchState[conversationId] = previousState
         console.error('[messages] fetch failed', err)
       }
     },
-    // Prefetch chamado on-hover: pula quando já tem mensagem cacheada (basta
-    // mostrar) ou quando acabamos de cachear (anti-hammer em scroll rápido).
     prefetch(conversationId: string) {
       if (!conversationId) return
       const state = this.fetchState[conversationId] || 'empty'
       if (state === 'fetching' || state === 'fetched') return
       void this.fetchMessages(conversationId, { freshMs: 30_000 })
     },
-    // warmIfEmpty sementeia o bucket da conversa com a última mensagem conhecida
-    // (lastNonActivityMessage) caso o bucket esteja vazio. Isso permite que a
-    // thread renderize instantaneamente antes do fetch REST completar.
     warmIfEmpty(c: Conversation) {
       if (!c.id || !c.lastNonActivityMessage) return
       const state = this.fetchState[c.id] || 'empty'
       if (state !== 'empty') return
-      // Anti-race: o bucket pode já ter mensagens vindas do realtime antes da
-      // hidratação da lista (WS reconectou primeiro que o REST). `upsert` não
-      // toca em fetchState, então o estado fica 'empty' mesmo com dados. Aqui
-      // apenas registramos como `warmed` sem sobrescrever — a versão recém
-      // chegada via WS é mais completa que o seed (tem URLs de anexos etc).
       if ((this.byConversation[c.id]?.length ?? 0) > 0) {
         this.fetchState[c.id] = 'warmed'
         return
       }
 
-      // Converte ConversationLastMessage para Message.
       const msg = c.lastNonActivityMessage
       const seeded: Message = {
         id: String(msg.id),
@@ -208,18 +161,8 @@ export const useMessagesStore = defineStore('messages', {
       this.byConversation[c.id] = [seeded]
       this.fetchState[c.id] = 'warmed'
     },
-    // mergeFetched aplica o resultado paginado do fetch REST sobre o bucket
-    // existente sem perder mensagens que chegaram via realtime durante o
-    // request. Estratégia:
-    //   1. mantemos as mensagens já presentes (incluindo tmp: otimistas)
-    //   2. para cada item do REST, fazemos upsert (substitui se id bate;
-    //      reconcilia echoId; insere ordenado caso contrário)
-    // Antes, `set(...)` substituía o bucket e descartava qualquer mensagem
-    // recém-chegada por WS — race clássica abrir conversa + nova mensagem.
     mergeFetched(conversationId: string, list: Message[]) {
       if (!this.byConversation[conversationId]) {
-        // Bucket vazio: caminho rápido — atribuição direta sem ordenação extra
-        // (REST já vem ordenado por created_at desc; o caller inverte).
         this.byConversation[conversationId] = list
         this.fetchState[conversationId] = 'fetched'
         return
@@ -236,8 +179,6 @@ export const useMessagesStore = defineStore('messages', {
     upsert(msg: Message) {
       const bucket = (this.byConversation[String(msg.conversationId)] ||= [])
 
-      // Reconcile optimistic tmp messages by echoId: when the real server
-      // message arrives it replaces the `tmp:<echoId>` placeholder.
       if (msg.echoId) {
         const tmpTarget = `tmp:${msg.echoId}`
         const tmpIdx = bucket.findIndex((m) => {
@@ -249,28 +190,14 @@ export const useMessagesStore = defineStore('messages', {
         }
       }
 
-      // createdAt pode chegar como string ISO (optimistic/realtime) ou epoch ms
-      // (REST normalizado pelo apiAdapter). Date(...) aceita os dois — calcula
-      // uma vez aqui pra evitar repetir no caminho de inserção.
       const ts = new Date(msg.createdAt).getTime()
 
       const idx = bucket.findIndex(m => String(m.id) === String(msg.id))
       if (idx >= 0) {
-        // Update in-place via Object.assign — preserva a IDENTIDADE do objeto
-        // existente (mesma referência). Antes, `bucket[idx] = msg` substituía
-        // a referência, e o ResizeObserver/computed dos templates de mídia
-        // re-disparava o pipeline de carga (loading visível, refetch da imagem
-        // mesmo com dataUrl idêntica). Mensagens editadas/atualizadas
-        // conservam created_at, então a posição no array fica preservada.
         Object.assign(bucket[idx]!, msg)
         return
       }
 
-      // Mensagens normalmente chegam em ordem cronológica (REST inicial vem
-      // ordenado, realtime entrega na ordem de criação). Inserção O(n) por
-      // varredura reversa em vez de O(n log n) sort do array inteiro a cada
-      // upsert — em conversas grandes (>500 mensagens) o sort era visível como
-      // stutter na UI.
       let i = bucket.length - 1
       while (i >= 0 && new Date(bucket[i]!.createdAt).getTime() > ts) i--
       bucket.splice(i + 1, 0, msg)
@@ -291,8 +218,6 @@ export const useMessagesStore = defineStore('messages', {
         }
         return { contact_id: Number(t.contactId), inbox_id: Number(t.inboxId) }
       })
-      // useApi unwraps the { success, data } envelope, so we get
-      // ForwardMessagesResponse directly.
       return await api<ForwardMessagesResponse>(`/accounts/${auth.account.id}/messages/forward`, {
         method: 'POST',
         body: {

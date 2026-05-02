@@ -73,9 +73,6 @@ func TestHasSupportedEvent_DMOnly(t *testing.T) {
 	}
 }
 
-// OAuth 1.0a signature: verify the base string + signing key produce the
-// expected HMAC-SHA1 output. Uses well-known values so we catch accidental
-// changes to percentEncode or signRequest logic.
 func TestSignRequest_KnownVectors(t *testing.T) {
 	oauthParams := map[string]string{
 		"oauth_consumer_key":     "ckey",
@@ -91,7 +88,6 @@ func TestSignRequest_KnownVectors(t *testing.T) {
 		t.Fatalf("signRequest must be deterministic for identical inputs")
 	}
 
-	// Different token secret must change the signature.
 	sig3 := signRequest("POST", "https://api.twitter.com/2/example", oauthParams, nil, "csecret", "other")
 	if sig1 == sig3 {
 		t.Fatalf("signature must change when token secret changes")
@@ -106,7 +102,6 @@ func TestPercentEncode_UnreservedPassthrough(t *testing.T) {
 }
 
 func TestPercentEncode_EncodesReserved(t *testing.T) {
-	// "!" is reserved and must be encoded per OAuth 1.0a rules.
 	if got := percentEncode("hello world!"); got != "hello%20world%21" {
 		t.Fatalf("expected %q got %q", "hello%20world%21", got)
 	}

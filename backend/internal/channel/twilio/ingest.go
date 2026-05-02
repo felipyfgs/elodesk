@@ -15,8 +15,6 @@ import (
 	"backend/internal/repo"
 )
 
-// InboundParams captures the subset of Twilio webhook form fields Elodesk
-// cares about, extracted once from the incoming form.
 type InboundParams struct {
 	MessageSid string
 	From       string
@@ -26,8 +24,6 @@ type InboundParams struct {
 	MediaTypes []string
 }
 
-// ParseInbound reads the Messages.json-compatible form shape Twilio posts to
-// our webhook and normalizes media URLs/types.
 func ParseInbound(form url.Values) *InboundParams {
 	p := &InboundParams{
 		MessageSid: form.Get("MessageSid"),
@@ -218,8 +214,6 @@ func stripWhatsappPrefix(s string) string {
 	return strings.TrimPrefix(s, WhatsappPrefix)
 }
 
-// DetectMedium looks at the inbound "From" field and reports the medium the
-// provider intended. whatsapp: prefix signals WhatsApp; anything else is SMS.
 func DetectMedium(from string) model.TwilioMedium {
 	if strings.HasPrefix(from, WhatsappPrefix) {
 		return model.TwilioMediumWhatsApp

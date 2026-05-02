@@ -17,11 +17,6 @@ import (
 	"time"
 )
 
-// OAuthClient performs the 3-legged OAuth 1.0a handshake against Twitter.
-// All requests are signed with HMAC-SHA1 using consumer credentials and,
-// when present, a request- or access-token secret.
-//
-// https://developer.twitter.com/en/docs/authentication/oauth-1-0a
 type OAuthClient struct {
 	httpClient     *http.Client
 	consumerKey    string
@@ -38,18 +33,14 @@ func NewOAuthClient(consumerKey, consumerSecret, callbackURL string) *OAuthClien
 	}
 }
 
-// ConsumerKey returns the consumer key — used by callers (the API client
-// initializer) that need to share the same credentials.
 func (c *OAuthClient) ConsumerKey() string { return c.consumerKey }
 
-// RequestTokenResponse is the parsed body of POST /oauth/request_token.
 type RequestTokenResponse struct {
 	OAuthToken             string
 	OAuthTokenSecret       string
 	OAuthCallbackConfirmed bool
 }
 
-// AccessTokenResponse is the parsed body of POST /oauth/access_token.
 type AccessTokenResponse struct {
 	OAuthToken       string
 	OAuthTokenSecret string
@@ -57,7 +48,6 @@ type AccessTokenResponse struct {
 	ScreenName       string
 }
 
-// RequestToken performs the first leg of the 3-legged OAuth flow.
 func (c *OAuthClient) RequestToken(ctx context.Context) (*RequestTokenResponse, error) {
 	endpoint := apiBase + requestTokenPath
 	extra := map[string]string{"oauth_callback": c.callbackURL}
@@ -77,15 +67,10 @@ func (c *OAuthClient) RequestToken(ctx context.Context) (*RequestTokenResponse, 
 	}, nil
 }
 
-// AuthorizeURL builds the user-facing redirect URL after a request token has
-// been minted. Twitter recommends /authenticate (auto-approve when scope
-// already granted) over /authorize.
 func (c *OAuthClient) AuthorizeURL(requestToken string) string {
 	return apiBase + authenticatePath + "?oauth_token=" + url.QueryEscape(requestToken)
 }
 
-// AccessToken completes the third leg of the OAuth flow by exchanging the
-// authorized request token + verifier for a long-lived access token pair.
 func (c *OAuthClient) AccessToken(ctx context.Context, requestToken, requestTokenSecret, verifier string) (*AccessTokenResponse, error) {
 	endpoint := apiBase + accessTokenPath
 	extra := map[string]string{"oauth_verifier": verifier}
@@ -105,8 +90,6 @@ func (c *OAuthClient) AccessToken(ctx context.Context, requestToken, requestToke
 	}, nil
 }
 
-// signedPost issues a POST signed by the (consumer, optional request-token)
-// pair. The token's secret is left empty when minting a new request token.
 func (c *OAuthClient) signedPost(
 	ctx context.Context, endpoint, token, tokenSecret string,
 	extraOauth map[string]string, body url.Values,
@@ -144,9 +127,6 @@ func (c *OAuthClient) signedPost(
 	return string(raw), nil
 }
 
-// buildAuthHeader builds the OAuth 1.0a Authorization header for the
-// requested method+url. tokenSecret is the access (or request) token secret
-// — empty for the very first request_token call.
 func (c *OAuthClient) buildAuthHeader(
 	method, endpoint, token, tokenSecret string,
 	extraOauth map[string]string, body url.Values,
@@ -189,9 +169,6 @@ func (c *OAuthClient) buildAuthHeader(
 	return "OAuth " + strings.Join(parts, ", "), nil
 }
 
-// signRequest computes the HMAC-SHA1 oauth_signature for the request.
-// Form body params and oauth params (minus oauth_signature) are merged into
-// the parameter string per RFC 5849.
 func signRequest(method, endpoint string, oauthParams map[string]string, body url.Values, consumerSecret, tokenSecret string) string {
 	all := make(map[string]string, len(oauthParams)+len(body))
 	for k, v := range oauthParams {
@@ -230,9 +207,6 @@ func signRequest(method, endpoint string, oauthParams map[string]string, body ur
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// percentEncode follows the OAuth 1.0a "percent encoding" rules: only
-// unreserved characters [A-Za-z0-9-._~] are left untouched; everything else
-// is encoded as %HH.
 func percentEncode(in string) string {
 	var b strings.Builder
 	b.Grow(len(in))

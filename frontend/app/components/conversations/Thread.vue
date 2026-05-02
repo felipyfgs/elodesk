@@ -21,22 +21,14 @@ const messages = useMessagesStore()
 const conversations = useConversationsStore()
 const agents = useAgentsStore()
 
-// Estado da sidebar de detalhes — persistido em localStorage e com default
-// dependente da viewport (aberta em xl+, fechada em <xl). isCompact decide
-// se a sidebar renderiza inline (≥lg) ou dentro do USlideover (<lg).
 const { open: detailsOpen } = useDetailsSidebar()
 const { isCompact } = useResponsive()
 
-// O USlideover precisa ficar montado (evita race de HMR com o Teleport),
-// mas o conteúdo só deve aparecer em viewport compacto. Gate via :open
-// — `v-show` no componente não funciona porque o root é um componente
-// (DialogRoot) e o conteúdo real fica teleportado pro <body>.
 const slideoverOpen = computed({
   get: () => isCompact.value && detailsOpen.value,
   set: (v) => { detailsOpen.value = v }
 })
 
-// Forward selection state
 const selectionMode = ref(false)
 const selectedMessageIds = ref<Set<string>>(new Set())
 const forwardModalOpen = ref(false)
@@ -46,48 +38,24 @@ provide(forwardSelectedIdsKey, selectedMessageIds)
 
 const list = computed<Message[]>(() => messages.byConversation[props.conversation.id] ?? [])
 
-// Marca a conversa como lida assim que o agente abre. Optimistic: zera o
-// unreadCount localmente (e pina o id em stickyUnreadId pra ela não sumir
-// da aba "Não lidas" enquanto ainda estiver aberta) e chama o endpoint que
-// atualiza assignee_last_seen_at e dispara conversation.updated para todos
-// os clientes. Best-effort: erros de rede são silenciados — o badge volta
-// na próxima hidratação.
 async function markRead(convId: string) {
   if (!auth.account?.id) return
   conversations.markRead(convId)
   try {
     await api(`/accounts/${auth.account.id}/conversations/${convId}/update_last_seen`, { method: 'POST' })
-  } catch {
-    // ignore — broadcast realtime will reconcile if/when it succeeds
-  }
+  } catch { void 0 }
 }
 
 watch(() => props.conversation.id, async (id) => {
-  // fetchMessages dedupa contra o hover-prefetch da List: se o bucket já
-  // foi populado durante o hover, o click só dispara o markRead e a UI
-  // mostra na hora. Passamos freshMs para honrar o TTL do prefetch.
   await messages.fetchMessages(id, { freshMs: 30_000 })
   if (id) markRead(id)
 }, { immediate: true })
 
-// Scroll-to-bottom: handled at the outer overflow container instead of
-// trusting UChatMessages :auto-scroll. Reactive list updates from the
-// realtime store don't reliably trigger Nuxt UI's internal observer when
-// the scroll element is the parent overflow div.
-//
-// IMPORTANT: The parent (Index.vue) renders Thread with `:key="selected.id"`,
-// which means Vue destroys and recreates this entire component on each
-// conversation change. Watchers on `conversation.id` therefore NEVER fire
-// (the id never changes within the component's lifecycle), so initial
-// scroll-to-bottom is handled via watch(list.length, immediate) below.
 const scrollContainerRef = ref<HTMLDivElement | null>(null)
 const scrollContentRef = ref<HTMLDivElement | null>(null)
 const STICK_THRESHOLD_PX = 80
 const stickToBottom = ref(true)
 
-// Guard flag: when true, the passive `onScroll` handler is ignored so that
-// programmatic scrollToBottom calls don't accidentally flip stickToBottom
-// to false while the scroll animation is in progress.
 const programmaticScroll = ref(false)
 
 function isNearBottom(el: HTMLElement) {
@@ -99,8 +67,6 @@ function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   if (!el) return
   programmaticScroll.value = true
   el.scrollTo({ top: el.scrollHeight, behavior })
-  // Release the guard after the scroll settles. For 'auto' (instant) a
-  // single rAF suffices; for 'smooth' we give the animation time to finish.
   const releaseMs = behavior === 'auto' ? 0 : 400
   const release = () => {
     programmaticScroll.value = false
@@ -116,23 +82,15 @@ function onScroll() {
   if (programmaticScroll.value) return
   const el = scrollContainerRef.value
   if (!el) return
-  // If the agent reads history (scrolls up), don't yank them back when a
-  // new message arrives. Resume auto-stick once they're back near the end.
   stickToBottom.value = isNearBottom(el)
 }
 
-// Initial scroll: the component is freshly mounted (`:key` forces recreate).
-// One watcher with `immediate: true` cobre tanto o caminho warm (hover-
-// prefetch, cache de bucket) quanto o async fetch — em ambos os casos a
-// `list` transita de N=0 ou já entra populada. Depois do scroll inicial,
-// o ResizeObserver abaixo cuida de re-scrollar em cada incremento.
 const didInitialScroll = ref(false)
 
 function doInitialScroll() {
   if (didInitialScroll.value) return
   didInitialScroll.value = true
   stickToBottom.value = true
-  // nextTick + double-rAF: aguarda Vue flush + layout do browser.
   nextTick(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -151,11 +109,6 @@ watch(
 )
 
 onMounted(() => {
-  // ResizeObserver no content div: pega media loads async (pdfjs thumbs,
-  // imagens via useAttachmentSrc, waveform de áudio) que expandem
-  // scrollHeight depois do scroll inicial. Também serve de re-scroll quando
-  // novas mensagens chegam — o append da lista aumenta a altura do content.
-  // Usa 'auto' pra evitar jank em loads rápidos sequenciais.
   const content = scrollContentRef.value
   if (!content) return
   const ro = new ResizeObserver(() => {
@@ -166,27 +119,22 @@ onMounted(() => {
   onUnmounted(() => ro.disconnect())
 })
 
-// Cancel selection mode and clear
 function cancelSelection() {
   selectionMode.value = false
   selectedMessageIds.value = new Set()
 }
 
-// Handle Esc key to exit selection mode
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && selectionMode.value) {
     cancelSelection()
   }
 }
 
-// Handler for when forward completes (success)
 function onForwardComplete() {
   forwardModalOpen.value = false
   cancelSelection()
 }
 
-// When the modal is dismissed without submitting (cancel/click-outside),
-// exit selection mode too.
 watch(forwardModalOpen, (open) => {
   if (!open && selectionMode.value) {
     cancelSelection()
@@ -228,17 +176,6 @@ onUnmounted(() => {
             class="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4"
             @scroll.passive="onScroll"
           >
-            <!--
-              Padrão "stick to bottom" usado por WhatsApp/iMessage: quando há
-              poucas mensagens, elas grudam acima do composer; quando o
-              conteúdo excede o viewport, o scroll funciona normal e o final
-              continua próximo do composer (auto-stick em scrollToBottom).
-
-              `min-h-full + flex flex-col + justify-end` cresce o wrapper até
-              a altura do scroller e empurra os filhos pro fundo. Sem isso, o
-              fluxo normal de bloco renderiza as bolhas a partir do topo,
-              deixando um vazio enorme entre a primeira mensagem e o input.
-            -->
             <div ref="scrollContentRef" class="flex min-h-full flex-col justify-end">
               <ConversationsMessageList :messages="list" :conversation="conversation" />
             </div>
@@ -253,11 +190,6 @@ onUnmounted(() => {
           <ConversationsComposer v-else :conversation="conversation" />
         </div>
       </section>
-
-      <!--
-        Inline: só em ≥lg quando há espaço pras 3 colunas (lista|thread|side).
-        Largura fixa para não competir com a Thread; em xl ganha mais 32px.
-      -->
       <aside
         v-if="detailsOpen && !isCompact"
         class="hidden w-72 shrink-0 flex-col border-l border-default bg-default lg:flex xl:w-80"
@@ -268,15 +200,6 @@ onUnmounted(() => {
         />
       </aside>
     </div>
-
-    <!--
-      Compact (mobile + tablet): a sidebar vira slideover lateral acionado
-      pelo botão "i" do ThreadHeader. Sempre montado para evitar HMR race
-      conditions com Teleport — quando Vite hot-replaces e o slideover está
-      aberto, unmount via v-if corrompe a árvore DOM do Teleport causando
-      "can't access property 'parentNode', node is null". O gate visual é
-      feito pelo :open via slideoverOpen (computed que respeita isCompact).
-    -->
     <USlideover
       v-model:open="slideoverOpen"
       :ui="{ content: 'w-full sm:max-w-sm' }"

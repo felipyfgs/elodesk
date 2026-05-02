@@ -97,11 +97,6 @@ func (h *Hub) Register(client *Client) {
 	h.register <- client
 }
 
-// Unregister enfileira a remoção do cliente do hub. Bloqueia até a remoção
-// ser aceita: dropar aqui significaria deixar o cliente órfão em h.clients
-// quando o websocket já fechou. O fan-out (Run loop) usa envio não-bloqueante
-// e pode dropar com segurança porque o cliente sempre será reciclado pela
-// próxima Unregister explícita do handler de close.
 func (h *Hub) Unregister(client *Client) {
 	h.unregister <- client
 }
@@ -154,9 +149,6 @@ func ConversationRoom(conversationID int64) string {
 	return fmt.Sprintf("conversation:%d", conversationID)
 }
 
-// UserRoom is the per-user realtime channel used for notifications. It is
-// scoped by account so a user with access to multiple accounts receives only
-// events relevant to the active tenant.
 func UserRoom(accountID, userID int64) string {
 	return fmt.Sprintf("account:%d:user:%d", accountID, userID)
 }

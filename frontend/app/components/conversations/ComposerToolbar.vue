@@ -22,8 +22,6 @@ type RichEditor = {
   isActive: (mark: string) => boolean
 }
 
-// Espelha o type AttachKind do Composer.vue — fonte autoritativa lá. Mantemos
-// um literal aqui pra evitar import circular do componente filho-pai.
 type AttachKind = 'all' | 'document' | 'media' | 'camera' | 'audio'
 
 const props = defineProps<{
@@ -82,16 +80,6 @@ function toggleExpanded() {
   emit('update:expanded', !props.expanded)
 }
 
-// Itens do menu de anexo. Estilo WhatsApp: agrupa "mídia universal" no topo
-// (cobre todo canal que aceita anexo) e poderá ganhar uma seção condicional
-// por canal no futuro (ex.: Contato/Enquete só em WhatsApp). Hoje só os
-// universais — evita itens disabled/coming-soon na UI.
-//
-// O `onSelect` emite o tipo pra cima; o pai (Composer) decide o accept e
-// dispara o file picker. Item "Áudio" abre o file picker de arquivos de áudio
-// existentes no computador — gravação ao vivo continua acessível pelo botão
-// `i-lucide-mic` separado fora do menu (paridade WhatsApp Web: clip = anexo
-// existente, microfone = grava agora).
 const attachItems = computed<DropdownMenuItem[][]>(() => {
   const universal: DropdownMenuItem[] = [
     {
@@ -118,9 +106,6 @@ const attachItems = computed<DropdownMenuItem[][]>(() => {
   return [universal]
 })
 
-// `channelType` ainda não é usado para itens condicionais — fica ancorado aqui
-// pra quando entrarem opções WhatsApp-only (Contato, Enquete). Suprimimos o
-// warning de unused enquanto a infra está pronta mas a UX final em discussão.
 void props.channelType
 </script>
 

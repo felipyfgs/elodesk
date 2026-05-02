@@ -112,9 +112,6 @@ func (s *ConversationService) ToggleStatus(ctx context.Context, id, accountID in
 	return convo, nil
 }
 
-// MarkRead atualiza assignee_last_seen_at e dispara conversation.updated para
-// que o unread_count zere em todos os clientes conectados. Idempotente — pode
-// ser chamado a cada abertura da thread sem efeito colateral.
 func (s *ConversationService) MarkRead(ctx context.Context, id, accountID int64) error {
 	if err := s.conversationRepo.UpdateAssigneeLastSeen(ctx, id, accountID); err != nil {
 		return err
@@ -123,10 +120,6 @@ func (s *ConversationService) MarkRead(ctx context.Context, id, accountID int64)
 	return nil
 }
 
-// Delete permanently removes the conversation (and all messages/participants
-// via ON DELETE CASCADE). A conversation.deleted realtime event is broadcast
-// so connected clients drop the row. The audit trail lives in audit_logs; the
-// data itself is gone permanently — no soft-delete for conversations.
 func (s *ConversationService) Delete(ctx context.Context, id, accountID int64) error {
 	convo, err := s.conversationRepo.FindByID(ctx, id, accountID)
 	if err != nil {
@@ -136,9 +129,6 @@ func (s *ConversationService) Delete(ctx context.Context, id, accountID int64) e
 		return err
 	}
 	if s.realtime != nil {
-		// Mantém camelCase como o resto dos eventos realtime — outros payloads
-		// passam por dto.* (que já é camelCase via tags). Aqui é construído à
-		// mão pra evitar refetch da conversa já apagada.
 		payload := map[string]any{
 			"id":      convo.ID,
 			"inboxId": convo.InboxID,
@@ -148,10 +138,6 @@ func (s *ConversationService) Delete(ctx context.Context, id, accountID int64) e
 	return nil
 }
 
-// broadcastUpdated hydrates the conversation and pushes a
-// `conversation.updated` event so connected clients can react without polling.
-// Best-effort: errors are logged and swallowed so the caller's response isn't
-// blocked by realtime hiccups.
 func (s *ConversationService) broadcastUpdated(ctx context.Context, accountID, convoID int64) {
 	if s.realtime == nil {
 		return
@@ -180,16 +166,10 @@ func (s *ConversationService) CountMeta(ctx context.Context, accountID, currentU
 	return s.conversationRepo.CountByStatusAndAssignee(ctx, accountID, currentUserID, inboxID)
 }
 
-// MetaByFilter returns the flat assignee-dimension counts (mine, assigned,
-// unassigned, all) honoring the same filter applied to the list endpoint.
-// Used as the `meta` envelope alongside the conversations list payload.
 func (s *ConversationService) MetaByFilter(ctx context.Context, filter repo.ConversationFilter) (dto.ConversationListMeta, error) {
 	return s.conversationRepo.CountByFilter(ctx, filter)
 }
 
-// ListWithMeta runs the list query and counts in one go, hydrating each row
-// to the Chatwoot-shape DTO. Failures hydrating individual rows fall back to
-// the bare ConversationToResp shape so the page still renders.
 func (s *ConversationService) ListWithMeta(ctx context.Context, filter repo.ConversationFilter) ([]dto.ConversationResp, dto.ConversationListMeta, error) {
 	convos, total, err := s.ListByAccount(ctx, filter)
 	if err != nil {
@@ -213,15 +193,12 @@ func (s *ConversationService) ListWithMeta(ctx context.Context, filter repo.Conv
 
 	meta, merr := s.conversationRepo.CountByFilter(ctx, filter)
 	if merr != nil {
-		// Degrade gracefully — a meta failure shouldn't drop the payload.
 		logger.Warn().Str("component", "conversation").Err(merr).Msg("count_by_filter failed; falling back to all_count=total")
 		meta = dto.ConversationListMeta{AllCount: total}
 	}
 	return payload, meta, nil
 }
 
-// FindByIDFull returns a single hydrated conversation row for the Show endpoint
-// and realtime payloads.
 func (s *ConversationService) FindByIDFull(ctx context.Context, accountID, id int64) (*repo.ConversationHydrated, error) {
 	return s.conversationRepo.FindByIDFull(ctx, accountID, id)
 }
@@ -234,9 +211,6 @@ func (s *ConversationService) UpdateLastSeen(ctx context.Context, id int64) erro
 	return s.conversationRepo.UpdateLastSeen(ctx, id)
 }
 
-// SetNotifications wires the notification creator lazily because the realtime
-// hub (and thus the notification service) is constructed after the
-// conversation service in router.go.
 func (s *ConversationService) SetNotifications(n NotificationCreator) {
 	s.notifications = n
 }
@@ -249,8 +223,6 @@ func (s *ConversationService) SetRealtimeNotifier(n RealtimeNotifier) {
 	s.realtime = n
 }
 
-// SetMessageService wires MessageService for sender hydration on
-// last_non_activity_message in list/show responses. Optional.
 func (s *ConversationService) SetMessageService(m *MessageService) {
 	s.messageSvc = m
 }
@@ -261,9 +233,6 @@ func (s *ConversationService) CreateWithOpts(ctx context.Context, accountID, inb
 		opts.Status = &openStatus
 	}
 
-	// Always validate the contact is scoped to the account. This covers the
-	// ci-exists branch below, which previously relied on the ci<->inbox<->account
-	// chain being consistent.
 	contact, err := s.contactRepo.FindByID(ctx, contactID, accountID)
 	if err != nil {
 		return nil, err

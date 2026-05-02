@@ -18,11 +18,6 @@ const (
 	senderTypeUser    = "User"
 )
 
-// ErrMessageMissingSender is returned when a non-incoming message reaches the
-// service without a resolved sender. Incoming messages get a Contact sender
-// auto-resolved from the conversation; outgoing/template messages must be
-// authored by an authenticated user (handler) or carry an explicit Contact
-// sender (channel ingest paths).
 var ErrMessageMissingSender = errors.New("message: missing sender")
 
 type OnOutboundMessageCreated interface {
@@ -33,17 +28,10 @@ type OnOutboundMessageUpdated interface {
 	OnMessageUpdated(ctx context.Context, accountID, inboxID int64, msg *model.Message)
 }
 
-// RealtimeNotifier is the minimal contract MessageService requires to emit
-// realtime events. Implemented by *RealtimeService. Scoped here (not in
-// realtime/) so mocks can live alongside service tests without importing the
-// transport package.
 type RealtimeNotifier interface {
 	Broadcast(conversationID, accountID int64, event string, payload any)
 }
 
-// conversationStore is the minimal contract MessageService needs from the
-// conversation repo. Defined consumer-side so tests can inject a fake without
-// importing pgx.
 type conversationStore interface {
 	FindByID(ctx context.Context, id, accountID int64) (*model.Conversation, error)
 	FindByIDFull(ctx context.Context, accountID, id int64) (*repo.ConversationHydrated, error)
@@ -67,9 +55,6 @@ func NewMessageService(messageRepo *repo.MessageRepo, attachmentRepo *repo.Attac
 	return &MessageService{messageRepo: messageRepo, attachmentRepo: attachmentRepo}
 }
 
-// SetConversationRepo aceita a interface conversationStore (não o *ConversationRepo
-// concreto) para que testes possam injetar fakes sem importar pgx. A produção
-// passa o repo real — *ConversationRepo satisfaz a interface.
 func (s *MessageService) SetConversationRepo(r conversationStore) {
 	s.conversationRepo = r
 }
@@ -78,16 +63,10 @@ func (s *MessageService) SetContactRepo(r *repo.ContactRepo) {
 	s.contactRepo = r
 }
 
-// SetUserRepo wires the user repo used to hydrate User-side senders on read.
-// Optional — when nil, User senders fall back to the legacy Sender:nil shape.
 func (s *MessageService) SetUserRepo(r *repo.UserRepo) {
 	s.userRepo = r
 }
 
-// HydrateMessageSenders builds a per-message sender map for read responses.
-// Performs at most 2 batched lookups (contacts, users) per call. Prefers
-// SenderContactID (group authorship) over the polymorphic sender_id when
-// both are present.
 func (s *MessageService) HydrateMessageSenders(ctx context.Context, messages []model.Message, accountID int64) map[int64]*dto.MessageSenderResp {
 	if len(messages) == 0 {
 		return nil
@@ -129,7 +108,6 @@ func (s *MessageService) HydrateMessageSenders(ctx context.Context, messages []m
 
 	out := make(map[int64]*dto.MessageSenderResp, len(messages))
 	for _, m := range messages {
-		// Prefer per-message contact (groups). Fall back to polymorphic sender.
 		if m.SenderContactID != nil && *m.SenderContactID > 0 {
 			if c, ok := contacts[*m.SenderContactID]; ok {
 				out[m.ID] = contactToSenderResp(c)
@@ -212,11 +190,6 @@ func (s *MessageService) Create(ctx context.Context, accountID, inboxID, convers
 		return nil, err
 	}
 
-	// Idempotence: if source_id is provided and a message with the same
-	// (account_id, conversation_id, source_id) already exists, return it.
-	// This prevents duplicate messages from webhook redelivery without
-	// relying solely on the SQL ON CONFLICT path (which would upsert
-	// content rather than short-circuit).
 	if msg.SourceID != nil && *msg.SourceID != "" {
 		existing, err := s.messageRepo.FindBySourceIDConv(ctx, *msg.SourceID, conversationID, accountID)
 		if err == nil {
@@ -242,9 +215,6 @@ func (s *MessageService) Create(ctx context.Context, accountID, inboxID, convers
 	}
 
 	s.bumpActivity(ctx, created)
-	// Mirror Chatwoot's Message#reopen_conversation: an incoming message in a
-	// resolved/snoozed conversation reopens it. Must run BEFORE the broadcast
-	// so the summary embedded in `message.created` carries the new status.
 	s.reopenIfClosed(ctx, created)
 
 	s.broadcastMessageEvent(ctx, realtime.EventMessageCreated, created)
@@ -256,14 +226,6 @@ func (s *MessageService) Create(ctx context.Context, accountID, inboxID, convers
 	return created, nil
 }
 
-// resolveSender enforces sender_type/sender_id population for every persisted
-// message. Incoming messages (and their Activity siblings) without an explicit
-// sender are auto-attributed to the conversation's Contact, mirroring
-// Chatwoot's MessageBuilder behaviour. Outgoing messages ingested from a
-// channel (e.g. wzap forwarding a fromMe WhatsApp message sent from the
-// business's own client) likewise have no agent User to attach, so they are
-// auto-attributed to the conversation's Contact too. Template paths must
-// carry a sender already.
 func (s *MessageService) resolveSender(ctx context.Context, msg *model.Message) error {
 	if msg.SenderType != nil && msg.SenderID != nil {
 		return nil
@@ -288,13 +250,6 @@ func (s *MessageService) resolveSender(ctx context.Context, msg *model.Message) 
 	return ErrMessageMissingSender
 }
 
-// reopenIfClosed reabre uma conversa resolvida/snoozed quando chega qualquer
-// mensagem não-privada — entrada *ou* saída. Diverge do Chatwoot
-// (que só reabre em incoming) para cobrir o caso do operador enviar do próprio
-// WhatsApp (external echo via wzap chega como Outgoing): também é atividade
-// nova e o usuário espera ver a conversa de volta em "Abertas".
-// Erros são logados mas não estouram — efeito derivado, não pode rolar a
-// mensagem persistida.
 func (s *MessageService) reopenIfClosed(ctx context.Context, msg *model.Message) {
 	if msg == nil || s.conversationRepo == nil {
 		return
@@ -318,11 +273,6 @@ func (s *MessageService) reopenIfClosed(ctx context.Context, msg *model.Message)
 	s.broadcastConversationUpdated(ctx, conv.AccountID, conv.ID)
 }
 
-// broadcastConversationUpdated emits `conversation.updated` with the fully
-// hydrated payload — same shape ConversationService.broadcastUpdated produces.
-// Mirrored here (instead of injecting ConversationService) to avoid a cycle
-// between MessageService and ConversationService. Best-effort: hydration or
-// realtime errors are logged and swallowed.
 func (s *MessageService) broadcastConversationUpdated(ctx context.Context, accountID, convID int64) {
 	if s.realtime == nil || s.conversationRepo == nil {
 		return
@@ -338,10 +288,6 @@ func (s *MessageService) broadcastConversationUpdated(ctx context.Context, accou
 	s.realtime.Broadcast(convID, accountID, realtime.EventConversationUpdated, dto.ConversationToRespFull(&row))
 }
 
-// bumpActivity propagates the new message's timestamp to the parent
-// conversation and (for incoming) the contact, so list views can sort by
-// recent activity. Errors are logged but never bubbled — failing to update a
-// derived timestamp must not roll back a successfully persisted message.
 func (s *MessageService) bumpActivity(ctx context.Context, msg *model.Message) {
 	if msg == nil {
 		return
@@ -394,10 +340,6 @@ func FileTypeFromMime(mime string) model.AttachmentFileType {
 	return fileTypeFromMime(mime)
 }
 
-// extToFileType cobre o caso em que o cliente entrega mime genérico
-// (`application/ogg`, `application/octet-stream`, vazio) — comum quando o
-// browser anexa um arquivo cujo OS não tem associação de mime registrada.
-// A extensão do filename é a fonte secundária.
 var extToFileType = map[string]model.AttachmentFileType{
 	"ogg": model.FileTypeAudio, "oga": model.FileTypeAudio, "opus": model.FileTypeAudio,
 	"mp3": model.FileTypeAudio, "m4a": model.FileTypeAudio, "aac": model.FileTypeAudio,
@@ -409,10 +351,6 @@ var extToFileType = map[string]model.AttachmentFileType{
 	"heif": model.FileTypeImage, "svg": model.FileTypeImage,
 }
 
-// FileTypeFromMimeOrName resolve fileType com fallback por extensão. Quando
-// o mime é específico (`audio/*`, `image/*`, `video/*`), usa-o direto.
-// Quando é genérico ou vazio, tenta deduzir do nome — só assim que um
-// `application/ogg` enviado pelo browser deixa de virar "documento".
 func FileTypeFromMimeOrName(mime, name string) model.AttachmentFileType {
 	t := fileTypeFromMime(mime)
 	if t != model.FileTypeFile {
@@ -441,10 +379,6 @@ func (s *MessageService) SoftDelete(ctx context.Context, id, accountID int64) er
 	return nil
 }
 
-// UpdateStatus updates an outbound message's delivery status (sent,
-// delivered, read, failed) and broadcasts `message.updated`. Used by
-// provider webhooks (WhatsApp, Twilio, SMS) — all status changes funnel
-// through here so the realtime event contract has exactly one emitter.
 func (s *MessageService) UpdateStatus(ctx context.Context, id, accountID int64, status string, externalErr *string) (*model.Message, error) {
 	updated, err := s.messageRepo.UpdateStatus(ctx, id, accountID, status, externalErr)
 	if err != nil {
@@ -469,8 +403,6 @@ func (s *MessageService) broadcastMessageEvent(ctx context.Context, event string
 				Int64("conversationId", msg.ConversationID).Err(err).
 				Msg("fetch conversation for realtime event")
 		} else {
-			// Conta unread real para o broadcast — antes ia hardcoded 0,
-			// o que zerava o badge no frontend a cada mensagem.
 			unread, cerr := s.conversationRepo.CountUnread(ctx, conv.ID, conv.AccountID)
 			if cerr != nil {
 				logger.Warn().Str("component", "message_service").
@@ -480,9 +412,6 @@ func (s *MessageService) broadcastMessageEvent(ctx context.Context, event string
 			convSummary = dto.ConversationSummaryFromModel(conv, unread)
 		}
 	}
-	// Hidrata sender (Contact ou User) para o broadcast — sem isso o frontend
-	// recebe `sender: null` em realtime e a bolha/preview da lista renderiza
-	// sem avatar/nome até o próximo refetch via REST.
 	var sender *dto.MessageSenderResp
 	if senders := s.HydrateMessageSenders(ctx, []model.Message{*msg}, msg.AccountID); senders != nil {
 		sender = senders[msg.ID]

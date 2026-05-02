@@ -16,9 +16,6 @@ type CreateConversationReq struct {
 	TeamID               *int64         `json:"team_id,omitempty"`
 }
 
-// CreateAuthenticatedConversationReq is the payload for agents starting a
-// new conversation with a contact from the dashboard. The optional `Message`
-// field creates the first outgoing message within the same request.
 type CreateAuthenticatedConversationReq struct {
 	ContactID            int64                      `json:"contact_id"`
 	InboxID              int64                      `json:"inbox_id"`
@@ -35,7 +32,6 @@ type CreateConversationMessage struct {
 	Private bool   `json:"private,omitempty"`
 }
 
-// UserSlimResp is the trimmed agent shape embedded in ConversationResp.meta.
 type UserSlimResp struct {
 	ID        int64   `json:"id"`
 	Name      string  `json:"name"`
@@ -44,16 +40,11 @@ type UserSlimResp struct {
 	Thumbnail string  `json:"thumbnail,omitempty"`
 }
 
-// TeamSlimResp is the trimmed team shape embedded in ConversationResp.meta.
 type TeamSlimResp struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
-// ConversationMetaResp aggregates the relational context Chatwoot puts under
-// `meta`: who started the conversation, which channel, the assigned agent,
-// and the team. assignee_type tracks whether `assignee` is a User or an
-// AgentBot — Elodesk only supports User today.
 type ConversationMetaResp struct {
 	Sender       ContactResp   `json:"sender"`
 	Channel      string        `json:"channel"`
@@ -63,8 +54,6 @@ type ConversationMetaResp struct {
 	HMACVerified bool          `json:"hmac_verified"`
 }
 
-// ConversationResp mirrors Chatwoot's _conversation.json.jbuilder. Timestamps
-// are emitted as epoch seconds (int64); JSON keys are snake_case.
 type ConversationResp struct {
 	ID                     int64                    `json:"id"`
 	AccountID              int64                    `json:"account_id"`
@@ -112,8 +101,6 @@ type ConversationListResp struct {
 	Payload []ConversationResp   `json:"payload"`
 }
 
-// statusName maps the integer status to Chatwoot's string name so the
-// frontend can switch on a stable token instead of magic numbers.
 func statusName(s model.ConversationStatus) string {
 	switch s {
 	case model.ConversationOpen:
@@ -128,10 +115,6 @@ func statusName(s model.ConversationStatus) string {
 	return ""
 }
 
-// ConversationToResp builds the bare shape from a Conversation row alone.
-// Useful for endpoints (or tests) that only need IDs/timestamps; for the
-// fully hydrated response served by GET /conversations and the realtime
-// broadcasts, use ConversationToRespFull.
 func ConversationToResp(c *model.Conversation) ConversationResp {
 	resp := ConversationResp{
 		ID:             c.ID,
@@ -167,9 +150,6 @@ func ConversationsToResp(convos []model.Conversation) []ConversationResp {
 	return result
 }
 
-// ConversationFullRow is the hydrated input expected by ConversationToRespFull.
-// Repos populate it via the LATERAL/JOIN query; services that need to broadcast
-// realtime can build it from in-memory data + a follow-up FindByIDFull.
 type ConversationFullRow struct {
 	Conversation           model.Conversation
 	Contact                model.Contact
@@ -183,9 +163,6 @@ type ConversationFullRow struct {
 	LastNonActivitySender  *MessageSenderResp
 }
 
-// ConversationToRespFull builds the Chatwoot-shape response with everything
-// hydrated. Pass nil for relations that are absent (e.g. unassigned →
-// Assignee=nil, no team → Team=nil, no messages → LastNonActivityMessage=nil).
 func ConversationToRespFull(row *ConversationFullRow) ConversationResp {
 	resp := ConversationToResp(&row.Conversation)
 	inbox := InboxToSlimResp(&row.Inbox, nil, nil)

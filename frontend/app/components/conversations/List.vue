@@ -18,10 +18,6 @@ const convs = useConversationsStore()
 const messages = useMessagesStore()
 const labelsStore = useLabelsStore()
 
-// Prefetch on-hover: dispara o fetch de mensagens assim que o agente passa o
-// mouse na linha. Quando ele clica, a thread já encontra o bucket cacheado e
-// renderiza sem flash. Dedup + TTL ficam na store; aqui só conectamos o
-// gatilho. Espelha a estratégia do Linear/GitHub no list-detail pattern.
 function prefetchMessages(c: Conversation) {
   messages.prefetch(c.id)
 }
@@ -67,8 +63,6 @@ function isManuallyUnread(c: Conversation): boolean {
   return convs.manuallyUnread.includes(c.id)
 }
 
-// "Não lida" para fins visuais inclui marcação manual (right-click do agente),
-// mesmo que unreadCount === 0. Espelha o WhatsApp Web.
 function hasUnread(c: Conversation): boolean {
   return unreadCount(c) > 0 || isManuallyUnread(c)
 }
@@ -118,10 +112,6 @@ function rowAriaLabel(c: Conversation): string {
   return t('conversations.list.openConversation', { name: contactName(c), id: c.displayId })
 }
 
-// Right-click → "Marcar como não lida" / "Marcar como lida". Toggle baseado no
-// estado atual da marcação manual. Marcar como lida aqui só remove a marcação
-// manual — não chama o endpoint de update_last_seen porque marcações manuais
-// são local-only (igual WhatsApp Web).
 function rowMenuItems(c: Conversation): ContextMenuItem[][] {
   const manual = isManuallyUnread(c)
   return [[
@@ -175,17 +165,6 @@ defineShortcuts({
 </script>
 
 <template>
-  <!--
-    Lista segue o padrão visual do template oficial Nuxt UI Dashboard
-    (_refs/dashboard/InboxList.vue): faixa lateral 2px (`border-l-2`) que
-    transita de cor no hover/selected, em vez de uma borda completa
-    arredondada. `divide-y` substitui o gap com bordas finas entre itens —
-    igual ao template, mais limpo visualmente.
-
-    transition-colors em vez de transition genérico: a animação fica só
-    nas cores (border + bg), sem afetar layout/transform — o efeito é
-    instantâneo perceptualmente mas suaviza o hover/click.
-  -->
   <ul
     class="min-h-0 flex-1 divide-y divide-default overflow-y-auto"
     role="listbox"
@@ -272,12 +251,6 @@ defineShortcuts({
                 >
                   {{ unreadCount(c) > 99 ? '99+' : unreadCount(c) }}
                 </span>
-                <!--
-                Marcação manual via right-click ("Marcar como não lida") — sem
-                contagem real, mostra apenas um dot indicador (igual ao
-                comportamento do WhatsApp Web). Só aparece quando não há
-                unreadCount real, pra não duplicar com o badge numérico.
-              -->
                 <span
                   v-else-if="isManuallyUnread(c)"
                   class="size-2 rounded-full bg-primary"

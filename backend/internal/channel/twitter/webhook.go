@@ -20,9 +20,6 @@ const (
 	dmTypeMessage  = "message_create"
 )
 
-// CRCChallenge computes the response token Twitter expects in reply to a
-// GET /webhooks/twitter/:profile_id?crc_token=... probe.
-// https://developer.twitter.com/en/docs/twitter-api/premium/account-activity-api/guides/securing-webhooks
 func CRCChallenge(consumerSecret, crcToken string) string {
 	if consumerSecret == "" || crcToken == "" {
 		return ""
@@ -32,8 +29,6 @@ func CRCChallenge(consumerSecret, crcToken string) string {
 	return "sha256=" + base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
-// VerifySignature checks the x-twitter-webhooks-signature header against the
-// raw POST body. Header value is "sha256=<base64hmac>".
 func VerifySignature(consumerSecret string, body []byte, signature string) bool {
 	if consumerSecret == "" || signature == "" {
 		return false
@@ -44,9 +39,6 @@ func VerifySignature(consumerSecret string, body []byte, signature string) bool 
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-// ProcessWebhook ingests a Twitter Account Activity payload. Only
-// direct_message_events are processed; tweet_create_events and other event
-// types are silently dropped per spec.
 func ProcessWebhook(
 	ctx context.Context,
 	body []byte,
@@ -79,12 +71,8 @@ func ProcessWebhook(
 	return nil
 }
 
-// hasSupportedEvent peeks at the JSON envelope for direct_message_events
-// using a streaming decoder to avoid false-positives from tweet text that
-// happens to contain the key string.
 func hasSupportedEvent(body []byte) bool {
 	dec := json.NewDecoder(strings.NewReader(string(body)))
-	// We only need the top-level keys.
 	if token, err := dec.Token(); err != nil || token != json.Delim('{') {
 		return false
 	}
@@ -100,7 +88,6 @@ func hasSupportedEvent(body []byte) bool {
 		if key == supportedEventKey {
 			return true
 		}
-		// Skip the value so we can read the next key.
 		if err := skipValue(dec); err != nil {
 			return false
 		}
@@ -108,8 +95,6 @@ func hasSupportedEvent(body []byte) bool {
 	return false
 }
 
-// skipValue fast-forwards a json.Decoder past the current value (primitive,
-// object, or array) so we can continue reading sibling keys.
 func skipValue(dec *json.Decoder) error {
 	tok, err := dec.Token()
 	if err != nil {
@@ -145,7 +130,6 @@ func processDM(
 	}
 
 	create := evt.MessageCreate
-	// Skip echoes from our own profile
 	if create.SenderID == ch.ProfileID {
 		return nil
 	}

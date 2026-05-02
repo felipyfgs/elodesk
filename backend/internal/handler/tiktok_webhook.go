@@ -74,8 +74,6 @@ func NewTiktokHandler(
 	}
 }
 
-// Authorize handles POST /api/v1/accounts/:aid/inboxes/tiktok/authorize and
-// returns a redirect URL for the TikTok consent screen.
 func (h *TiktokHandler) Authorize(c *fiber.Ctx) error {
 	if !h.featureEnabled {
 		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("feature_disabled", "TikTok channel is disabled"))
@@ -99,7 +97,6 @@ func (h *TiktokHandler) Authorize(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.TiktokAuthorizeResp{URL: h.oauth.AuthorizeURL(state)}))
 }
 
-// Callback handles GET /api/v1/accounts/tiktok/oauth/callback.
 func (h *TiktokHandler) Callback(c *fiber.Ctx) error {
 	if !h.featureEnabled {
 		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("feature_disabled", "TikTok channel is disabled"))
@@ -207,7 +204,6 @@ func (h *TiktokHandler) Callback(c *fiber.Ctx) error {
 	}))
 }
 
-// Receive handles POST /webhooks/tiktok/:business_id (signed webhook callbacks).
 func (h *TiktokHandler) Receive(c *fiber.Ctx) error {
 	businessID := c.Params("business_id")
 
@@ -233,8 +229,6 @@ func (h *TiktokHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/tiktok.
-// GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/tiktok.
 func (h *TiktokHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -324,5 +318,4 @@ func optionalString(s string) *string {
 	return &s
 }
 
-// ensure base64 import retained even if not directly used elsewhere.
 var _ = base64.StdEncoding

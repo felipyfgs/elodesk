@@ -29,12 +29,10 @@ func microsoftOAuthConfig() *oauth2.Config {
 	}
 }
 
-// MicrosoftAuthURL returns the consent-screen URL for a given state token.
 func MicrosoftAuthURL(state string) string {
 	return microsoftOAuthConfig().AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
-// MicrosoftExchangeCode exchanges an authorization code for tokens.
 func MicrosoftExchangeCode(ctx context.Context, code string) (*OAuthTokens, error) {
 	cfg := microsoftOAuthConfig()
 	tok, err := cfg.Exchange(ctx, code)
@@ -48,7 +46,6 @@ func MicrosoftExchangeCode(ctx context.Context, code string) (*OAuthTokens, erro
 	}, nil
 }
 
-// MicrosoftRefreshToken exchanges a refresh_token for a new access_token.
 func MicrosoftRefreshToken(ctx context.Context, refreshToken string) (*OAuthTokens, error) {
 	cfg := microsoftOAuthConfig()
 	src := cfg.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})

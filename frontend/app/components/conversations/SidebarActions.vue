@@ -20,8 +20,6 @@ const teams = useTeamsStore()
 
 const assignmentLoading = ref(false)
 
-// Stores keep IDs as strings, but the backend's BodyParser expects int64 — so
-// JSON `"1"` returns 400. Convert to number (or null) before sending in a body.
 function toNumericId(v: string | number | null | undefined): number | null {
   if (v === null || v === undefined || v === '') return null
   const n = typeof v === 'number' ? v : Number(v)

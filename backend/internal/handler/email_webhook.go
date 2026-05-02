@@ -18,7 +18,6 @@ import (
 	"backend/internal/repo"
 )
 
-// EmailWebhookHandler handles inbound email delivery from external relays.
 type EmailWebhookHandler struct {
 	channelEmailRepo *repo.ChannelEmailRepo
 	inboxRepo        *repo.InboxRepo
@@ -49,14 +48,12 @@ func NewEmailWebhookHandler(
 	}
 }
 
-// Inbound handles POST /webhooks/email/inbound
-//
-//	@Summary     Inbound email webhook
-//	@Description Receives raw MIME email from a relay (SES, SendGrid, Postfix). Authenticated via HMAC.
-//	@Tags        webhooks
-//	@Param       X-Elodesk-Inbound-Signature header string true "HMAC-SHA256 of body"
-//	@Param       X-Elodesk-Inbox-Id          header string true "Target inbox ID"
-//	@Router      /webhooks/email/inbound [post]
+// @Summary     Inbound email webhook
+// @Description Receives raw MIME email from a relay (SES, SendGrid, Postfix). Authenticated via HMAC.
+// @Tags        webhooks
+// @Param       X-Elodesk-Inbound-Signature header string true "HMAC-SHA256 of body"
+// @Param       X-Elodesk-Inbox-Id          header string true "Target inbox ID"
+// @Router      /webhooks/email/inbound [post]
 func (h *EmailWebhookHandler) Inbound(c *fiber.Ctx) error {
 	raw := c.Body()
 

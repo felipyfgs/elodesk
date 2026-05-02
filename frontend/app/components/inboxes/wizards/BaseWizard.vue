@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
 
-// Wizard genérico para fluxos de criação de inbox lineares (1-N steps com
-// validação Zod + submit POST). Não cobre wizards com efeitos especiais
-// (QR-code polling, OAuth, multi-fase) — esses ficam standalone.
-
 const props = defineProps<{
   title: string
   description: string

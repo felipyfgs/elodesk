@@ -83,7 +83,6 @@ func (r *ChannelEmailRepo) FindByInboxID(ctx context.Context, inboxID int64) (*m
 	return &m, nil
 }
 
-// ListImapEnabled returns all channels_email rows with imap_enabled=true for the poller scheduler.
 func (r *ChannelEmailRepo) ListImapEnabled(ctx context.Context) ([]model.ChannelEmail, error) {
 	query := `SELECT ` + channelEmailSelectColumns + ` FROM channels_email WHERE imap_enabled = true ORDER BY id`
 	rows, err := r.pool.Query(ctx, query)

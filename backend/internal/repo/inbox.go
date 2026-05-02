@@ -42,9 +42,6 @@ func (r *InboxRepo) Create(ctx context.Context, m *model.Inbox) error {
 	return nil
 }
 
-// FindByID enforces tenant scoping at the repo layer. Callers must pass the
-// account id from the authenticated request; cross-tenant ids resolve to
-// ErrInboxNotFound (never leak existence to the caller).
 func (r *InboxRepo) FindByID(ctx context.Context, id, accountID int64) (*model.Inbox, error) {
 	query := `SELECT ` + inboxSelectColumns + ` FROM inboxes WHERE id = $1 AND account_id = $2`
 	row := r.pool.QueryRow(ctx, query, id, accountID)
@@ -77,9 +74,6 @@ func (r *InboxRepo) ListByAccount(ctx context.Context, accountID int64) ([]model
 	return inboxes, rows.Err()
 }
 
-// AccountIDByID returns only the account_id of an inbox. Used by callers
-// (realtime membership check) that need to resolve ownership without fetching
-// the full row and without the caller already knowing the account.
 func (r *InboxRepo) AccountIDByID(ctx context.Context, id int64) (int64, error) {
 	var accountID int64
 	err := r.pool.QueryRow(ctx, `SELECT account_id FROM inboxes WHERE id = $1`, id).Scan(&accountID)

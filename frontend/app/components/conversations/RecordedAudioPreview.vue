@@ -46,9 +46,6 @@ function init() {
   const primary = cssVar('--ui-primary', '#22c55e')
   const muted = cssVar('--ui-text-muted', '#9ca3af')
 
-  // ObjectURL local — o blob do recorder vive em memória até o destroy.
-  // O upload pra S3/MinIO acontece em paralelo (uploadFile no Composer);
-  // aqui só queremos um buffer pra reproduzir antes do envio.
   objectUrl = URL.createObjectURL(props.attachment.file)
 
   ws = WaveSurfer.create({

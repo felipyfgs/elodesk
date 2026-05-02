@@ -29,10 +29,6 @@ const toast = useToast()
 const auth = useAuthStore()
 const messages = useMessagesStore()
 
-// MessageList owns the checkbox + row click; we only need the flag here to
-// gate actions (context menu, chevron) and to dim non-forwardable bubbles.
-// `_selectedIdsRef` is still injected so the "Encaminhar" dropdown entry can
-// seed the initial selection.
 const _selectionModeRef = inject(forwardSelectionModeKey, null)
 const _selectedIdsRef = inject(forwardSelectedIdsKey, null)
 const selectionMode = computed(() => _selectionModeRef?.value ?? false)
@@ -86,9 +82,6 @@ const side = computed(() => messageSide(props.message))
 const isOutgoing = computed(() => side.value === 'right')
 const showActions = computed(() => bubbleKind.value !== 'deleted' && bubbleKind.value !== 'activity')
 
-// Mensagem só-com-anexo (sem texto): o balão herda largura do anexo via
-// `w-fit` e usa padding enxuto, sem reservar espaço pro chevron à direita
-// (chevron continua absoluto no canto, mas o PDF preview é margem suficiente).
 const isAttachmentOnly = computed(() =>
   hasAttachments(props.message) && !props.message.content
 )
@@ -103,10 +96,6 @@ const bubbleClass = computed(() => {
   } else {
     padding = 'px-3.5 py-2'
   }
-  // Sizing: attachment-only uses `w-fit` (bubble hugs the attachment);
-  // text + attachment uses `max-w-[19rem]` so the text wraps at roughly
-  // the attachment width (PDF=260px, file=280px) instead of pushing the
-  // bubble wider than the media — matching WhatsApp's behaviour.
   const hasMedia = hasAttachments(props.message)
   let sizing: string
   if (isAttachmentOnly.value) {
@@ -235,7 +224,6 @@ function toggleMenu(open: boolean) {
         selectionMode && !isForwardable ? 'opacity-50' : ''
       ]"
     >
-      <!-- Chevron hidden during selection mode -->
       <UDropdownMenu
         v-if="showActions && !selectionMode"
         :items="messageActionItems"
@@ -274,7 +262,6 @@ function toggleMenu(open: boolean) {
       </template>
 
       <template v-else-if="bubbleKind === 'private'">
-        <!-- eslint-disable-next-line vue/no-v-html -->
         <div v-if="message.content && isMarkdown" class="markdown-body" v-html="renderMarkdown(message.content ?? '')" />
         <p v-else-if="message.content">
           {{ message.content }}
@@ -294,7 +281,6 @@ function toggleMenu(open: boolean) {
       </template>
 
       <template v-else-if="message.content && isMarkdown">
-        <!-- eslint-disable-next-line vue/no-v-html -->
         <div class="markdown-body" v-html="renderMarkdown(message.content ?? '')" />
       </template>
 
@@ -314,8 +300,6 @@ function toggleMenu(open: boolean) {
           :is-sticker="message.contentType === 'sticker' || (message.contentType as unknown) === 11"
         />
       </div>
-
-      <!-- Forwarded badge -->
       <div
         v-if="messageIsForwarded(props.message)"
         class="-mb-0.5 mt-1 flex items-center gap-1 text-[10px] leading-none opacity-60"

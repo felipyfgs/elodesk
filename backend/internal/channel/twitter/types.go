@@ -9,14 +9,8 @@ const (
 	dmConversationsFmt = "/2/dm_conversations/with/%s/messages"
 )
 
-// SupportedEventKey identifies the top-level field of a Twitter Account
-// Activity webhook payload that the ingest worker accepts. Anything not in
-// this set (e.g. tweet_create_events) is ignored.
 const supportedEventKey = "direct_message_events"
 
-// WebhookPayload is the top-level envelope Twitter sends on Account
-// Activity webhooks. The fields are intentionally a subset — we only model
-// what the DM ingest path consumes.
 type WebhookPayload struct {
 	ForUserID           string                 `json:"for_user_id,omitempty"`
 	DirectMessageEvents []DirectMessageEvent   `json:"direct_message_events,omitempty"`
@@ -25,8 +19,6 @@ type WebhookPayload struct {
 	Apps                map[string]any         `json:"apps,omitempty"`
 }
 
-// DirectMessageEvent is the per-message envelope inside a webhook payload.
-// https://developer.twitter.com/en/docs/twitter-api/premium/account-activity-api/guides/account-activity-data-objects
 type DirectMessageEvent struct {
 	ID            string         `json:"id"`
 	Type          string         `json:"type"`
@@ -68,8 +60,6 @@ type TwitterUser struct {
 	Name       string `json:"name"`
 }
 
-// MeResponse is the relevant subset of GET /2/users/me used to resolve the
-// authenticated profile id after the OAuth handshake completes.
 type MeResponse struct {
 	Data struct {
 		ID       string `json:"id"`

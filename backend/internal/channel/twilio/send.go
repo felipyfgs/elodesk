@@ -9,8 +9,6 @@ import (
 	"backend/internal/model"
 )
 
-// OutboundInput is the channel-agnostic input to Send; it flattens whatever
-// came in via channel.OutboundMessage plus the persisted channel record.
 type OutboundInput struct {
 	Channel          *model.ChannelTwilio
 	AuthToken        string
@@ -22,8 +20,6 @@ type OutboundInput struct {
 	StatusCallback   string
 }
 
-// Send dispatches an outbound Twilio message, automatically choosing sender
-// (phone_number vs messaging_service_sid) and prefixing whatsapp: when needed.
 func Send(ctx context.Context, client *Client, in OutboundInput) (string, error) {
 	if client == nil {
 		return "", fmt.Errorf("twilio send: nil client")

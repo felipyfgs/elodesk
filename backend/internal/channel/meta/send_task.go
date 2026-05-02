@@ -20,7 +20,6 @@ const (
 	metaSendTimeout = 10 * time.Second
 )
 
-// MetaSendPayload is the asynq task payload for async Meta outbound sends.
 type MetaSendPayload struct {
 	ChannelType string `json:"channel_type"` // "instagram" or "facebook"
 	ChannelID   int64  `json:"channel_id"`
@@ -28,7 +27,6 @@ type MetaSendPayload struct {
 	AccountID   int64  `json:"account_id"`
 }
 
-// MetaSendRetryDelay implements the spec backoff schedule: 1s, 5s, 30s, 2m, 10m.
 func MetaSendRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	delays := []time.Duration{
 		1 * time.Second,
@@ -43,7 +41,6 @@ func MetaSendRetryDelay(n int, _ error, _ *asynq.Task) time.Duration {
 	return 10 * time.Minute
 }
 
-// NewMetaSendTask creates an asynq task for async Meta message delivery.
 func NewMetaSendTask(payload *MetaSendPayload) (*asynq.Task, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -55,7 +52,6 @@ func NewMetaSendTask(payload *MetaSendPayload) (*asynq.Task, error) {
 	), nil
 }
 
-// MetaSendProcessor processes channel:meta:send tasks.
 type MetaSendProcessor struct {
 	igRepo      *repo.ChannelInstagramRepo
 	fbRepo      *repo.ChannelFacebookRepo

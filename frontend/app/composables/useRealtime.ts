@@ -2,12 +2,11 @@ import { useWebSocket } from '@vueuse/core'
 import type { Ref, ShallowRef } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useLabelsStore } from '~/stores/labels'
+import { usePipelinesStore } from '~/stores/pipelines'
+import { usePipelineCardsStore } from '~/stores/pipelineCards'
 import { refreshAccessToken } from '~/composables/useApi'
 import { normalizeApiResponse } from '~/utils/apiAdapter'
 
-// Backend closes WS with 1008 (PolicyViolation) when the JWT in the URL is
-// invalid/expired. autoReconnect would loop on the same stale token, so we
-// intercept and refresh first.
 const WS_CLOSE_AUTH_FAILED = 1008
 
 interface JoinState {
@@ -32,19 +31,8 @@ interface SocketInstance {
   token: string
 }
 
-// Module-scoped singleton: one WebSocket per browser tab, period.
-// useWebSocket() called multiple times opens N connections — that was the
-// previous bug (joinAccount/joinConversation/sendRaw each spawned a new WS),
-// so events were silently dropped on whatever the most recent connection
-// happened to be.
 let socketInstance: SocketInstance | null = null
 
-// Refresh proativo: o backend rejeita o WS com close 1008 quando o JWT
-// expira (JWT_ACCESS_TTL no servidor; default 15m). Reagir só no close deixa
-// um buraco entre o evento de auth-fail e a reconexão — qualquer
-// message.created que chega nesse intervalo é perdido. Por isso decodificamos
-// o `exp` do token e disparamos `refreshAccessToken` 60s antes da expiração,
-// fechando o socket atual e abrindo um novo com o token recém-emitido.
 let tokenRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
 function decodeJwtExp(token: string): number | null {
@@ -53,7 +41,6 @@ function decodeJwtExp(token: string): number | null {
   const payload = parts[1]
   if (!payload) return null
   try {
-    // JWT usa base64url; converter pra base64 padrão antes de atob.
     const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
     const pad = (4 - (b64.length % 4)) % 4
     const decoded = atob(b64 + '='.repeat(pad))
@@ -72,7 +59,6 @@ function scheduleProactiveRefresh(token: string) {
   const exp = decodeJwtExp(token)
   if (!exp) return
   const refreshInMs = exp * 1000 - Date.now() - 60_000
-  // Token já expirou ou está a <60s de expirar: dispara imediato.
   const delay = Math.max(0, refreshInMs)
   tokenRefreshTimer = setTimeout(() => {
     tokenRefreshTimer = null
@@ -82,7 +68,7 @@ function scheduleProactiveRefresh(token: string) {
       .then(() => {
         if (auth.accessToken) getOrCreateSocket(auth.accessToken)
       })
-      .catch(() => { /* useApi 401 path will redirect to /login */ })
+      .catch(() => { })
   }, delay)
 }
 
@@ -128,13 +114,6 @@ function getOrCreateSocket(token: string): SocketInstance {
       retries: 10,
       delay: 1000,
       onFailed() {
-        // CRITICAL: NÃO limpar `state.handlers` nem `state.joined` aqui.
-        // Componentes ainda montados (Thread, NotificationsSlideover, etc)
-        // dependem dos handlers e dos rooms registrados. Antes, esgotar os
-        // 10 retries deletava handlers de componentes vivos, deixando-os
-        // mudos até desmontagem manual. Agora liberamos só o socket — se
-        // o token voltar a valer, getOrCreateSocket reabre e rejoinAllRooms
-        // reaplica tudo automaticamente.
         socketInstance = null
         if (tokenRefreshTimer) {
           clearTimeout(tokenRefreshTimer)
@@ -143,9 +122,6 @@ function getOrCreateSocket(token: string): SocketInstance {
       }
     },
     onConnected() {
-      // After the socket opens (initial or after reconnect) replay every
-      // join we accumulated, so events keep flowing without the caller
-      // having to retry.
       if (socketInstance) {
         rejoinAllRooms(socketInstance, useRealtimeState().joined)
       }
@@ -163,23 +139,19 @@ function getOrCreateSocket(token: string): SocketInstance {
         .then(() => {
           if (auth.accessToken) getOrCreateSocket(auth.accessToken)
         })
-        .catch(() => { /* useApi 401 path will redirect to /login */ })
+        .catch(() => { })
     },
     onMessage(_ws, event) {
       try {
         const msg = JSON.parse(event.data as string)
         const state = useRealtimeState()
         if (msg.type && state.handlers.has(msg.type)) {
-          // Backend broadcasts snake_case + epoch-second timestamps (same shape
-          // as REST). REST goes through apiAdapter in useApi; the WebSocket
-          // path bypassed it, so handlers received raw snake_case payloads
-          // (e.g. msg.conversationId === undefined → wrong bucket key).
           const payload = normalizeApiResponse<Record<string, unknown>>(msg.payload)
           for (const handler of state.handlers.get(msg.type)!) {
             handler(payload)
           }
         }
-      } catch { /* ignore non-JSON */ }
+      } catch { void 0 }
     }
   })
 
@@ -195,8 +167,6 @@ function getOrCreateSocket(token: string): SocketInstance {
 }
 
 function sendOrQueue(inst: SocketInstance, data: Record<string, unknown>) {
-  // The room set already records the intent; if the socket isn't OPEN yet,
-  // onConnected → rejoinAllRooms will flush this once it opens.
   if (inst.status.value === 'OPEN' && inst.ws.value) {
     inst.ws.value.send(JSON.stringify(data))
   }
@@ -260,6 +230,79 @@ export const useRealtime = () => {
     const labelsStore = useLabelsStore()
     on('label.deleted', (payload: Record<string, unknown>) => {
       labelsStore.remove(String(payload.labelId))
+    })
+
+    const pipelinesStore = usePipelinesStore()
+    const cardsStore = usePipelineCardsStore()
+
+    on('pipeline.created', (payload: Record<string, unknown>) => {
+      const id = payload.pipelineId
+      if (id !== undefined && id !== null) pipelinesStore.fetchOne(id as number | string).catch(() => { })
+    })
+    on('pipeline.updated', (payload: Record<string, unknown>) => {
+      const id = payload.pipelineId
+      if (id !== undefined && id !== null) pipelinesStore.fetchOne(id as number | string).catch(() => { })
+    })
+    on('pipeline.archived', (payload: Record<string, unknown>) => {
+      const id = payload.pipelineId
+      if (id === undefined || id === null) return
+      const existing = pipelinesStore.byId(id as number | string)
+      if (existing) {
+        pipelinesStore.upsert({ ...existing, archivedAt: new Date().toISOString() })
+      }
+    })
+
+    on('stage.created', (payload: Record<string, unknown>) => {
+      const id = payload.pipelineId
+      if (id !== undefined && id !== null) pipelinesStore.fetchOne(id as number | string).catch(() => { })
+    })
+    on('stage.updated', (payload: Record<string, unknown>) => {
+      const id = payload.pipelineId
+      if (id !== undefined && id !== null) pipelinesStore.fetchOne(id as number | string).catch(() => { })
+    })
+    on('stage.deleted', (payload: Record<string, unknown>) => {
+      const pipelineId = payload.pipelineId
+      const stageId = payload.stageId
+      if (pipelineId === undefined || pipelineId === null) return
+      if (stageId === undefined || stageId === null) return
+      pipelinesStore.removeStage(pipelineId as number | string, stageId as number | string)
+    })
+
+    on('card.created', (payload: Record<string, unknown>) => {
+      const cardId = payload.cardId
+      if (cardId !== undefined && cardId !== null) cardsStore.fetchCard(cardId as number | string).catch(() => { })
+    })
+    on('card.updated', (payload: Record<string, unknown>) => {
+      const cardId = payload.cardId
+      if (cardId !== undefined && cardId !== null) cardsStore.fetchCard(cardId as number | string).catch(() => { })
+    })
+    on('card.moved', (payload: Record<string, unknown>) => {
+      const cardId = payload.cardId
+      const pipelineId = payload.pipelineId
+      const fromStageId = payload.fromStageId
+      const toStageId = payload.toStageId
+      const position = payload.position
+      if (
+        cardId === undefined || cardId === null
+        || pipelineId === undefined || pipelineId === null
+        || fromStageId === undefined || fromStageId === null
+        || toStageId === undefined || toStageId === null
+        || typeof position !== 'number'
+      ) return
+      cardsStore.applyRealtimeMove({
+        cardId: cardId as number | string,
+        pipelineId: pipelineId as number | string,
+        fromStageId: fromStageId as number | string,
+        toStageId: toStageId as number | string,
+        position
+      })
+    })
+    on('card.deleted', (payload: Record<string, unknown>) => {
+      const pipelineId = payload.pipelineId
+      const cardId = payload.cardId
+      if (pipelineId === undefined || pipelineId === null) return
+      if (cardId === undefined || cardId === null) return
+      cardsStore.remove(pipelineId as number | string, cardId as number | string)
     })
   }
 

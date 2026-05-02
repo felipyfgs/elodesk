@@ -11,7 +11,6 @@ import (
 	"backend/internal/model"
 )
 
-// sendTestServer captures form params from /Accounts/{sid}/Messages.json POSTs.
 type sendTestServer struct {
 	srv    *httptest.Server
 	form   map[string]string

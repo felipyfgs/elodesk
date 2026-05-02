@@ -69,8 +69,6 @@ func TestParticipantHandler_List_EmptyArrayForNoParticipants(t *testing.T) {
 	}
 }
 
-// TestParticipantHandler_List_RejectsMissingAccountId verifies the handler
-// returns 500 when accountId is not in locals.
 func TestParticipantHandler_List_RejectsMissingAccountId(t *testing.T) {
 	app := fiber.New()
 	app.Get("/accounts/:aid/conversations/:id/participants", func(c *fiber.Ctx) error {

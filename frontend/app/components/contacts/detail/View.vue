@@ -93,7 +93,6 @@ async function confirmDelete() {
 
 <template>
   <div class="flex flex-col gap-8 pb-6">
-    <!-- Header: avatar + name + metadata -->
     <div class="flex flex-col items-start gap-3">
       <ContactsAvatarUploader :contact="contact" />
 
@@ -127,8 +126,6 @@ async function confirmDelete() {
 
       <LabelPicker :contact-id="String(contact.id)" />
     </div>
-
-    <!-- Form -->
     <ContactsDetailForm
       ref="formRef"
       :contact="contact"
@@ -144,8 +141,6 @@ async function confirmDelete() {
         @click="submit"
       />
     </div>
-
-    <!-- Danger zone -->
     <div
       v-if="isOwnerAdmin"
       class="flex flex-col gap-3 pt-6 border-t border-default"

@@ -14,8 +14,6 @@ import (
 	"backend/internal/repo"
 )
 
-// FacebookWebhookHandler handles Facebook Messenger webhook verification,
-// webhook delivery, and inbox provisioning.
 type FacebookWebhookHandler struct {
 	fbRepo           *repo.ChannelFacebookRepo
 	inboxRepo        *repo.InboxRepo
@@ -57,29 +55,25 @@ func NewFacebookWebhookHandler(
 	}
 }
 
-// Verify handles GET /webhooks/facebook/:identifier (Meta hub.challenge handshake).
-//
-//	@Summary		Facebook webhook verification
-//	@Tags			webhooks
-//	@Produce		plain
-//	@Param			identifier	path		string	true	"Facebook Page ID"
-//	@Success		200			{string}	string	"hub.challenge"
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/facebook/{identifier} [get]
+// @Summary		Facebook webhook verification
+// @Tags			webhooks
+// @Produce		plain
+// @Param			identifier	path		string	true	"Facebook Page ID"
+// @Success		200			{string}	string	"hub.challenge"
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/facebook/{identifier} [get]
 func (h *FacebookWebhookHandler) Verify(c *fiber.Ctx) error {
 	return meta.HandleVerifyChallenge(c, h.verifyToken)
 }
 
-// Receive handles POST /webhooks/facebook/:identifier (inbound messages).
-//
-//	@Summary		Facebook webhook delivery
-//	@Tags			webhooks
-//	@Accept			json
-//	@Produce		json
-//	@Param			identifier	path		string	true	"Facebook Page ID"
-//	@Success		200			{object}	dto.APIResponse
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/facebook/{identifier} [post]
+// @Summary		Facebook webhook delivery
+// @Tags			webhooks
+// @Accept			json
+// @Produce		json
+// @Param			identifier	path		string	true	"Facebook Page ID"
+// @Success		200			{object}	dto.APIResponse
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/facebook/{identifier} [post]
 func (h *FacebookWebhookHandler) Receive(c *fiber.Ctx) error {
 	body := c.Body()
 
@@ -109,18 +103,16 @@ func (h *FacebookWebhookHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Provision handles POST /api/v1/accounts/:aid/inboxes/facebook_page.
-//
-//	@Summary		Provision Facebook Page inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Accept			json
-//	@Produce		json
-//	@Param			aid		path		int							true	"Account ID"
-//	@Param			body	body		dto.CreateFacebookInboxReq	true	"Provisioning request"
-//	@Success		201		{object}	dto.APIResponse{data=dto.FacebookInboxResp}
-//	@Failure		400		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/facebook_page [post]
+// @Summary		Provision Facebook Page inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Accept			json
+// @Produce		json
+// @Param			aid		path		int							true	"Account ID"
+// @Param			body	body		dto.CreateFacebookInboxReq	true	"Provisioning request"
+// @Success		201		{object}	dto.APIResponse{data=dto.FacebookInboxResp}
+// @Failure		400		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/facebook_page [post]
 func (h *FacebookWebhookHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

@@ -7,7 +7,6 @@ import (
 
 const oauthPendingTTL = 10 * time.Minute
 
-// PendingState holds the in-flight data for an OAuth callback.
 type PendingState struct {
 	AccountID int64
 	InboxName string
@@ -15,8 +14,6 @@ type PendingState struct {
 	ExpiresAt time.Time
 }
 
-// OAuthPendingStore is an in-memory CSRF-safe state store for OAuth callbacks.
-// Each state token maps to PendingState for up to oauthPendingTTL.
 type OAuthPendingStore struct {
 	mu    sync.Mutex
 	store map[string]PendingState
@@ -44,7 +41,6 @@ func (s *OAuthPendingStore) Get(state string) (PendingState, bool) {
 	return p, true
 }
 
-// sweep removes expired entries; must be called with mu held.
 func (s *OAuthPendingStore) sweep() {
 	now := time.Now()
 	for k, v := range s.store {

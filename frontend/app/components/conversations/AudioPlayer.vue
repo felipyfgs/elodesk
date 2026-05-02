@@ -3,11 +3,6 @@ import { useAVWaveform } from 'vue-audio-visual'
 import { useAudioPlayerStore } from '~/stores/audioPlayer'
 
 const props = defineProps<{
-  // src é a URL ESTÁVEL pro áudio. Vem populada pelo MediaAttachment a partir
-  // de `attachment.dataUrl` (espelha Chatwoot data_url): URL com token HMAC
-  // permanente + Cache-Control 1y/immutable. Re-aberturas da conversa
-  // dispensam refetch porque a URL é byte-a-byte idêntica.
-  // Para previews do composer (recorder), usar uma blob URL local.
   src?: string
   variant?: 'incoming' | 'outgoing'
   trackId?: string
@@ -26,8 +21,6 @@ const errored = ref(false)
 
 const isOutgoing = computed(() => props.variant === 'outgoing')
 
-// Per-player identity used to distinguish which AudioPlayer currently
-// holds the active track inside the global singleton store.
 const uid = computed(() => props.trackId ?? `audio:${props.src ?? ''}`)
 const isActive = computed(() => audioStore.track?.id === uid.value)
 const playing = computed(() => isActive.value && audioStore.isPlaying)
@@ -76,8 +69,6 @@ function togglePlay() {
     audioStore.toggle()
     return
   }
-  // src é estável — passa direto ao audioStore. O store NÃO faz fetch
-  // autenticado/blob: usa a URL pública (cache HTTP do navegador acerta).
   audioStore.play({
     id: uid.value,
     src: props.src,
@@ -131,9 +122,6 @@ watch(() => props.src, async () => {
   initWaveform()
 })
 
-// Drive the local (silent) audio element's currentTime from the store so
-// useAVWaveform's playhead slider tracks the global playback. Reset to 0
-// whenever the active track changes away from us.
 watch([displayTime, isActive], ([time, active]) => {
   const el = audioRef.value
   if (!el) return
@@ -147,13 +135,6 @@ watch([displayTime, isActive], ([time, active]) => {
 </script>
 
 <template>
-  <!--
-    Layout WhatsApp: largura fixa (w-72), nada aparece/desaparece com play.
-    Linha 1: [play] [waveform] [speed | download]
-    Linha 2 (sob a waveform): [tempo decorrido ............ duração total]
-    Botões de speed/download sempre renderizam (apenas mudam o estado
-    enabled/visual quando ativo), evitando reflow do card.
-  -->
   <div class="flex w-72 max-w-full shrink-0 flex-col gap-1">
     <div class="flex items-center gap-2">
       <UButton

@@ -16,7 +16,6 @@ import (
 	"backend/internal/service"
 )
 
-// EmailInboxHandler provisions and reads email-channel inboxes.
 type EmailInboxHandler struct {
 	channelEmailRepo *repo.ChannelEmailRepo
 	inboxRepo        *repo.InboxRepo
@@ -41,16 +40,13 @@ func NewEmailInboxHandler(
 	}
 }
 
-// Create handles POST /api/v1/accounts/:aid/inboxes/email
-//
-//	@Summary     Create an email inbox
-//	@Description For provider=generic creates IMAP/SMTP channel immediately.
-//	             For provider=google|microsoft returns an OAuth authorize URL.
-//	@Tags        inboxes
-//	@Security    BearerAuth
-//	@Param       aid  path int                  true "Account ID"
-//	@Param       body body dto.CreateEmailInboxReq true "Request"
-//	@Router      /api/v1/accounts/{aid}/inboxes/email [post]
+// @Summary     Create an email inbox
+// @Description For provider=generic creates IMAP/SMTP channel immediately.
+// @Tags        inboxes
+// @Security    BearerAuth
+// @Param       aid  path int                  true "Account ID"
+// @Param       body body dto.CreateEmailInboxReq true "Request"
+// @Router      /api/v1/accounts/{aid}/inboxes/email [post]
 func (h *EmailInboxHandler) Create(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -86,7 +82,6 @@ func (h *EmailInboxHandler) Create(c *fiber.Ctx) error {
 		}))
 	}
 
-	// provider = generic: create IMAP/SMTP channel immediately
 	if req.ImapPassword == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResp("Validation Error", "imapPassword required for generic provider"))
 	}
@@ -150,15 +145,13 @@ func (h *EmailInboxHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(resp))
 }
 
-// GetEmailChannel handles GET /api/v1/accounts/:aid/inboxes/email/:id
-//
-//	@Summary     Get email channel details
-//	@Description Returns email channel metadata — never exposes passwords or tokens.
-//	@Tags        inboxes
-//	@Security    BearerAuth
-//	@Param       aid path int true "Account ID"
-//	@Param       id  path int true "Inbox ID"
-//	@Router      /api/v1/accounts/{aid}/inboxes/email/{id} [get]
+// @Summary     Get email channel details
+// @Description Returns email channel metadata — never exposes passwords or tokens.
+// @Tags        inboxes
+// @Security    BearerAuth
+// @Param       aid path int true "Account ID"
+// @Param       id  path int true "Inbox ID"
+// @Router      /api/v1/accounts/{aid}/inboxes/email/{id} [get]
 func (h *EmailInboxHandler) GetEmailChannel(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

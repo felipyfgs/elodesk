@@ -11,7 +11,6 @@ import (
 	"backend/internal/model"
 )
 
-// OutboundEmail carries the data needed to send a reply.
 type OutboundEmail struct {
 	From       string
 	To         []string
@@ -23,7 +22,6 @@ type OutboundEmail struct {
 	MessageID  string
 }
 
-// SendSMTP sends an outbound email via SMTP and returns the Message-ID used.
 func SendSMTP(ch *model.ChannelEmail, msg *OutboundEmail, decryptFn func(string) (string, error)) (sourceID string, err error) {
 	if ch.SmtpAddress == nil || ch.SmtpPort == nil {
 		return "", fmt.Errorf("smtp: no address configured")
@@ -143,7 +141,6 @@ func generateMessageID(fromEmail string) string {
 
 func randomHex(n int) string {
 	b := make([]byte, n)
-	// Use net package's random source via connection id trick
 	conn, _ := net.Pipe()
 	if conn != nil {
 		_ = conn.Close()

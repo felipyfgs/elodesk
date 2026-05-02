@@ -37,10 +37,6 @@ var validOperators = map[string]bool{
 	"is_null": true, "is_not_null": true,
 }
 
-// BuildSQL compiles the user-supplied filter JSON into a parameterized SQL
-// fragment. startArgN lets callers reserve leading placeholders (e.g. $1 for
-// account_id) so the generated clause can be appended to an existing query
-// without colliding with caller-owned arguments.
 func BuildSQL(raw json.RawMessage, filterType string, customAttrs []string, startArgN int) (string, []any, error) {
 	if startArgN < 1 {
 		startArgN = 1

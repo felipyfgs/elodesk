@@ -112,10 +112,8 @@ func (s *AuthService) Register(ctx context.Context, email, password, name, accou
 		return nil, fmt.Errorf("failed to commit registration: %w", err)
 	}
 
-	// Auto-generate persistent user access token for API authentication
 	if _, err := s.userAccessTokenRepo.Create(ctx, "User", user.ID); err != nil {
 		logger.Error().Str("component", "auth").Err(err).Int64("userId", user.ID).Msg("failed to create user access token")
-		// Non-fatal: don't fail registration if token creation fails
 	}
 
 	accessToken, err := s.generateAccessToken(user)
@@ -162,7 +160,6 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*Login
 		return nil, ErrInvalidCredentials
 	}
 
-	// If MFA is enabled, return an MFA token instead of JWT pair.
 	if user.MFAEnabled {
 		mfaToken, err := s.mfaService.GenerateMFAToken(user.ID)
 		if err != nil {
@@ -218,8 +215,6 @@ func (s *AuthService) Refresh(ctx context.Context, rawToken string) (string, str
 		return "", "", ErrInvalidCredentials
 	}
 
-	// Abort rotation if the old token can't be revoked — otherwise both old
-	// and new tokens would be valid simultaneously, defeating replay detection.
 	if err := s.refreshTokenRepo.Revoke(ctx, stored.ID); err != nil {
 		logger.Error().Str("component", "auth").Err(err).Msg("refresh: abort rotation, revoke of previous token failed")
 		return "", "", fmt.Errorf("refresh rotation aborted: %w", err)
@@ -259,7 +254,6 @@ func (s *AuthService) Logout(ctx context.Context, userID int64, rawToken string,
 	return s.refreshTokenRepo.Revoke(ctx, stored.ID)
 }
 
-// IssueTokenPair generates a JWT pair for a given user ID. Used after MFA verification.
 func (s *AuthService) IssueTokenPair(ctx context.Context, userID int64) (*LoginResult, error) {
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {

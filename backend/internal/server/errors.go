@@ -9,9 +9,6 @@ import (
 	"backend/internal/repo"
 )
 
-// Sentinel errors. ErrConflict and ErrForbidden are re-exported here as
-// aliases for backwards compatibility — the source of truth lives in
-// `internal/repo/errors.go` to avoid the handler→server→handler import cycle.
 var (
 	ErrNotFound  = errors.New("resource not found")
 	ErrConflict  = repo.ErrConflict

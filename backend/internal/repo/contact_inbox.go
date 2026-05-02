@@ -43,10 +43,6 @@ func (r *ContactInboxRepo) Create(ctx context.Context, m *model.ContactInbox) er
 	return nil
 }
 
-// FindByID resolves a contact_inbox by id, scoped to the given accountID via
-// the inbox JOIN. The contact_inboxes table has no account_id of its own, so
-// the join through inboxes is the multi-tenant guard — without it any caller
-// holding a numeric id could fetch another tenant's contact_inbox.
 func (r *ContactInboxRepo) FindByID(ctx context.Context, id, accountID int64) (*model.ContactInbox, error) {
 	query := `SELECT ci.id, ci.contact_id, ci.inbox_id, ci.source_id, ci.hmac_verified, ci.created_at, ci.updated_at
 		FROM contact_inboxes ci

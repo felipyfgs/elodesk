@@ -49,7 +49,6 @@ const inboxes = useInboxesStore()
 const teams = useTeamsStore()
 const savedFilters = useSavedFiltersStore()
 
-// Prefer reactive access to the bundle (props is reactive in Vue 3.4+).
 const f = computed(() => props.filters)
 
 const panelTitle = computed(() => {
@@ -114,12 +113,6 @@ const panelTitle = computed(() => {
       @edit-active-filter="emit('editActiveFilter')"
       @delete-saved-filter="(id) => emit('deleteSavedFilter', id)"
     />
-
-    <!--
-      Linha de tabs (mine / sem agente / todas) + dropdown ao lado com flags
-      ortogonais (Não lidas, Não atendidas) como toggles independentes que
-      empilham em cima de qualquer tab.
-    -->
     <div class="flex items-center gap-1 border-b border-default px-2 py-1">
       <UTabs
         v-model="activeTab"

@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-// APIError carries the HTTP status for callers that need to distinguish
-// retryable (429) from auth-error (401/403) from other failures.
 type APIError struct {
 	StatusCode int
 	Body       string
@@ -22,8 +20,6 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("twilio api error: status=%d body=%s", e.StatusCode, e.Body)
 }
 
-// IsAuthError reports whether the error came from Twilio rejecting the credential
-// pair (401/403). Callers use this to decide whether to trigger reauth.
 func IsAuthError(err error) bool {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
@@ -32,7 +28,6 @@ func IsAuthError(err error) bool {
 	return false
 }
 
-// IsRateLimited reports whether the request should be retried later.
 func IsRateLimited(err error) bool {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
@@ -52,8 +47,6 @@ func NewClient(httpClient *http.Client) *Client {
 	return &Client{httpClient: httpClient}
 }
 
-// basicAuthUser returns the user portion of basic auth: prefer an API key SID
-// when provided, otherwise fall back to the Account SID.
 func basicAuthUser(accountSID, apiKeySID string) string {
 	if apiKeySID != "" {
 		return apiKeySID
@@ -68,8 +61,6 @@ func apiBase() string {
 	return APIBase
 }
 
-// ValidateAccount hits GET /Accounts/{sid}.json. Used during provisioning to
-// confirm the credential pair is valid before persisting.
 func (c *Client) ValidateAccount(ctx context.Context, accountSID, apiKeySID, authToken string) error {
 	endpoint := fmt.Sprintf("%s/Accounts/%s.json", apiBase(), accountSID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -99,8 +90,6 @@ func (c *Client) ValidateAccount(ctx context.Context, accountSID, apiKeySID, aut
 	return nil
 }
 
-// SendOptions mirrors the Messages.json form fields Elodesk uses today. Either
-// From or MessagingServiceSID must be set (enforced at the caller layer).
 type SendOptions struct {
 	AccountSID          string
 	APIKeySID           string
@@ -176,9 +165,6 @@ func (c *Client) SendMessage(ctx context.Context, opts SendOptions) (*SendRespon
 	return &out, nil
 }
 
-// ListContentTemplates pages over /v1/Content and returns every template the
-// account owns. The endpoint returns `meta.next_page_url` as an absolute URL
-// (including host) when another page exists.
 func (c *Client) ListContentTemplates(ctx context.Context, accountSID, apiKeySID, authToken string) ([]ContentTemplate, error) {
 	endpoint := ContentBase + "/Content?PageSize=50"
 	var templates []ContentTemplate

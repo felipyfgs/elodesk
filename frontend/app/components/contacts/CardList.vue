@@ -37,7 +37,6 @@ function handleSelect(id: string, value: boolean) {
 
 function handleUpdate(payload: { id: string, name?: string, email?: string, phone_number?: string, additional_attributes?: Record<string, unknown> }) {
   emit('updateContact', payload)
-  // Fechar card após atualização
   expandedCardId.value = null
 }
 

@@ -41,36 +41,36 @@ async function loadInbox() {
     if (channelKey === 'api') {
       try {
         base.channelApi = await api<ChannelApiData>(`/accounts/${auth.account.id}/inboxes/api/${inboxId.value}`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'whatsapp') {
       try {
         const waData = await api<ChannelWhatsAppData>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}/whatsapp`)
         base.channelWhatsApp = waData
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'web_widget') {
       try {
         base.channelWebWidget = await api<ChannelWebWidgetData>(`/accounts/${auth.account.id}/inboxes/web_widget/${inboxId.value}`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'email') {
       try {
         base.channelEmail = await api<ChannelEmailData>(`/accounts/${auth.account.id}/inboxes/email/${inboxId.value}`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'line') {
       try {
         base.channelLine = await api<ChannelLineData>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}/line`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'tiktok') {
       try {
         base.channelTiktok = await api<ChannelTiktokData>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}/tiktok`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'twilio') {
       try {
         base.channelTwilio = await api<ChannelTwilioData>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}/twilio`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     } else if (channelKey === 'twitter') {
       try {
         base.channelTwitter = await api<ChannelTwitterData>(`/accounts/${auth.account.id}/inboxes/${inboxId.value}/twitter`)
-      } catch { /* channel data is optional */ }
+      } catch { void 0 }
     }
     inbox.value = base
   } catch {

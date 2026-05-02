@@ -81,7 +81,6 @@ func (r *AuditLogRepo) List(ctx context.Context, accountID int64, from, to, acti
 		argIdx++
 	}
 
-	// Count
 	var total int
 	countQuery := "SELECT COUNT(*) FROM audit_logs " + baseWhere
 	err := r.pool.QueryRow(ctx, countQuery, args...).Scan(&total)
@@ -89,7 +88,6 @@ func (r *AuditLogRepo) List(ctx context.Context, accountID int64, from, to, acti
 		return nil, 0, fmt.Errorf("failed to count audit logs: %w", err)
 	}
 
-	// Query
 	offset := (page - 1) * pageSize
 	dataQuery := fmt.Sprintf(`SELECT id, account_id, user_id, action, entity_type, entity_id, metadata, ip_address, user_agent, created_at
 		FROM audit_logs %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, baseWhere, argIdx, argIdx+1)
@@ -112,7 +110,6 @@ func (r *AuditLogRepo) List(ctx context.Context, accountID int64, from, to, acti
 	return result, total, rows.Err()
 }
 
-// AuditEventRow is an audit_logs row joined with the author's user record.
 type AuditEventRow struct {
 	ID        int64
 	Action    string
@@ -122,7 +119,6 @@ type AuditEventRow struct {
 	CreatedAt time.Time
 }
 
-// ListByEntity returns audit events for a single entity scoped by account, joined to users.
 func (r *AuditLogRepo) ListByEntity(ctx context.Context, accountID int64, entityType string, entityID int64, page, pageSize int) ([]AuditEventRow, int, error) {
 	if page < 1 {
 		page = 1

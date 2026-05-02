@@ -122,9 +122,6 @@ func (r *AccountRepo) FindAccountUser(ctx context.Context, accountID, userID int
 	return &au, nil
 }
 
-// FindPrimaryByUserID returns the oldest account the user belongs to —
-// sufficient for MVP login (first account on record). Errors with
-// ErrAccountNotFound when the user has no memberships yet.
 func (r *AccountRepo) FindPrimaryByUserID(ctx context.Context, userID int64) (*model.Account, error) {
 	query := `SELECT a.id, a.name, a.slug, a.locale, a.status, a.custom_attributes, a.settings, a.created_at, a.updated_at
 		FROM accounts a

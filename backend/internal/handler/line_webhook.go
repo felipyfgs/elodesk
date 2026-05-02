@@ -54,16 +54,14 @@ func NewLineWebhookHandler(
 	}
 }
 
-// Receive handles POST /webhooks/line/:line_channel_id (inbound messages).
-//
-//	@Summary		LINE webhook delivery
-//	@Tags			webhooks
-//	@Accept			json
-//	@Produce		json
-//	@Param			line_channel_id	path		string	true	"LINE channel id"
-//	@Success		200				{object}	dto.APIResponse
-//	@Failure		401				{object}	dto.APIError
-//	@Router			/webhooks/line/{line_channel_id} [post]
+// @Summary		LINE webhook delivery
+// @Tags			webhooks
+// @Accept			json
+// @Produce		json
+// @Param			line_channel_id	path		string	true	"LINE channel id"
+// @Success		200				{object}	dto.APIResponse
+// @Failure		401				{object}	dto.APIError
+// @Router			/webhooks/line/{line_channel_id} [post]
 func (h *LineWebhookHandler) Receive(c *fiber.Ctx) error {
 	lineChannelID := c.Params("line_channel_id")
 
@@ -103,18 +101,16 @@ func (h *LineWebhookHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Provision handles POST /api/v1/accounts/:aid/inboxes/line.
-//
-//	@Summary		Provision LINE inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Accept			json
-//	@Produce		json
-//	@Param			aid		path		int							true	"Account ID"
-//	@Param			body	body		dto.CreateLineInboxReq		true	"Provisioning request"
-//	@Success		201		{object}	dto.APIResponse{data=dto.LineInboxResp}
-//	@Failure		400		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/line [post]
+// @Summary		Provision LINE inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Accept			json
+// @Produce		json
+// @Param			aid		path		int							true	"Account ID"
+// @Param			body	body		dto.CreateLineInboxReq		true	"Provisioning request"
+// @Success		201		{object}	dto.APIResponse{data=dto.LineInboxResp}
+// @Failure		400		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/line [post]
 func (h *LineWebhookHandler) Provision(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -186,18 +182,14 @@ func (h *LineWebhookHandler) Provision(c *fiber.Ctx) error {
 	}))
 }
 
-// Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/line.
-//
-//	@Summary		Delete LINE inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Param			aid		path		int		true	"Account ID"
-//	@Param			id		path		int		true	"Inbox ID"
-//	@Success		200		{object}	dto.APIResponse
-//	@Failure		404		{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/{id}/line [delete]
-//
-// GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/line.
+// @Summary		Delete LINE inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Param			aid		path		int		true	"Account ID"
+// @Param			id		path		int		true	"Inbox ID"
+// @Success		200		{object}	dto.APIResponse
+// @Failure		404		{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/{id}/line [delete]
 func (h *LineWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -236,7 +228,6 @@ func (h *LineWebhookHandler) FindByInboxID(c *fiber.Ctx) error {
 	}))
 }
 
-// Update handles PUT /api/v1/accounts/:aid/inboxes/:id/line.
 func (h *LineWebhookHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

@@ -195,9 +195,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// mustDuration parses env[key] as time.Duration or exits with a clear error.
-// Never silently falls back on parse failure (a malformed TTL would issue
-// zero-TTL JWTs without this guard).
 func mustDuration(key, fallback string) time.Duration {
 	raw := getEnv(key, fallback)
 	d, err := time.ParseDuration(raw)

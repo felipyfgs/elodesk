@@ -9,16 +9,8 @@ import (
 	"strings"
 )
 
-// waSourceIDPattern collapses inbound WhatsApp sender IDs to their canonical
-// digits-only form (drops the device suffix `:N` and the host segment
-// `@s.whatsapp.net` / `@g.us`). Mirrors Chatwoot's
-// PhoneNumberNormalizationService — without it we end up with multiple
-// contact_inboxes per contact (one per device session).
 var waSourceIDPattern = regexp.MustCompile(`^(\d+)(?::\d+)?(?:@s\.whatsapp\.net|@g\.us)?$`)
 
-// normalizeWaSourceID promotes raw WhatsApp JIDs to their phone-number-only
-// canonical form. Returns the input unchanged when it doesn't match — keeps
-// us safe against unexpected provider formats.
 func normalizeWaSourceID(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if m := waSourceIDPattern.FindStringSubmatch(raw); m != nil {

@@ -24,17 +24,8 @@ const (
 	EventTypeConversationTypingOff     = "conversation_typing_off"
 )
 
-// AttachmentURLBuilder devolve a URL pública do attachment hospedada pelo
-// próprio elodesk (padrão Chatwoot/ActiveStorage). O integrador (wzap, n8n,
-// etc.) só precisa saber de uma hostname — a do elodesk — pra alcançar a
-// mídia, sem nunca falar direto com MinIO/S3.
 type AttachmentURLBuilder func(accountID, attachmentID int64) string
 
-// ContactInboxLookup é o contrato mínimo que o webhook outbound precisa pra
-// resolver o source_id do contato em uma inbox. Implementado por
-// *repo.ContactInboxRepo. Definido aqui (não em /repo) pra evitar ciclo
-// import e manter o serviço testável com fakes. accountID é exigido pelo
-// guard multi-tenant — o caller já tem o accountID do channel/conversation.
 type ContactInboxLookup interface {
 	FindByID(ctx context.Context, id, accountID int64) (*model.ContactInbox, error)
 }
@@ -50,20 +41,11 @@ func NewOutboundWebhookService(asynqClient *asynq.Client, cipher *crypto.Cipher)
 	return &OutboundWebhookService{asynqClient: asynqClient, cipher: cipher}
 }
 
-// WithAttachmentURLBuilder injeta o builder de URL hospedada pelo elodesk.
-// Sem isso o webhook outbound serializa attachments sem `dataUrl` e o
-// integrador não consegue baixar a mídia.
 func (s *OutboundWebhookService) WithAttachmentURLBuilder(b AttachmentURLBuilder) *OutboundWebhookService {
 	s.urlBuilder = b
 	return s
 }
 
-// WithContactInboxRepo injeta o repo usado pra resolver o source_id do
-// contact_inbox e enriquecer o payload outbound. Sem isso, o integrador (wzap)
-// não tem como descobrir pra qual destinatário enviar quando a conversa é
-// recém-criada (forward para contato sem histórico) — wzap só consegue mapear
-// elodesk_conv_id → chat_jid via mensagens incoming, então o source_id
-// fornecido aqui é o único caminho pra entrega no primeiro envio.
 func (s *OutboundWebhookService) WithContactInboxRepo(r ContactInboxLookup) *OutboundWebhookService {
 	s.contactInboxRepo = r
 	return s
@@ -94,12 +76,6 @@ func (s *OutboundWebhookService) DispatchTypingEvent(ctx context.Context, ch *mo
 }
 
 func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.ChannelAPI, inboxID int64, eventType string, conv *model.Conversation, msg *model.Message, convAttrs json.RawMessage) error {
-	// DeliveryID is generated HERE (once per delivery) and stored in the task
-	// payload so it survives retries. The processor never regenerates it.
-	// Encripta o secret antes de enfileirar — plaintext nunca toca o Redis.
-	// Falha aqui aborta o dispatch: enfileirar com Secret vazio só geraria
-	// dead-letter no processor (branch "secret is empty"), perdendo o evento
-	// silenciosamente para o integrador.
 	secretCiphertext := ""
 	if ch.Secret != "" {
 		enc, err := s.cipher.Encrypt(ch.Secret)
@@ -166,28 +142,16 @@ func (s *OutboundWebhookService) dispatch(ctx context.Context, ch *model.Channel
 	return nil
 }
 
-// outboundContactInboxView é o subset de model.ContactInbox que o integrador
-// precisa: id (referência) e sourceId (telefone/email/identifier do canal).
-// Para um forward para contato sem histórico, este é o único caminho pelo
-// qual o wzap descobre o JID de destino — antes desse enriquecimento, ele
-// caía no FindChatJIDByElodeskConvID que retorna vazio nesse cenário.
 type outboundContactInboxView struct {
 	ID       int64  `json:"id,omitempty"`
 	SourceID string `json:"source_id"`
 }
 
-// outboundConversationView embeda model.Conversation e adiciona o
-// contactInbox resolvido. encoding/json usa o ContactInbox embutido aqui
-// (menor profundidade) em vez do que viesse de Conversation.
 type outboundConversationView struct {
 	*model.Conversation
 	ContactInbox *outboundContactInboxView `json:"contact_inbox,omitempty"`
 }
 
-// marshalConversation enriquece a conversa com o contact_inbox quando o repo
-// está disponível. Falha em resolver é silenciosa — o webhook ainda sai com a
-// conversa "magra" (comportamento anterior), só que sem o source_id de
-// fallback. Mantém retrocompat para integradores que não dependem do campo.
 func (s *OutboundWebhookService) marshalConversation(ctx context.Context, conv *model.Conversation) ([]byte, error) {
 	view := outboundConversationView{Conversation: conv}
 	if s.contactInboxRepo != nil && conv.ContactInboxID != nil && *conv.ContactInboxID > 0 {
@@ -199,18 +163,11 @@ func (s *OutboundWebhookService) marshalConversation(ctx context.Context, conv *
 	return json.Marshal(view)
 }
 
-// outboundAttachmentView espelha model.Attachment com `dataUrl` adicional
-// (URL presigned do MinIO). Vai serializado no payload pra que integradores
-// externos consigam baixar a mídia sem credenciais.
 type outboundAttachmentView struct {
 	model.Attachment
 	DataURL string `json:"data_url,omitempty"`
 }
 
-// outboundMessageView reusa todos os campos de model.Message via embed e
-// shadowa Attachments com a versão enriquecida. encoding/json escolhe o
-// campo de menor profundidade quando há colisão de tag — então este
-// Attachments sobrepõe o promovido.
 type outboundMessageView struct {
 	*model.Message
 	Attachments []outboundAttachmentView `json:"attachments"`

@@ -38,33 +38,25 @@ type ContactAvatarReq struct {
 	ObjectKey string `json:"object_key" validate:"required"`
 }
 
-// ContactResp mirrors Chatwoot's _contact.json.jbuilder so the cloned Vue
-// frontend renders without adapter shims. snake_case JSON keys; timestamps
-// emitted as epoch seconds (int64) — matches Chatwoot, differs from the
-// RFC3339 default used by other Elodesk DTOs.
 type ContactResp struct {
-	ID                   int64           `json:"id"`
-	AccountID            int64           `json:"account_id"`
-	Name                 string          `json:"name"`
-	Email                *string         `json:"email,omitempty"`
-	PhoneNumber          *string         `json:"phone_number,omitempty"`
-	Identifier           *string         `json:"identifier,omitempty"`
-	AvailabilityStatus   string          `json:"availability_status"`
-	Blocked              bool            `json:"blocked"`
-	Thumbnail            string          `json:"thumbnail"`
-	AvatarURL            *string         `json:"avatar_url,omitempty"`
-	AdditionalAttributes json.RawMessage `json:"additional_attributes,omitempty"`
-	CustomAttributes     json.RawMessage `json:"custom_attributes,omitempty"`
-	LastActivityAt       *int64          `json:"last_activity_at,omitempty"`
-	CreatedAt            int64           `json:"created_at"`
-	UpdatedAt            int64           `json:"updated_at"`
-	// ContactInboxes is populated only when caller passes them (e.g. when the
-	// query param `with_contact_inboxes=true` is set on GET /contacts/:id).
-	ContactInboxes []ContactInboxResp `json:"contact_inboxes,omitempty"`
+	ID                   int64              `json:"id"`
+	AccountID            int64              `json:"account_id"`
+	Name                 string             `json:"name"`
+	Email                *string            `json:"email,omitempty"`
+	PhoneNumber          *string            `json:"phone_number,omitempty"`
+	Identifier           *string            `json:"identifier,omitempty"`
+	AvailabilityStatus   string             `json:"availability_status"`
+	Blocked              bool               `json:"blocked"`
+	Thumbnail            string             `json:"thumbnail"`
+	AvatarURL            *string            `json:"avatar_url,omitempty"`
+	AdditionalAttributes json.RawMessage    `json:"additional_attributes,omitempty"`
+	CustomAttributes     json.RawMessage    `json:"custom_attributes,omitempty"`
+	LastActivityAt       *int64             `json:"last_activity_at,omitempty"`
+	CreatedAt            int64              `json:"created_at"`
+	UpdatedAt            int64              `json:"updated_at"`
+	ContactInboxes       []ContactInboxResp `json:"contact_inboxes,omitempty"`
 }
 
-// ContactInboxResp wraps a contact_inbox row with its inbox embedded.
-// Matches Chatwoot's nested shape.
 type ContactInboxResp struct {
 	SourceID string        `json:"source_id"`
 	Inbox    InboxSlimResp `json:"inbox"`
@@ -75,9 +67,6 @@ type ContactListResp struct {
 	Payload []ContactResp `json:"payload"`
 }
 
-// ContactToResp builds the Chatwoot-shape contact response. AdditionalAttrs
-// is opaque JSON in the database (JSONB) — passed through verbatim. Thumbnail
-// mirrors avatar_url so the frontend has a single attribute to render.
 func ContactToResp(c *model.Contact) ContactResp {
 	resp := ContactResp{
 		ID:                 c.ID,

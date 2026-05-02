@@ -17,7 +17,6 @@ type sendResponse struct {
 	} `json:"messages"`
 }
 
-// SendRequest holds the parameters for sending a Facebook Messenger message.
 type SendRequest struct {
 	To           string
 	Content      string
@@ -33,7 +32,6 @@ type QuickReply struct {
 	Payload     string `json:"payload"`
 }
 
-// Send posts a message to the Facebook Messenger Send API.
 func Send(ctx context.Context, ch *model.ChannelFacebookPage, accessToken, appSecret string, req SendRequest) (string, error) {
 	client := meta.NewClient(facebookGraphBase)
 

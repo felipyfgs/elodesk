@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-// VerifySignature implements Twilio's X-Twilio-Signature check: HMAC-SHA1 over
-// (fullURL + sorted key/value concatenation of form params), using auth_token
-// as the key, compared against the base64-encoded signature from the header.
-// https://www.twilio.com/docs/usage/webhooks/webhooks-security#validating-signatures-from-twilio
 func VerifySignature(authToken, fullURL string, params url.Values, signature string) bool {
 	if authToken == "" || signature == "" {
 		return false

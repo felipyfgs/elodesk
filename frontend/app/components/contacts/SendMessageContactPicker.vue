@@ -4,7 +4,6 @@ import type { Contact } from '~/stores/contacts'
 interface ContactItem {
   label: string
   value: string
-  // additional fields tolerated
   [key: string]: unknown
 }
 

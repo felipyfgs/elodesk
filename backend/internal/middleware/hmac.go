@@ -31,9 +31,6 @@ func ValidIdentifierHash(channelAPI *model.ChannelAPI, cipher *crypto.Cipher, id
 	return hmac.Equal([]byte(providedHash), []byte(expected))
 }
 
-// HMACOptional validates the X-Chatwoot-HMAC-Sha256 header ONLY when the
-// channel has `hmac_mandatory=true`. The signing key is decrypted on the fly
-// from the channel row (AES-GCM ciphertext in hmac_token).
 func HMACOptional(cipher *crypto.Cipher) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		channelAPI, ok := c.Locals("channelAPI").(*model.ChannelAPI)

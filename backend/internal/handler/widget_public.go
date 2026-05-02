@@ -48,7 +48,6 @@ func NewWidgetPublicHandler(
 	}
 }
 
-// EmbedScript serves the widget JS bundle bootstrap.
 // @Summary Get widget embed script
 // @Description Returns JavaScript that bootstraps the chat widget
 // @Tags Public/Widget
@@ -78,7 +77,6 @@ func (h *WidgetPublicHandler) EmbedScript(c *fiber.Ctx) error {
 	return c.SendString(body)
 }
 
-// CreateSession creates or resumes a visitor session.
 // @Summary Create visitor session
 // @Description Creates anonymous contact or resumes via JWT cookie
 // @Tags Public/Widget
@@ -131,7 +129,6 @@ func (h *WidgetPublicHandler) CreateSession(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(result))
 }
 
-// SendMessage sends a message from the visitor.
 // @Summary Send visitor message
 // @Description Creates an incoming message in the visitor's conversation
 // @Tags Public/Widget
@@ -196,7 +193,6 @@ func (h *WidgetPublicHandler) SendMessage(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(dto.SuccessResp(created))
 }
 
-// Identify verifies and upgrades an anonymous contact via HMAC.
 // @Summary Identify visitor
 // @Description Verifies HMAC and upgrades anonymous contact to identified
 // @Tags Public/Widget
@@ -229,7 +225,6 @@ func (h *WidgetPublicHandler) Identify(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(dto.SuccessResp(result))
 }
 
-// PollMessages returns new messages since last seen.
 // @Summary Poll for new messages
 // @Description Returns messages newer than the given message ID
 // @Tags Public/Widget
@@ -275,7 +270,6 @@ func (h *WidgetPublicHandler) PollMessages(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(messages))
 }
 
-// GetAttachmentPresigned returns a presigned upload URL.
 // @Summary Get attachment upload URL
 // @Description Returns a presigned URL for uploading an attachment
 // @Tags Public/Widget

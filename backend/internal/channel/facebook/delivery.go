@@ -10,8 +10,6 @@ import (
 	"backend/internal/repo"
 )
 
-// ProcessDelivery updates message statuses for all messages in the conversation
-// with a timestamp at or before the watermark.
 func ProcessDelivery(
 	ctx context.Context,
 	conversationID, accountID int64,

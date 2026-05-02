@@ -12,7 +12,6 @@ import (
 
 const graphSendMailURL = "https://graph.microsoft.com/v1.0/me/sendMail"
 
-// SendGraph sends an outbound email via the Microsoft Graph API.
 func SendGraph(ctx context.Context, ch *model.ChannelEmail, msg *OutboundEmail, decryptFn func(string) (string, error)) (sourceID string, err error) {
 	if ch.ProviderConfig == nil {
 		return "", fmt.Errorf("microsoft: no provider_config")

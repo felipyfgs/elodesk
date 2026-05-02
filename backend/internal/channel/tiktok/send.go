@@ -7,7 +7,6 @@ import (
 	"fmt"
 )
 
-// SendText pushes a text message over a TikTok conversation.
 func SendText(ctx context.Context, api *APIClient, accessToken, businessID, conversationID, text string, referencedMessageID string) (string, error) {
 	if accessToken == "" {
 		return "", fmt.Errorf("tiktok send: empty access token")
@@ -22,7 +21,10 @@ func SendText(ctx context.Context, api *APIClient, accessToken, businessID, conv
 		MessageType:   "TEXT",
 		Text:          &TextBody{Body: text},
 	}
-	_ = referencedMessageID // placeholder until referenced_message_info is threaded through
+	// TODO: Implement referenced_message_id threading.
+	// TikTok does not currently expose referenced_message_info in its messaging API.
+	// This requires model changes and API support before it can be wired.
+	_ = referencedMessageID
 	info, err := api.SendMessage(ctx, accessToken, body)
 	if err != nil {
 		return "", err
@@ -30,8 +32,6 @@ func SendText(ctx context.Context, api *APIClient, accessToken, businessID, conv
 	return info.MessageID, nil
 }
 
-// ReauthErrorFor wraps a SendMessage error and bubbles up ErrReauthRequired when
-// the API signals that the token is no longer valid.
 func ReauthErrorFor(err error) error {
 	if err == nil {
 		return nil
@@ -42,8 +42,6 @@ func ReauthErrorFor(err error) error {
 	return nil
 }
 
-// ConversationIDFromAttrs returns the conversation_id stored on a message's
-// content_attributes JSON blob, falling back to the empty string when absent.
 func ConversationIDFromAttrs(raw string) string {
 	if raw == "" {
 		return ""

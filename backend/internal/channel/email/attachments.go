@@ -15,7 +15,6 @@ import (
 
 const maxAttachmentSize = media.MaxUploadSize
 
-// AttachmentHandler streams email attachments to MinIO and creates DB rows.
 type AttachmentHandler struct {
 	upload         *media.UploadService
 	attachmentRepo *repo.AttachmentRepo
@@ -25,9 +24,6 @@ func NewAttachmentHandler(upload *media.UploadService, attachmentRepo *repo.Atta
 	return &AttachmentHandler{upload: upload, attachmentRepo: attachmentRepo}
 }
 
-// ProcessAttachments iterates env.Attachments, uploads each to MinIO, and
-// inserts an attachment row. Attachments > 256 MB are logged and skipped —
-// the message itself is not aborted.
 func (h *AttachmentHandler) ProcessAttachments(ctx context.Context, msg *model.Message, attachments []Attachment) error {
 	for _, a := range attachments {
 		if int64(len(a.Data)) > maxAttachmentSize {

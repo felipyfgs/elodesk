@@ -13,7 +13,6 @@ import (
 	"backend/internal/model"
 )
 
-// SendGmail sends an outbound email via the Gmail API.
 func SendGmail(ctx context.Context, ch *model.ChannelEmail, msg *OutboundEmail, decryptFn func(string) (string, error)) (sourceID string, err error) {
 	if ch.ProviderConfig == nil {
 		return "", fmt.Errorf("gmail: no provider_config")

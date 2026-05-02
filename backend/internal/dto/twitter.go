@@ -2,8 +2,6 @@ package dto
 
 import "time"
 
-// TwitterAuthorizeResp is returned by POST /inboxes/twitter/authorize: a URL
-// to redirect the agent's browser to in order to grant DM access.
 type TwitterAuthorizeResp struct {
 	URL string `json:"url"`
 }
@@ -13,8 +11,6 @@ type UpdateTwitterInboxReq struct {
 	TweetsEnabled *bool  `json:"tweets_enabled,omitempty"`
 }
 
-// TwitterChannelResp is the safe view of a channels_twitter record. Tokens
-// are never exposed.
 type TwitterChannelResp struct {
 	ID             int64     `json:"id"`
 	ProfileID      string    `json:"profile_id"`

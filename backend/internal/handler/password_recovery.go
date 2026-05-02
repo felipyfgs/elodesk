@@ -34,7 +34,6 @@ func (h *PasswordRecoveryHandler) Forgot(c *fiber.Ctx) error {
 
 	if err := h.svc.RequestReset(c.Context(), req.Email); err != nil {
 		logger.Error().Str("component", "auth").Err(err).Msg("password reset request failed")
-		// Still return 200 to avoid leaking email existence.
 	}
 
 	return c.JSON(dto.SuccessResp(dto.ForgotResp{Status: "sent"}))

@@ -43,9 +43,6 @@ func (r *ChannelAPIRepo) Create(ctx context.Context, m *model.ChannelAPI) error 
 	return nil
 }
 
-// UpdateEditable updates the fields that the inbox PUT endpoint accepts:
-// webhook_url, hmac_mandatory, additional_attributes. Other columns are
-// immutable post-creation.
 func (r *ChannelAPIRepo) UpdateEditable(ctx context.Context, m *model.ChannelAPI) error {
 	query := `UPDATE channels_api
 		SET webhook_url = $1, hmac_mandatory = $2, additional_attributes = COALESCE($3, '{}'::jsonb), updated_at = NOW()
@@ -62,9 +59,6 @@ func (r *ChannelAPIRepo) UpdateEditable(ctx context.Context, m *model.ChannelAPI
 	return nil
 }
 
-// RotateToken replaces the api_token_hash and identifier of an existing
-// channel. Callers MUST pre-compute fresh random values and set them on m
-// before calling.
 func (r *ChannelAPIRepo) RotateToken(ctx context.Context, m *model.ChannelAPI) error {
 	query := `UPDATE channels_api
 		SET identifier = $1, api_token_hash = $2, updated_at = NOW()
@@ -108,8 +102,6 @@ func (r *ChannelAPIRepo) FindByInboxID(ctx context.Context, inboxID int64) (*mod
 	return &m, nil
 }
 
-// FindByAPITokenHash looks up by deterministic SHA-256 hash of the provided
-// plaintext api_access_token. The plaintext itself is never stored.
 func (r *ChannelAPIRepo) FindByAPITokenHash(ctx context.Context, tokenHash string) (*model.ChannelAPI, error) {
 	query := `SELECT ` + channelAPISelectColumns + ` FROM channels_api WHERE api_token_hash = $1`
 	row := r.pool.QueryRow(ctx, query, tokenHash)

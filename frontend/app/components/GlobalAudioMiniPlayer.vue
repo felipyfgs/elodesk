@@ -6,8 +6,6 @@ const { t } = useI18n()
 const audioStore = useAudioPlayerStore()
 const conversationsStore = useConversationsStore()
 
-// Hide when user is already viewing the conversation that owns the track —
-// the inline AudioPlayer is the canonical UI in that context.
 const onSourceConversation = computed(() => {
   const trackConv = audioStore.track?.conversationId
   if (!trackConv) return false

@@ -30,9 +30,6 @@ onMounted(() => {
     content: props.modelValue,
     editable: !props.disabled,
     extensions: [
-      // Desabilitamos o italic/blockquote do StarterKit pra usar nossas
-      // versões custom: italic com `_X_` (compatível com WA) e blockquote
-      // habilitado.
       StarterKit.configure({ heading: false, horizontalRule: false, blockquote: false, italic: false, link: false }),
       ItalicUnderscore,
       BlockquoteExt,
@@ -51,10 +48,6 @@ onMounted(() => {
         }
         return false
       },
-      // Paste de arquivos (imagem, áudio, doc): igual ao WhatsApp Web — em
-      // vez de colar como texto, dispara o upload. Texto puro continua
-      // sendo colado normalmente porque o handler só intercepta quando há
-      // arquivo no clipboard.
       handlePaste(_view, event: ClipboardEvent) {
         const files = Array.from(event.clipboardData?.files ?? [])
         if (files.length === 0) return false
@@ -62,9 +55,6 @@ onMounted(() => {
         for (const file of files) emit('file', file)
         return true
       },
-      // Drag-and-drop pra dentro do editor faz o mesmo. Sem o
-      // `event.preventDefault()` o navegador abriria o arquivo numa nova
-      // aba.
       handleDrop(_view, event: DragEvent) {
         const files = Array.from(event.dataTransfer?.files ?? [])
         if (files.length === 0) return false

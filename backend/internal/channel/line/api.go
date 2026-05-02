@@ -33,7 +33,6 @@ func (c *APIClient) authedRequest(ctx context.Context, method, url, token string
 	return req, nil
 }
 
-// GetBotInfo calls GET /v2/bot/info and returns the bot metadata.
 func (c *APIClient) GetBotInfo(ctx context.Context, token string) (*BotInfo, error) {
 	req, err := c.authedRequest(ctx, http.MethodGet, lineAPIBase+"/v2/bot/info", token, nil)
 	if err != nil {
@@ -58,7 +57,6 @@ func (c *APIClient) GetBotInfo(ctx context.Context, token string) (*BotInfo, err
 	return &out, nil
 }
 
-// GetProfile fetches a LINE user profile via GET /v2/bot/profile/:userId.
 func (c *APIClient) GetProfile(ctx context.Context, token, userID string) (*UserProfile, error) {
 	req, err := c.authedRequest(ctx, http.MethodGet, lineAPIBase+"/v2/bot/profile/"+userID, token, nil)
 	if err != nil {
@@ -83,8 +81,6 @@ func (c *APIClient) GetProfile(ctx context.Context, token, userID string) (*User
 	return &out, nil
 }
 
-// Reply sends a reply message using the reply_token returned in webhook events.
-// https://developers.line.biz/en/reference/messaging-api/#send-reply-message
 func (c *APIClient) Reply(ctx context.Context, token string, body ReplyRequest) error {
 	data, err := json.Marshal(body)
 	if err != nil {
@@ -97,8 +93,6 @@ func (c *APIClient) Reply(ctx context.Context, token string, body ReplyRequest) 
 	return c.executeAndExpectOK(req, "reply")
 }
 
-// Push sends a push message to a LINE user/group/room.
-// https://developers.line.biz/en/reference/messaging-api/#send-push-message
 func (c *APIClient) Push(ctx context.Context, token string, body PushRequest) error {
 	data, err := json.Marshal(body)
 	if err != nil {
@@ -111,8 +105,6 @@ func (c *APIClient) Push(ctx context.Context, token string, body PushRequest) er
 	return c.executeAndExpectOK(req, "push")
 }
 
-// GetMessageContent fetches binary content for a user-uploaded message (image/video/audio/file).
-// https://developers.line.biz/en/reference/messaging-api/#get-content
 func (c *APIClient) GetMessageContent(ctx context.Context, token, messageID string) ([]byte, string, error) {
 	req, err := c.authedRequest(ctx, http.MethodGet, lineDataAPIBase+"/v2/bot/message/"+messageID+"/content", token, nil)
 	if err != nil {

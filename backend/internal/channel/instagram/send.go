@@ -17,8 +17,6 @@ type sendResponse struct {
 	} `json:"messages"`
 }
 
-// Send posts a message to the Instagram Messaging API and returns the
-// provider's message ID as sourceID.
 func Send(ctx context.Context, ch *model.ChannelInstagram, accessToken, appSecret, to, content, mediaURL, mediaType string) (string, error) {
 	client := meta.NewClient(instagramGraphBase)
 

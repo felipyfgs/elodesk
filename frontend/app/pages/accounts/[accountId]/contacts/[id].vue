@@ -24,8 +24,6 @@ const contactConversations = ref<Conversation[]>([])
 type SidebarTab = 'attributes' | 'history' | 'notes' | 'merge'
 const activeTab = ref<SidebarTab>('attributes')
 
-// Em <xl a sidebar não cabe inline (380px é metade da largura útil em
-// laptops 1280px). Vira slideover acionado pelo botão "i" no header.
 const { isWide } = useResponsive()
 const sidebarOpen = ref(false)
 
@@ -118,11 +116,6 @@ onMounted(load)
             icon="i-lucide-message-square-plus"
             @click="sendMessage"
           />
-          <!--
-            Em <xl o painel lateral não cabe inline; o agente abre via
-            slideover com este botão. Em ≥xl o painel já está visível e o
-            botão é redundante.
-          -->
           <UButton
             v-if="contact && !isWide"
             :label="t('contactDetail.sidebar.attributes')"
@@ -144,7 +137,6 @@ onMounted(load)
       </div>
 
       <div v-else-if="contact" class="flex h-full min-h-0">
-        <!-- Main column -->
         <div class="flex-1 min-w-0 overflow-y-auto">
           <div class="max-w-6xl mx-auto w-full px-6 py-6">
             <ContactsDetailView
@@ -153,8 +145,6 @@ onMounted(load)
             />
           </div>
         </div>
-
-        <!-- Right sidebar inline (≥xl) -->
         <aside v-if="isWide" class="hidden xl:flex shrink-0 w-[380px] flex-col border-l border-default bg-elevated/30">
           <div class="p-3 border-b border-default">
             <UTabs
@@ -189,8 +179,6 @@ onMounted(load)
           </div>
         </aside>
       </div>
-
-      <!-- Sidebar slideover em <xl -->
       <ClientOnly>
         <USlideover
           v-if="contact && !isWide"

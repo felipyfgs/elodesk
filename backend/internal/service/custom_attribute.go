@@ -50,8 +50,6 @@ type CustomAttributeService struct {
 	auditLogger *auditLoggerIface
 }
 
-// auditLoggerIface indirects the audit logger so customattr_service can keep
-// its existing package-level imports minimal; it is wired from router.go.
 type auditLoggerIface struct {
 	log func(ctx context.Context, accountID int64, action string, contactID int64, metadata any)
 }
@@ -60,7 +58,6 @@ func NewCustomAttributeService(defRepo *repo.CustomAttributeDefinitionRepo, cont
 	return &CustomAttributeService{defRepo: defRepo, contactRepo: contactRepo, convRepo: convRepo}
 }
 
-// WithContactAuditFn wires a callback used to emit contact-level audit events.
 func (s *CustomAttributeService) WithContactAuditFn(fn func(ctx context.Context, accountID int64, action string, contactID int64, metadata any)) *CustomAttributeService {
 	s.auditLogger = &auditLoggerIface{log: fn}
 	return s

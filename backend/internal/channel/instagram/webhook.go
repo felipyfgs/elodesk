@@ -17,8 +17,6 @@ import (
 
 const dedupKeyPrefix = "elodesk:meta:"
 
-// ProcessWebhook parses and processes an Instagram webhook payload.
-// Echo messages are scheduled with a 2s delay via asynq.
 func ProcessWebhook(
 	ctx context.Context,
 	body []byte,
@@ -103,7 +101,6 @@ func persistInboundMessage(
 ) error {
 	senderID := me.Sender.ID
 
-	// Find or create contact inbox (keyed by sender PSID/IGID)
 	ci, err := contactInboxRepo.FindBySourceID(ctx, senderID, inbox.ID)
 	if err != nil {
 		if !repo.IsErrNotFound(err) {
@@ -169,8 +166,6 @@ func persistInboundMessage(
 	return nil
 }
 
-// scheduleEchoProcessing enqueues echo processing with 2s delay so the
-// outbound message record is already persisted when the echo arrives.
 func scheduleEchoProcessing(ctx context.Context, mid string, inboxID int64, me meta.MessagingEntry, isStandby bool, asynqClient *asynq.Client) error {
 	if asynqClient == nil {
 		return nil

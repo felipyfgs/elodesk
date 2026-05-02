@@ -44,6 +44,9 @@ type NotificationListFilter struct {
 	UnreadOnly bool
 	Limit      int
 	Cursor     int64 // created_at-based cursor encoded as id for pagination
+	// SortOrder is "asc" or "desc" (default "desc"). The cursor logic depends
+	// on this — descending uses `id < cursor`, ascending uses `id > cursor`.
+	SortOrder string
 }
 
 func (r *NotificationRepo) List(ctx context.Context, f NotificationListFilter) ([]model.Notification, error) {
@@ -59,11 +62,20 @@ func (r *NotificationRepo) List(ctx context.Context, f NotificationListFilter) (
 	if f.UnreadOnly {
 		where += " AND read_at IS NULL"
 	}
+	asc := f.SortOrder == "asc"
 	if f.Cursor > 0 {
-		where += fmt.Sprintf(" AND id < $%d", idx)
+		op := "<"
+		if asc {
+			op = ">"
+		}
+		where += fmt.Sprintf(" AND id %s $%d", op, idx)
 		args = append(args, f.Cursor)
 	}
-	query := fmt.Sprintf(`SELECT %s FROM notifications %s ORDER BY id DESC LIMIT %d`, notificationSelectColumns, where, f.Limit)
+	order := "DESC"
+	if asc {
+		order = "ASC"
+	}
+	query := fmt.Sprintf(`SELECT %s FROM notifications %s ORDER BY id %s LIMIT %d`, notificationSelectColumns, where, order, f.Limit)
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list notifications: %w", err)
@@ -98,6 +110,30 @@ func (r *NotificationRepo) MarkRead(ctx context.Context, id, accountID, userID i
 		id, accountID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification read: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		var exists bool
+		if err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM notifications WHERE id = $1 AND account_id = $2 AND user_id = $3)`, id, accountID, userID).Scan(&exists); err != nil {
+			return fmt.Errorf("failed to check notification: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("%w: %w", ErrNotificationNotFound, pgx.ErrNoRows)
+		}
+	}
+	return nil
+}
+
+// MarkUnread reverts a previously read notification back to unread (read_at = NULL).
+// Mirrors Chatwoot's POST /notifications/:id/unread (notifications_controller.rb).
+// Returns ErrNotificationNotFound when the row doesn't exist or the caller
+// doesn't own it; idempotent if the row is already unread (RowsAffected = 0
+// but exists check passes — caller treats as success).
+func (r *NotificationRepo) MarkUnread(ctx context.Context, id, accountID, userID int64) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE notifications SET read_at = NULL WHERE id = $1 AND account_id = $2 AND user_id = $3 AND read_at IS NOT NULL`,
+		id, accountID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to mark notification unread: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		var exists bool

@@ -31,9 +31,6 @@ const savedFilters = useSavedFiltersStore()
 
 const disabled = computed(() => !!props.advancedQuery)
 
-// Scope dropdowns mutate convs.filters directly (popover-driven filtering, see
-// middleware/conversations-scope.ts). Each picker is multi-select except saved
-// filters, which apply a stored advancedQuery via emit.
 function toggle(field: 'inboxIds' | 'labelIds' | 'teamIds', id: string) {
   const current = (convs.filters[field] ?? []).map(String)
   const next = current.includes(id) ? current.filter(v => v !== id) : [...current, id]

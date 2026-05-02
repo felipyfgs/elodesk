@@ -17,7 +17,6 @@ const selectedIds = ref<string[]>([])
 const activeFilter = ref<FilterQueryPayload | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-// Server-side search with debounce
 watch(searchQuery, () => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
@@ -26,7 +25,6 @@ watch(searchQuery, () => {
   }, 300)
 })
 
-// Initial load
 onMounted(() => {
   loadContacts({ pageSize: PAGE_SIZE })
 })
@@ -80,7 +78,6 @@ function normalizeContact(raw: RawContact): Contact {
   }
 }
 
-// Computed
 const visibleContactIds = computed(() => contactsStore.list.map(c => c.id))
 const isSearchView = computed(() => !!searchQuery.value)
 const hasMore = computed(() => {
@@ -88,7 +85,6 @@ const hasMore = computed(() => {
   return page * pageSize < total
 })
 
-// Filter state
 const deleteModalOpen = ref(false)
 const filterBuilderOpen = ref(false)
 const segmentSaveOpen = ref(false)
@@ -131,7 +127,6 @@ async function loadContacts(params: { page?: number, pageSize?: number, append?:
   }
 }
 
-// Selection handlers
 function toggleContact(payload: { id: string, value: boolean }) {
   if (payload.value) {
     if (!selectedIds.value.includes(payload.id)) {
@@ -152,7 +147,6 @@ function clearSelection() {
   selectedIds.value = []
 }
 
-// Contact actions
 async function handleUpdateContact(payload: { id: string, name?: string, email?: string, phone_number?: string, additional_attributes?: Record<string, unknown> }) {
   try {
     await contactsStore.update(payload.id, payload)
@@ -179,7 +173,6 @@ function handleShowDetails(id: string) {
   navigateTo(`/accounts/${auth.account?.id}/contacts/${id}`)
 }
 
-// Filter handlers
 function openFilterBuilder() {
   filterBuilderOpen.value = true
 }
@@ -194,7 +187,6 @@ function onSaveSegment(payload: FilterQueryPayload) {
   segmentSaveOpen.value = true
 }
 
-// Bulk actions
 function onDeleteFromToolbar() {
   if (!selectedIds.value.length) return
   deleteModalOpen.value = true
@@ -205,12 +197,10 @@ function onBulkDeleted() {
   loadContacts({ page: 1, pageSize: PAGE_SIZE })
 }
 
-// Pagination
 function handlePageChange(page: number) {
   loadContacts({ page, pageSize: PAGE_SIZE })
 }
 
-// Infinite scroll (for search)
 async function loadMore() {
   if (!hasMore.value || contactsStore.isLoading) return
   const nextPage = contactsStore.meta.page + 1
@@ -221,7 +211,6 @@ async function loadMore() {
   })
 }
 
-// Import/Add handlers
 function handleImport() {
   navigateTo(`/accounts/${auth.account?.id}/contacts/import`)
 }
@@ -242,7 +231,6 @@ function handleSearch(event: Event) {
 
 function escapeCsv(value: string | null): string {
   if (!value) return ''
-  // RFC 4180: wrap in quotes and double internal quotes
   if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
     return `"${value.replace(/"/g, '""')}"`
   }
@@ -355,7 +343,6 @@ const headerMenuItems = computed(() => [
 
     <template #body>
       <div class="max-w-6xl mx-auto w-full">
-        <!-- Empty state -->
         <div
           v-if="!contactsStore.isLoading && !contactsStore.list.length"
           class="flex flex-1 items-center justify-center py-24 text-muted text-center"
@@ -367,16 +354,12 @@ const headerMenuItems = computed(() => [
             </p>
           </div>
         </div>
-
-        <!-- Loading state -->
         <div
           v-else-if="contactsStore.isLoading && !contactsStore.list.length"
           class="flex items-center justify-center py-12"
         >
           <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-primary" />
         </div>
-
-        <!-- Contacts list -->
         <ContactsCardList
           v-else
           :contacts="contactsStore.list"
@@ -387,8 +370,6 @@ const headerMenuItems = computed(() => [
           @delete-contact="handleDeleteContact"
           @show-details="handleShowDetails"
         />
-
-        <!-- Infinite scroll trigger (only in search) -->
         <div
           v-if="isSearchView && hasMore && !contactsStore.isLoading"
           class="flex justify-center py-4"
@@ -400,8 +381,6 @@ const headerMenuItems = computed(() => [
           />
         </div>
       </div>
-
-      <!-- Modals (inside #body so they don't render as DashboardPanel default slot content; UModal portals to document body) -->
       <ContactsAddModal v-model:open="addModalOpen" />
 
       <ContactsSendMessageModal v-model:open="sendMessageOpen" />

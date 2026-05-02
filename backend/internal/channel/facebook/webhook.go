@@ -17,7 +17,6 @@ import (
 
 const dedupKeyPrefix = "elodesk:meta:"
 
-// ProcessWebhook parses and processes a Facebook Messenger webhook payload.
 func ProcessWebhook(
 	ctx context.Context,
 	body []byte,
@@ -36,13 +35,11 @@ func ProcessWebhook(
 	}
 
 	for _, entry := range payload.Entry {
-		// Process regular messaging entries
 		for _, me := range entry.Messaging {
 			if err := processEntry(ctx, me, false, inbox, accountID, dedup, asynqClient, contactRepo, contactInboxRepo, conversationRepo, messageRepo); err != nil {
 				logger.Warn().Str("component", "facebook.webhook").Err(err).Msg("process messaging entry")
 			}
 		}
-		// Process standby entries (another app has primary receiver control)
 		for _, me := range entry.Standby {
 			if err := processEntry(ctx, me, true, inbox, accountID, dedup, asynqClient, contactRepo, contactInboxRepo, conversationRepo, messageRepo); err != nil {
 				logger.Warn().Str("component", "facebook.webhook").Err(err).Msg("process standby entry")
@@ -65,7 +62,6 @@ func processEntry(
 	conversationRepo *repo.ConversationRepo,
 	messageRepo *repo.MessageRepo,
 ) error {
-	// Handle delivery watermark updates
 	if me.Delivery != nil {
 		if inbox == nil || contactInboxRepo == nil {
 			return nil

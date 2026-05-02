@@ -47,10 +47,6 @@ func NewConversationHandler(
 	}
 }
 
-// CreateAuthenticated lets an authenticated agent start a new conversation with
-// an existing contact from the dashboard. Optionally sends a first outgoing
-// message within the same request. Mirrors Chatwoot's
-// POST /api/v1/accounts/:account_id/conversations.
 func (h *ConversationHandler) CreateAuthenticated(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -70,7 +66,6 @@ func (h *ConversationHandler) CreateAuthenticated(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	// Validate assignee is a member of the account
 	if req.AssigneeID != nil && h.agentRepo != nil {
 		ok, err := h.agentRepo.IsMember(c.Context(), accountID, *req.AssigneeID)
 		if err != nil {
@@ -81,7 +76,6 @@ func (h *ConversationHandler) CreateAuthenticated(c *fiber.Ctx) error {
 		}
 	}
 
-	// Validate team is scoped to the account
 	if req.TeamID != nil && h.teamRepo != nil {
 		if _, err := h.teamRepo.FindByID(c.Context(), *req.TeamID, accountID); err != nil {
 			return handleNotFound(c, err)
@@ -254,22 +248,16 @@ func (h *ConversationHandler) List(c *fiber.Ctx) error {
 		filter.Query = q
 	}
 
-	// `conversation_type=unattended` ativa o scope homônimo do Chatwoot
-	// (cliente esperando resposta). Outros valores ainda não são tratados.
 	if convType := c.Query("conversation_type"); convType != "" {
 		filter.ConversationType = convType
 	}
 
-	// `unread=true` (ou "1") restringe a conversas com mensagens incoming
-	// não vistas pelo agente desde o último assignee_last_seen_at.
 	if unreadStr := c.Query("unread"); unreadStr == "true" || unreadStr == "1" {
 		filter.Unread = true
 	}
 
 	filter.AssigneeType = parseAssigneeType(c.Query("assignee_type"))
 
-	// assignee_type takes precedence; assignee_id is only honored when no
-	// assignee_type filter is active to avoid double assignee constraints.
 	if filter.AssigneeType == "" {
 		if assigneeIDStr := c.Query("assignee_id"); assigneeIDStr != "" {
 			assigneeID, err := strconv.ParseInt(assigneeIDStr, 10, 64)
@@ -384,9 +372,6 @@ func (h *ConversationHandler) Assign(c *fiber.Ctx) error {
 		return handleNotFound(c, err)
 	}
 
-	// Re-fetch the hydrated conversation so the response carries the same
-	// `meta`, `inbox`, and `last_non_activity_message` shape the frontend
-	// store relies on. Without this, `upsert` would strip those fields.
 	hydrated, err := h.svc.FindByIDFull(c.Context(), accountID, int64(id))
 	if err != nil {
 		return handleNotFound(c, err)
@@ -441,9 +426,6 @@ func (h *ConversationHandler) ToggleStatus(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.ConversationToResp(convo)))
 }
 
-// MarkRead zera unread_count atualizando assignee_last_seen_at. Chamado pelo
-// frontend quando o agente abre a thread. Broadcast de conversation.updated
-// é feito pelo service para sincronizar todos os clientes.
 func (h *ConversationHandler) MarkRead(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -462,10 +444,6 @@ func (h *ConversationHandler) MarkRead(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(map[string]string{"result": "success"}))
 }
 
-// Delete permanently removes the conversation (and all messages/participants
-// via ON DELETE CASCADE). Restricted to Admin+ at the route layer. The audit
-// trail survives in audit_logs; the data itself is gone permanently. Returns
-// 204 on success, 404 if the conversation is missing.
 func (h *ConversationHandler) Delete(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

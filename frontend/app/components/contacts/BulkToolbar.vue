@@ -60,7 +60,6 @@ async function removeLabel() {
 }
 
 function exportCSV() {
-  // Export selected contacts as CSV
   const contacts = contactsStore.list.filter(c => props.selectedIds.includes(c.id))
   const header = 'name,email,phone_number\n'
   const rows = contacts.map(c =>
@@ -149,8 +148,6 @@ function exportCSV() {
       </div>
     </div>
   </Transition>
-
-  <!-- Label picker modal -->
   <UModal v-model:open="showLabelPicker" :title="t('contacts.bulk.addLabel')">
     <template #body>
       <div class="space-y-3">

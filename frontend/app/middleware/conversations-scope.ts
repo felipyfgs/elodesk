@@ -1,16 +1,10 @@
 import { useConversationsStore } from '~/stores/conversations'
 
-// Deep-link support: routes like /conversations/inbox/:id, /conversations/label/:name
-// preload the matching scope filter into state. The popover-based filter UI no
-// longer changes the URL, but these routes remain valid as bookmarks.
 export default defineNuxtRouteMiddleware((to) => {
   const convs = useConversationsStore()
   const path = to.path
 
-  // `conversationType` (Não atendidas) virou preferência persistida em
-  // localStorage — ele NÃO é resetado na navegação geral. O deep-link
   // /conversations/unattended ainda pode ligar ele explicitamente abaixo,
-  // mas trocar de rota não desliga.
   const clearScope = {
     inboxIds: undefined,
     labelIds: undefined,

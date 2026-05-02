@@ -25,7 +25,6 @@ type Schema = z.output<typeof schema>
 const error = ref<string | null>(null)
 const isLoading = ref(false)
 
-// MFA step
 const mfaRequired = ref(false)
 const mfaToken = ref('')
 const mfaCode = ref('')
@@ -130,7 +129,6 @@ definePageMeta({ layout: 'auth' })
 
 <template>
   <UPageCard class="w-full max-w-sm">
-    <!-- Login step -->
     <UAuthForm
       v-if="!mfaRequired"
       :schema="schema"
@@ -168,8 +166,6 @@ definePageMeta({ layout: 'auth' })
         </p>
       </template>
     </UAuthForm>
-
-    <!-- MFA step -->
     <div v-else class="flex flex-col items-center gap-4">
       <div class="flex flex-col items-center gap-1">
         <div class="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">

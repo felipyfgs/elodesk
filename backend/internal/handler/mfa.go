@@ -107,7 +107,6 @@ func (h *MFAHandler) Verify(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResp("Error", "internal server error"))
 	}
 
-	// Issue JWT pair after successful MFA verification.
 	loginResult, err := h.authSvc.IssueTokenPair(c.Context(), result.UserID)
 	if err != nil {
 		logger.Error().Str("component", "auth").Err(err).Msg("failed to issue token pair after mfa verify")

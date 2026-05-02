@@ -11,10 +11,8 @@ import (
 )
 
 const (
-	// MaxForwardMessages is the maximum number of source messages per dispatch.
 	MaxForwardMessages = 5
-	// MaxForwardTargets is the maximum number of targets per dispatch.
-	MaxForwardTargets = 5
+	MaxForwardTargets  = 5
 )
 
 var (
@@ -42,7 +40,6 @@ type ForwardResult struct {
 	Err                 error
 }
 
-// ForwardService handles the forward-messages flow.
 type ForwardService struct {
 	messageRepo      *repo.MessageRepo
 	attachmentRepo   *repo.AttachmentRepo
@@ -76,10 +73,6 @@ func NewForwardService(
 	}
 }
 
-// ForwardMessages forwards the given source messages to the specified targets.
-// Validates ownership, compatibility, and limits, then creates messages in each
-// target (creating conversations when needed). Per-target failures are reported
-// individually so partial success is preserved across the batch.
 func (s *ForwardService) ForwardMessages(
 	ctx context.Context,
 	accountID, agentID int64,
@@ -119,8 +112,6 @@ func (s *ForwardService) ForwardMessages(
 		return nil, fmt.Errorf("load attachments: %w", err)
 	}
 
-	// Validate every target up front so a clearly-incompatible request fails as
-	// a single 400 instead of a half-applied batch.
 	for _, t := range targets {
 		if t.ConversationID <= 0 && (t.ContactID <= 0 || t.InboxID <= 0) {
 			return nil, ErrForwardInvalidTarget
@@ -158,10 +149,6 @@ func (s *ForwardService) ForwardMessages(
 	return results, nil
 }
 
-// forwardToTarget handles a single target: resolves the destination conversation
-// (creating one when needed) and writes the forwarded messages and their
-// attachments. Per-target errors are captured on the returned ForwardResult so
-// the caller can report partial failures without aborting the whole batch.
 func (s *ForwardService) forwardToTarget(
 	ctx context.Context,
 	accountID, agentID int64,
@@ -181,11 +168,6 @@ func (s *ForwardService) forwardToTarget(
 		return result
 	}
 
-	// Track each created message with its hydrated attachments so the realtime
-	// broadcast and outbound webhook see the full payload. messageRepo.FindByID
-	// does NOT load attachments — without populating Attachments here, the
-	// webhook fired below would dispatch a text-only payload and downstream
-	// integrators (e.g. wzap) would deliver an empty WhatsApp message.
 	createdMessages := make([]*model.Message, 0, len(sourceMessages))
 	createdIDs := make([]int64, 0, len(sourceMessages))
 	for i, src := range sourceMessages {
@@ -233,11 +215,6 @@ func (s *ForwardService) forwardToTarget(
 		createdMessages = append(createdMessages, created)
 	}
 
-	// Mirror MessageService.Create's tail-end hooks: bump activity, reopen the
-	// conversation if it was resolved/snoozed, broadcast realtime, and fire the
-	// outbound notifier so the channel-side delivery (e.g. wzap → WhatsApp)
-	// runs the same way as a regular agent send. reopenIfClosed must run before
-	// the broadcast so the embedded conversation summary carries the new status.
 	for _, created := range createdMessages {
 		s.messageSvc.bumpActivity(ctx, created)
 		s.messageSvc.reopenIfClosed(ctx, created)
@@ -255,13 +232,6 @@ func (s *ForwardService) forwardToTarget(
 	return result
 }
 
-// resolveTargetConversation returns the conversation and inbox to use for the
-// forward. For conversation-targeted forwards the inbox comes from the
-// conversation; for contact+inbox forwards we reuse the latest open
-// conversation when present, otherwise we provision a contact_inbox (with the
-// channel-appropriate source_id) and a fresh conversation. This keeps the UI
-// simple — the user picks a contact and an inbox, the backend ensures the
-// outbound channel has what it needs to deliver.
 func (s *ForwardService) resolveTargetConversation(ctx context.Context, accountID int64, target ForwardTarget) (conversationID, inboxID int64, createdConversation bool, err error) {
 	if target.ConversationID > 0 {
 		conv, ferr := s.conversationRepo.FindByID(ctx, target.ConversationID, accountID)
@@ -285,10 +255,6 @@ func (s *ForwardService) resolveTargetConversation(ctx context.Context, accountI
 			return latest.ID, inboxID, false, nil
 		}
 	} else {
-		// No contact_inbox yet — provision one with a source_id derived from
-		// the contact fields appropriate for this channel. Without this the
-		// fallback in ConversationService.Create can produce a contact_inbox
-		// with an empty / wrong source_id and the channel send fails silently.
 		inbox, ferr := s.inboxRepo.FindByID(ctx, target.InboxID, accountID)
 		if ferr != nil {
 			return 0, 0, false, fmt.Errorf("find inbox %d: %w", target.InboxID, ferr)
@@ -311,11 +277,6 @@ func (s *ForwardService) resolveTargetConversation(ctx context.Context, accountI
 		}
 	}
 
-	// Use CreateWithOpts so the conversation_created webhook fires alongside the
-	// realtime EventConversationCreated. Without this, integrators like wzap
-	// receive the message_created event for a conversation they have no JID
-	// mapping for and silently skip the send (exactly what was happening in the
-	// wzap logs: "no valid chat JID found for outgoing message, skipping").
 	conv, cerr := s.conversationSvc.CreateWithOpts(ctx, accountID, target.InboxID, target.ContactID, ConversationCreateOpts{})
 	if cerr != nil {
 		return 0, 0, false, fmt.Errorf("create conversation: %w", cerr)
@@ -323,12 +284,6 @@ func (s *ForwardService) resolveTargetConversation(ctx context.Context, accountI
 	return conv.ID, inboxID, true, nil
 }
 
-// sourceIDForChannel derives the channel-specific source_id from the contact's
-// stored fields. Phone-based channels (WhatsApp/SMS/Twilio) use phone_e164 ⟶
-// phone_number; Email uses email; everything else falls back to identifier.
-// Returns an error when the contact lacks the field the channel needs to
-// deliver — surfacing this as a clear 4xx is better than letting the channel
-// send fail downstream.
 func sourceIDForChannel(channelType string, contact *model.Contact) (string, error) {
 	switch channelType {
 	case "Channel::Whatsapp", "Channel::Sms", "Channel::Twilio":
@@ -352,9 +307,6 @@ func sourceIDForChannel(channelType string, contact *model.Contact) (string, err
 	}
 }
 
-// validateCompatibility checks that every attachment on every source message is
-// supported by the destination channel. Returns the first incompatibility so
-// the caller can surface a precise 400.
 func (s *ForwardService) validateCompatibility(channelType string, sources []model.Message, attachmentsByMsg map[int64][]model.Attachment) error {
 	for _, src := range sources {
 		for _, att := range attachmentsByMsg[src.ID] {
@@ -370,9 +322,6 @@ func (s *ForwardService) validateCompatibility(channelType string, sources []mod
 	return nil
 }
 
-// resolveRootForwardID returns the original message id for a forward chain so
-// the persisted forwarded_from_message_id always points at the source, not at
-// an intermediate forward.
 func resolveRootForwardID(m model.Message) int64 {
 	if m.ForwardedFromMessageID != nil {
 		return *m.ForwardedFromMessageID

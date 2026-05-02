@@ -22,9 +22,6 @@ const (
 	twitterRequestTokenTTL          = 10 * time.Minute
 )
 
-// TwitterHandler exposes provisioning (3-legged OAuth) and the public
-// Account Activity webhook endpoints. All provisioning routes are gated by
-// the FEATURE_CHANNEL_TWITTER flag — when off, every route returns 403.
 type TwitterHandler struct {
 	twitterRepo      *repo.ChannelTwitterRepo
 	inboxRepo        *repo.InboxRepo
@@ -70,18 +67,14 @@ func NewTwitterHandler(
 	}
 }
 
-// Authorize handles POST /api/v1/accounts/:aid/inboxes/twitter/authorize.
-// Mints an OAuth 1.0a request_token, stashes the matching token_secret +
-// owning account in Redis (10m TTL), and returns the consent URL.
-//
-//	@Summary		Begin Twitter OAuth handshake
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Produce		json
-//	@Param			aid	path		int	true	"Account ID"
-//	@Success		200	{object}	dto.APIResponse{data=dto.TwitterAuthorizeResp}
-//	@Failure		403	{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/twitter/authorize [post]
+// @Summary		Begin Twitter OAuth handshake
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Produce		json
+// @Param			aid	path		int	true	"Account ID"
+// @Success		200	{object}	dto.APIResponse{data=dto.TwitterAuthorizeResp}
+// @Failure		403	{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/twitter/authorize [post]
 func (h *TwitterHandler) Authorize(c *fiber.Ctx) error {
 	if !h.featureEnabled {
 		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("feature_disabled", "Twitter channel is disabled"))
@@ -112,19 +105,15 @@ func (h *TwitterHandler) Authorize(c *fiber.Ctx) error {
 	return c.JSON(dto.SuccessResp(dto.TwitterAuthorizeResp{URL: h.oauth.AuthorizeURL(rt.OAuthToken)}))
 }
 
-// Callback handles GET /api/v1/accounts/twitter/oauth/callback.
-// Twitter redirects the user here after consent; we exchange the verifier
-// for the long-lived access token pair and create the inbox.
-//
-//	@Summary		Twitter OAuth callback
-//	@Tags			inboxes
-//	@Produce		json
-//	@Param			oauth_token		query		string	false	"Request token returned by Twitter"
-//	@Param			oauth_verifier	query		string	false	"OAuth verifier"
-//	@Param			denied			query		string	false	"Set when user denies consent"
-//	@Success		201				{object}	dto.APIResponse{data=dto.TwitterInboxResp}
-//	@Failure		400				{object}	dto.APIError
-//	@Router			/api/v1/accounts/twitter/oauth/callback [get]
+// @Summary		Twitter OAuth callback
+// @Tags			inboxes
+// @Produce		json
+// @Param			oauth_token		query		string	false	"Request token returned by Twitter"
+// @Param			oauth_verifier	query		string	false	"OAuth verifier"
+// @Param			denied			query		string	false	"Set when user denies consent"
+// @Success		201				{object}	dto.APIResponse{data=dto.TwitterInboxResp}
+// @Failure		400				{object}	dto.APIError
+// @Router			/api/v1/accounts/twitter/oauth/callback [get]
 func (h *TwitterHandler) Callback(c *fiber.Ctx) error {
 	if !h.featureEnabled {
 		return c.Status(fiber.StatusForbidden).JSON(dto.ErrorResp("feature_disabled", "Twitter channel is disabled"))
@@ -229,18 +218,14 @@ func (h *TwitterHandler) Callback(c *fiber.Ctx) error {
 	}))
 }
 
-// CRC handles GET /webhooks/twitter/:profile_id?crc_token=...
-// Twitter periodically pings this endpoint and expects an HMAC-SHA256 of
-// the crc_token using the consumer secret as response.
-//
-//	@Summary		Twitter webhook CRC challenge
-//	@Tags			webhooks
-//	@Produce		json
-//	@Param			profile_id	path		string	true	"Twitter profile id"
-//	@Param			crc_token	query		string	true	"Challenge token"
-//	@Success		200			{object}	map[string]string
-//	@Failure		400			{object}	dto.APIError
-//	@Router			/webhooks/twitter/{profile_id} [get]
+// @Summary		Twitter webhook CRC challenge
+// @Tags			webhooks
+// @Produce		json
+// @Param			profile_id	path		string	true	"Twitter profile id"
+// @Param			crc_token	query		string	true	"Challenge token"
+// @Success		200			{object}	map[string]string
+// @Failure		400			{object}	dto.APIError
+// @Router			/webhooks/twitter/{profile_id} [get]
 func (h *TwitterHandler) CRC(c *fiber.Ctx) error {
 	crcToken := c.Query("crc_token")
 	if crcToken == "" {
@@ -250,16 +235,14 @@ func (h *TwitterHandler) CRC(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"response_token": response})
 }
 
-// Receive handles POST /webhooks/twitter/:profile_id (Account Activity events).
-//
-//	@Summary		Twitter webhook delivery
-//	@Tags			webhooks
-//	@Accept			json
-//	@Produce		json
-//	@Param			profile_id	path		string	true	"Twitter profile id"
-//	@Success		200			{object}	dto.APIResponse
-//	@Failure		401			{object}	dto.APIError
-//	@Router			/webhooks/twitter/{profile_id} [post]
+// @Summary		Twitter webhook delivery
+// @Tags			webhooks
+// @Accept			json
+// @Produce		json
+// @Param			profile_id	path		string	true	"Twitter profile id"
+// @Success		200			{object}	dto.APIResponse
+// @Failure		401			{object}	dto.APIError
+// @Router			/webhooks/twitter/{profile_id} [post]
 func (h *TwitterHandler) Receive(c *fiber.Ctx) error {
 	profileID := c.Params("profile_id")
 
@@ -286,18 +269,14 @@ func (h *TwitterHandler) Receive(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// Delete handles DELETE /api/v1/accounts/:aid/inboxes/:id/twitter.
-//
-//	@Summary		Delete Twitter inbox
-//	@Tags			inboxes
-//	@Security		BearerAuth
-//	@Param			aid	path		int	true	"Account ID"
-//	@Param			id	path		int	true	"Inbox ID"
-//	@Success		200	{object}	dto.APIResponse
-//	@Failure		404	{object}	dto.APIError
-//	@Router			/api/v1/accounts/{aid}/inboxes/{id}/twitter [delete]
-//
-// GetByInboxID handles GET /api/v1/accounts/:aid/inboxes/:id/twitter.
+// @Summary		Delete Twitter inbox
+// @Tags			inboxes
+// @Security		BearerAuth
+// @Param			aid	path		int	true	"Account ID"
+// @Param			id	path		int	true	"Inbox ID"
+// @Success		200	{object}	dto.APIResponse
+// @Failure		404	{object}	dto.APIError
+// @Router			/api/v1/accounts/{aid}/inboxes/{id}/twitter [delete]
 func (h *TwitterHandler) FindByInboxID(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {
@@ -334,7 +313,6 @@ func (h *TwitterHandler) FindByInboxID(c *fiber.Ctx) error {
 	}))
 }
 
-// Update handles PUT /api/v1/accounts/:aid/inboxes/:id/twitter.
 func (h *TwitterHandler) Update(c *fiber.Ctx) error {
 	accountID, ok := c.Locals("accountId").(int64)
 	if !ok {

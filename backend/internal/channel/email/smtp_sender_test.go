@@ -28,11 +28,9 @@ func TestBuildRawMessage_Headers(t *testing.T) {
 		SmtpPasswordCiphertext: strPtr("dummy"),
 	}
 
-	// We can't actually send; just verify MessageID is returned unchanged.
 	_ = ch
 	_ = msg
 
-	// Verify generateMessageID uses domain from email.
 	id1 := emailch.ExportedGenerateMessageID("user@myhost.com")
 	if !strings.Contains(id1, "@myhost.com") {
 		t.Errorf("generateMessageID = %q, want @myhost.com", id1)

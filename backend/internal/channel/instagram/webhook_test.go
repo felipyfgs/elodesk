@@ -9,7 +9,6 @@ import (
 )
 
 func TestProcessWebhookPayload_SkipEcho(t *testing.T) {
-	// Build a payload with is_echo=true; confirm it doesn't panic / handles gracefully.
 	payload := meta.WebhookPayload{
 		Object: "instagram",
 		Entry: []meta.Entry{
@@ -33,10 +32,7 @@ func TestProcessWebhookPayload_SkipEcho(t *testing.T) {
 
 	body, _ := json.Marshal(payload)
 
-	// ProcessWebhook with nil asynqClient should not error on echo (just skips scheduling).
 	err := ProcessWebhook(context.Background(), body, nil, 0, nil, nil, nil, nil, nil, nil)
-	// We expect an error about nil inbox or dedup, but NOT a panic.
-	// The nil-inbox path should return early gracefully.
 	_ = err
 }
 

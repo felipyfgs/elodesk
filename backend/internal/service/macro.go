@@ -158,9 +158,6 @@ type ApplyMacroResult struct {
 	FailedIndex     int
 }
 
-// Apply executes macro actions on a conversation in a single database
-// transaction. Each action is validated first, then applied against tx. If any
-// fails the transaction rolls back and no state change is persisted.
 func (s *MacroService) Apply(ctx context.Context, accountID, conversationID, macroID, userID int64) (*ApplyMacroResult, error) {
 	macro, err := s.macroRepo.FindByID(ctx, macroID, accountID)
 	if err != nil {

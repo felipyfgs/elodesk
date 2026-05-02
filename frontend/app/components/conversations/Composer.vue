@@ -10,9 +10,6 @@ interface UploadedFile {
   url?: string
   uploading: boolean
   error?: string
-  // Áudio gravado pelo botão `i-lucide-mic` ganha um player inline em vez de
-  // virar chip — espelha o Chatwoot. O envio compartilha o mesmo `attachments`
-  // pra reaproveitar o pipeline de upload + send; a flag aqui só governa a UI.
   isRecordedAudio?: boolean
 }
 
@@ -36,22 +33,12 @@ const cannedOpen = ref(false)
 const isRecording = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// `accept` patterns aplicados dinamicamente conforme a categoria escolhida no
-// menu de anexo:
-//   - ALL_ACCEPT   → qualquer arquivo (paste, drag-and-drop, "Documento")
-//   - MEDIA_ACCEPT → câmera + galeria (image/video)
-// Nenhum filtro extra no caminho "Documento" — o agente escolhe o que faz
-// sentido. Validação real fica no backend/canal (cada channel rejeita o que
-// não suporta).
 const ALL_ACCEPT = '*/*'
 const MEDIA_ACCEPT = 'image/*,video/*'
 const AUDIO_ACCEPT = 'audio/*'
 
 type AttachKind = 'all' | 'document' | 'media' | 'camera' | 'audio'
 
-// Aplica o `accept`/`capture` adequados ao input antes de abrir o seletor.
-// Mantemos um único <input type="file"> e mutamos os atributos no momento do
-// clique — evita N inputs ocultos no DOM e mantém o handler de change único.
 function onAttachKind(kind: AttachKind) {
   const input = fileInputRef.value
   if (!input) return
@@ -66,8 +53,6 @@ function onAttachKind(kind: AttachKind) {
       break
     case 'camera':
       input.accept = MEDIA_ACCEPT
-      // `environment` = câmera traseira; navegadores desktop ignoram o atributo
-      // e caem no file picker normal — degrada graciosamente.
       input.setAttribute('capture', 'environment')
       break
     case 'audio':
@@ -81,11 +66,6 @@ function onAttachKind(kind: AttachKind) {
   input.click()
 }
 
-// Mapeamento extensão → mime canônico. Browsers (e o OS) frequentemente
-// devolvem `file.type` vazio ou genérico (`application/ogg`,
-// `application/octet-stream`) para arquivos anexados via clip — o que faz
-// `FileTypeFromMime` no backend cair no default e classificar áudio como
-// "documento". Este mapa força o mime certo a partir do nome do arquivo.
 const EXTENSION_MIME_MAP: Record<string, string> = {
   'ogg': 'audio/ogg', 'oga': 'audio/ogg', 'opus': 'audio/ogg',
   'mp3': 'audio/mpeg', 'm4a': 'audio/mp4', 'aac': 'audio/aac',
@@ -101,9 +81,6 @@ function extOf(name: string): string {
   return i < 0 ? '' : name.slice(i + 1).toLowerCase()
 }
 
-// Decide o mime efetivo do arquivo: prefere o `file.type` do browser quando
-// já é específico (image/*, audio/*, video/*); caso contrário deriva do
-// nome. Mantém o type do recorder (`audio/ogg;codecs=opus`) intacto.
 function effectiveMime(file: File): string {
   const t = file.type
   if (t && (t.startsWith('image/') || t.startsWith('audio/') || t.startsWith('video/'))) {
@@ -151,9 +128,6 @@ const charCount = computed(() => reply.value.length)
 const charExceeded = computed(() => maxChars.value > 0 && charCount.value > maxChars.value)
 
 const promptPlaceholder = computed(() => {
-  // Sem placeholder quando gravando ou com voice note no rascunho — esses
-  // fluxos não aceitam texto (áudio do mic vai sem legenda), então o
-  // "Digite uma mensagem..." só polui a UI do recorder.
   if (isRecording.value || hasRecordedAudio.value) return ''
   return mode.value === 'private'
     ? t('conversations.compose.privatePlaceholder')
@@ -213,15 +187,8 @@ function onRecorded(file: File) {
   uploadFile(file, { isRecordedAudio: true })
 }
 
-// Espelha o Chatwoot (`AttachmentsPreview.vue`): áudios gravados saem da lista
-// de chips e ganham um player inline. O envio compartilha o mesmo array
-// `attachments` — só a renderização é dividida.
 const recordedAudioAttachments = computed(() => attachments.value.filter(a => a.isRecordedAudio))
 const nonRecordedAudioAttachments = computed(() => attachments.value.filter(a => !a.isRecordedAudio))
-// Áudio gravado pelo botão do mic vai sem legenda — diferente de imagem/vídeo
-// que aceitam caption. Enquanto o agente está gravando ou tem voice note no
-// rascunho, o editor de texto fica trancado pra evitar texto que não seria
-// enviado junto.
 const hasRecordedAudio = computed(() => recordedAudioAttachments.value.length > 0)
 const composeLocked = computed(() => sending.value || isRecording.value || hasRecordedAudio.value)
 
@@ -248,15 +215,8 @@ async function send() {
   const now = new Date().toISOString()
   const inReplyTo = buildInReplyTo()
 
-  // Espelha o WhatsApp: cada anexo vira uma mensagem própria. Cada item
-  // recebe seu próprio echo_id pra reconciliar otimista ↔ real um a um.
-  // Sem anexos, manda 1 mensagem só de texto.
   type SendUnit = { echoId: string, tmpId: string, text: string, attachment: UploadedFile | null, isFirst: boolean }
   const units: SendUnit[] = []
-  // Áudio gravado pelo mic do navegador segue sem legenda — caption só vai
-  // pra primeira attachment que não seja voice note. Se só tem voice notes
-  // e o agente tinha texto digitado, manda o texto como mensagem própria
-  // antes dos áudios pra não perder a fala.
   const captionTargetIdx = readyAttachments.findIndex(a => !a.isRecordedAudio)
   const needsTextUnit = !!text && captionTargetIdx === -1 && readyAttachments.length > 0
   if (readyAttachments.length === 0) {
@@ -282,8 +242,6 @@ async function send() {
 
   for (const u of units) {
     const contentAttrs: Record<string, unknown> = { format: 'markdown', echo_id: u.echoId }
-    // in_reply_to fica só na primeira mensagem do batch — uma resposta lógica
-    // não vira N respostas só porque o agente anexou vários arquivos.
     if (u.isFirst && inReplyTo) contentAttrs.in_reply_to = inReplyTo
 
     messages.upsert({
@@ -313,9 +271,6 @@ async function send() {
   }
 
   try {
-    // Sequencial pra preservar ordem cronológica. Se um POST falhar, as
-    // unidades anteriores já viraram mensagens reais; só removemos a tmp
-    // que falhou e abortamos as restantes.
     for (const u of units) {
       const body: Record<string, unknown> = {
         message: u.text,
@@ -346,11 +301,6 @@ async function send() {
     attachments.value = []
   } finally {
     sending.value = false
-    // Re-foca o editor após enviar para que o agente possa digitar a
-    // próxima mensagem sem clicar no input. O `setContent('')` que o
-    // RichTextComposer faz no watcher de modelValue (após reply.value = '')
-    // remove o foco; precisamos esperar o ciclo Vue propagar a mudança
-    // antes de re-focar, daí o nextTick.
     await nextTick()
     richEditorRef.value?.focus()
   }
@@ -387,16 +337,11 @@ onMounted(async () => {
     for (const item of res.payload ?? []) {
       canned.upsert({ id: item.id, accountId: auth.account!.id, shortCode: item.shortCode, content: item.content, createdAt: now, updatedAt: now })
     }
-  } catch { /* ignore */ }
+  } catch { void 0 }
 })
 </script>
 
 <template>
-  <!--
-    `pb-[max(0.375rem,env(safe-area-inset-bottom))]` reserva o espaço da
-    home-indicator no iOS Safari quando o composer está colado no rodapé;
-    `pb-1.5` (0.375rem) é o padding base usado em telas sem notch.
-  -->
   <div
     :class="expanded
       ? 'fixed inset-0 z-40 flex flex-col items-center justify-center bg-default/70 px-4 py-6 backdrop-blur'
@@ -420,12 +365,6 @@ onMounted(async () => {
             :char-count="charCount"
             :max-chars="maxChars"
           />
-
-          <!--
-            Voice note do mic vai sem legenda (não é imagem com caption), então
-            o editor de texto fica desabilitado enquanto a gravação rola; a
-            UI do recorder mora aqui no slot do header.
-          -->
           <div v-if="isRecording" class="mb-2">
             <ConversationsAudioRecorder
               @recorded="onRecorded"
@@ -433,12 +372,6 @@ onMounted(async () => {
               @error="onRecorderError"
             />
           </div>
-
-          <!--
-            Áudios gravados pelo recorder ganham um player inline (estilo
-            Chatwoot) — agente revisa antes de enviar. Áudios anexados via
-            picker (kind 'audio' do dropdown) seguem como chip normal.
-          -->
           <ConversationsRecordedAudioPreview
             v-for="att in recordedAudioAttachments"
             :key="att.id"

@@ -1,19 +1,23 @@
 <script setup lang="ts">
+import { useAuthStore } from '~/stores/auth'
 import { useNotificationsStore, type Notification } from '~/stores/notifications'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 const { t } = useI18n()
 const realtime = useRealtime()
 const store = useNotificationsStore()
+const auth = useAuthStore()
+const router = useRouter()
 
-// `realtime.on` retorna a função de off — sem capturar e chamar ao desmontar,
-// cada mount/HMR empilha novos listeners e a notificação é processada N vezes.
 const offHandlers: Array<() => void> = []
 offHandlers.push(realtime.on('notification.new', (payload: Record<string, unknown>) => {
   store.handleRealtime({ type: 'notification.new', payload: payload as unknown as Notification })
 }))
 offHandlers.push(realtime.on('notification.read', (payload: Record<string, unknown>) => {
   store.handleRealtime({ type: 'notification.read', payload: payload as { id: number } })
+}))
+offHandlers.push(realtime.on('notification.unread', (payload: Record<string, unknown>) => {
+  store.handleRealtime({ type: 'notification.unread', payload: payload as { id: number } })
 }))
 offHandlers.push(realtime.on('notification.read_all', () => {
   store.handleRealtime({ type: 'notification.read_all' })
@@ -38,6 +42,15 @@ onMounted(() => {
 
 async function onItemClick(n: Notification) {
   if (!n.readAt) await store.markRead(n.id)
+  const accountId = auth.account?.id
+  if (!accountId) return
+  // payload keys are normalized to camelCase by useApi's apiAdapter; prefer
+  // the hydrated conversation summary when present (handler enriches it).
+  const payload = n.payload as Record<string, unknown> | undefined
+  const convId = n.conversation?.id ?? payload?.conversationId ?? payload?.conversation_id
+  if (convId === undefined || convId === null) return
+  await router.push(`/accounts/${accountId}/conversations/${convId}`)
+  isNotificationsSlideoverOpen.value = false
 }
 
 async function markAllRead() {

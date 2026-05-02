@@ -19,10 +19,8 @@ func TestNewEmailPoller_DefaultInterval(t *testing.T) {
 }
 
 func TestPoller_CancelsOnContextDone(t *testing.T) {
-	// The poller should return when ctx is cancelled without blocking.
 	ch := model.ChannelEmail{ID: 2, AccountID: 1}
 
-	// Use a very long interval so the ticker never fires in test.
 	poller := emailch.NewEmailPoller(ch, emailch.PollDeps{}, 10*time.Hour)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -36,7 +34,6 @@ func TestPoller_CancelsOnContextDone(t *testing.T) {
 
 	select {
 	case <-done:
-		// ok
 	case <-time.After(2 * time.Second):
 		t.Error("poller did not stop after context cancellation")
 	}

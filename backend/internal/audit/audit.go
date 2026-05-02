@@ -38,7 +38,6 @@ func (l *Logger) Log(ctx context.Context, accountID int64, userID *int64, action
 	}
 }
 
-// LogFromCtx extracts accountId/user from fiber ctx and logs an event.
 func (l *Logger) LogFromCtx(c *fiber.Ctx, action, entityType string, entityID *int64, metadata any) {
 	if l == nil {
 		return

@@ -13,7 +13,6 @@ import (
 	"backend/internal/repo"
 )
 
-// Channel implements channel.Channel for Instagram DMs.
 type Channel struct {
 	igRepo           *repo.ChannelInstagramRepo
 	inboxRepo        *repo.InboxRepo
@@ -81,7 +80,6 @@ func (c *Channel) HandleInbound(ctx context.Context, req *channel.InboundRequest
 func (c *Channel) SendOutbound(ctx context.Context, msg *channel.OutboundMessage) (string, error) {
 	ch, err := c.igRepo.FindByID(ctx, msg.ChannelID, 0)
 	if err != nil {
-		// try without account scope (channel registry doesn't have accountID)
 		return "", fmt.Errorf("instagram send: find channel: %w", err)
 	}
 

@@ -1,7 +1,5 @@
 package line
 
-// WebhookPayload is the root envelope LINE sends on the webhook endpoint.
-// https://developers.line.biz/en/reference/messaging-api/#webhook-event-objects
 type WebhookPayload struct {
 	Destination string  `json:"destination"`
 	Events      []Event `json:"events"`
@@ -31,20 +29,20 @@ type EventSource struct {
 }
 
 type EventMessage struct {
-	ID              string            `json:"id"`
-	Type            string            `json:"type"`
-	Text            string            `json:"text,omitempty"`
-	PackageID       string            `json:"packageId,omitempty"`
-	StickerID       string            `json:"stickerId,omitempty"`
-	FileName        string            `json:"fileName,omitempty"`
-	FileSize        int64             `json:"fileSize,omitempty"`
-	Title           string            `json:"title,omitempty"`
-	Address         string            `json:"address,omitempty"`
-	Latitude        float64           `json:"latitude,omitempty"`
-	Longitude       float64           `json:"longitude,omitempty"`
-	Duration        int64             `json:"duration,omitempty"`
-	ContentProvider *ContentProvider  `json:"contentProvider,omitempty"`
-	ContentMeta     map[string]any    `json:"contentMeta,omitempty"`
+	ID              string           `json:"id"`
+	Type            string           `json:"type"`
+	Text            string           `json:"text,omitempty"`
+	PackageID       string           `json:"packageId,omitempty"`
+	StickerID       string           `json:"stickerId,omitempty"`
+	FileName        string           `json:"fileName,omitempty"`
+	FileSize        int64            `json:"fileSize,omitempty"`
+	Title           string           `json:"title,omitempty"`
+	Address         string           `json:"address,omitempty"`
+	Latitude        float64          `json:"latitude,omitempty"`
+	Longitude       float64          `json:"longitude,omitempty"`
+	Duration        int64            `json:"duration,omitempty"`
+	ContentProvider *ContentProvider `json:"contentProvider,omitempty"`
+	ContentMeta     map[string]any   `json:"contentMeta,omitempty"`
 }
 
 type ContentProvider struct {
@@ -57,16 +55,14 @@ type EventPostback struct {
 	Data string `json:"data"`
 }
 
-// LINE Messaging API client request/response payloads.
-
 type BotInfo struct {
-	UserID          string `json:"userId"`
-	BasicID         string `json:"basicId"`
-	PremiumID       string `json:"premiumId,omitempty"`
-	DisplayName     string `json:"displayName"`
-	PictureURL      string `json:"pictureUrl,omitempty"`
-	ChatMode        string `json:"chatMode,omitempty"`
-	MarkAsReadMode  string `json:"markAsReadMode,omitempty"`
+	UserID         string `json:"userId"`
+	BasicID        string `json:"basicId"`
+	PremiumID      string `json:"premiumId,omitempty"`
+	DisplayName    string `json:"displayName"`
+	PictureURL     string `json:"pictureUrl,omitempty"`
+	ChatMode       string `json:"chatMode,omitempty"`
+	MarkAsReadMode string `json:"markAsReadMode,omitempty"`
 }
 
 type UserProfile struct {
@@ -104,17 +100,16 @@ type APIErrorItem struct {
 	Message  string `json:"message"`
 }
 
-// Message content types we recognise from LINE webhook events.
 const (
-	EventTypeMessage   = "message"
-	EventTypeFollow    = "follow"
-	EventTypeUnfollow  = "unfollow"
-	EventTypePostback  = "postback"
-	MessageTypeText    = "text"
-	MessageTypeImage   = "image"
-	MessageTypeVideo   = "video"
-	MessageTypeAudio   = "audio"
-	MessageTypeFile    = "file"
-	MessageTypeSticker = "sticker"
+	EventTypeMessage    = "message"
+	EventTypeFollow     = "follow"
+	EventTypeUnfollow   = "unfollow"
+	EventTypePostback   = "postback"
+	MessageTypeText     = "text"
+	MessageTypeImage    = "image"
+	MessageTypeVideo    = "video"
+	MessageTypeAudio    = "audio"
+	MessageTypeFile     = "file"
+	MessageTypeSticker  = "sticker"
 	MessageTypeLocation = "location"
 )

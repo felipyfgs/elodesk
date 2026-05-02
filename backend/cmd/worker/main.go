@@ -12,10 +12,9 @@ import (
 
 	"backend/internal/channel/whatsapp"
 	"backend/internal/config"
-	appcrypto "backend/internal/crypto"
+	appcrypto 	"backend/internal/crypto"
 	"backend/internal/database"
 	"backend/internal/logger"
-	"backend/internal/realtime"
 	"backend/internal/webhook"
 )
 
@@ -47,16 +46,10 @@ func main() {
 		logger.Fatal().Err(err).Msg("Worker: failed to create cipher")
 	}
 
-	hub := realtime.NewHub()
-	go hub.Run()
-
-	// -- Outbound webhook processor --
 	outboundProcessor := webhook.NewOutboundProcessor(cipher)
 
-	// -- WhatsApp send processor --
 	waSendProcessor := whatsapp.NewWaSendProcessor(cipher)
 
-	// -- Asynq server --
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: cfg.RedisURL},
 		asynq.Config{

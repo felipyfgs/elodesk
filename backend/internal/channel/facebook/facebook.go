@@ -12,7 +12,6 @@ import (
 	"backend/internal/repo"
 )
 
-// Channel implements channel.Channel for Facebook Messenger (Page).
 type Channel struct {
 	fbRepo           *repo.ChannelFacebookRepo
 	inboxRepo        *repo.InboxRepo
@@ -78,7 +77,6 @@ func (c *Channel) HandleInbound(ctx context.Context, req *channel.InboundRequest
 func (c *Channel) SendOutbound(ctx context.Context, msg *channel.OutboundMessage) (string, error) {
 	ch, err := c.fbRepo.FindByPageID(ctx, msg.To)
 	if err != nil {
-		// fallback: treat msg.To as PSID and ChannelID as the channel record id
 		ch2, err2 := c.fbRepo.FindByID(ctx, msg.ChannelID, 0)
 		if err2 != nil {
 			return "", fmt.Errorf("facebook send: find channel: %w", err)

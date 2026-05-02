@@ -8,9 +8,6 @@ import (
 	"backend/internal/repo"
 )
 
-// TemplatesJob periodically refreshes Twilio content templates for every
-// WhatsApp-medium channel whose cache is older than maxAge. Keeps outbound
-// template sends from failing due to stale template SIDs.
 type TemplatesJob struct {
 	repo     *repo.ChannelTwilioRepo
 	channel  *Channel

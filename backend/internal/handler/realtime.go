@@ -78,8 +78,6 @@ func (h *RealtimeHandler) HandleWebSocket(c *websocket.Conn) {
 	client.ReadPump()
 }
 
-// dbMembershipChecker resolves realtime room membership directly from the
-// database. Failures (including ctx timeouts) deny the join — fail-closed.
 type dbMembershipChecker struct {
 	accountRepo      *repo.AccountRepo
 	inboxRepo        *repo.InboxRepo
@@ -92,9 +90,6 @@ func (d *dbMembershipChecker) UserInAccount(ctx context.Context, userID, account
 }
 
 func (d *dbMembershipChecker) InboxAccount(ctx context.Context, inboxID int64) (int64, bool) {
-	// Tenant scope requires accountID; for the membership lookup we first need
-	// to discover it from the inbox itself. Using a direct query instead of
-	// the tenant-scoped FindByID to avoid a chicken-and-egg on ownership.
 	id, ok := inboxAccountByID(ctx, d.inboxRepo, inboxID)
 	if !ok {
 		return 0, false
@@ -110,9 +105,6 @@ func (d *dbMembershipChecker) ConversationAccount(ctx context.Context, conversat
 	return id, true
 }
 
-// inboxAccountByID / conversationAccountByID are thin helpers that leak no row
-// data beyond the owning account id — used solely to drive the membership
-// check. Errors other than ErrNotFound are logged and also deny the join.
 func inboxAccountByID(ctx context.Context, r *repo.InboxRepo, id int64) (int64, bool) {
 	accountID, err := r.AccountIDByID(ctx, id)
 	if err != nil {
