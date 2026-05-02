@@ -19,6 +19,8 @@
     "@nuxtjs/i18n": "^9.5.0",
     "@pinia/nuxt": "^0.11.0",
     "@tanstack/table-core": "^8.21.3",
+    "@tiptap/extension-blockquote": "^3.22.4",
+    "@tiptap/extension-italic": "^3.22.4",
     "@tiptap/extension-link": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "@tiptap/vue-3": "^3.22.4",
