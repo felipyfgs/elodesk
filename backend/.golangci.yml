@@ -92,11 +92,9 @@ linters:
           disabled: true
 
     gocritic:
+      # ifElseChain, elseif, singleCaseSwitch, typeSwitchVar já são default no
+      # tag `style`. Apenas habilitar checks adicionais aqui.
       enabled-checks:
-        - ifElseChain
-        - elseif
-        - singleCaseSwitch
-        - typeSwitchVar
         - nestingReduce
 
     goconst:
@@ -272,8 +270,8 @@ linters:
       # em findings.md seção "Linter-only") ===
 
       # L01 — handler/user_access_token.go::Create (early-return :42)
-      # cluster C08 (refactor-quick-wins-2026-05) cobre — manter linter ativo
-      # NÃO suprimir; será corrigido pela proposta.
+      # Resolvido por refactor-quick-wins-2026-05 task 1.1 (guard clause).
+      # Sem supressão: linter deve permanecer ativo no arquivo.
 
       # L02 — handler/forward.go::ForwardMessages (ifElseChain :39, gocritic)
       # gocritic ifElseChain → switch. Refactor mecânico. Cluster próprio: refactor-forward-handler.
@@ -338,6 +336,11 @@ linters:
         path: internal/handler/.*\.go
         linters:
           - dupl
+
+      # L10 — struct tags JSON corrompidas (bug do commit 6014c5c): resolvido
+      # inline no PR refactor-quick-wins-2026-05 restaurando json tags corretas
+      # em 48 arquivos (dto/, model/, repo/, channel/, service/, handler/). govet
+      # structtag fica ativo para detectar regressões futuras.
 
 issues:
   max-issues-per-linter: 50
