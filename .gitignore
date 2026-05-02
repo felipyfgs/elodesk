@@ -33,3 +33,6 @@ backend/backend
 _refs/
 
 openspec/changes/archive/
+
+# scratch / local work
+temp/
